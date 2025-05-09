@@ -14,7 +14,6 @@ import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
-import SystemSettings from "@/pages/SystemSettings";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -41,7 +40,6 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/tasks" element={<TaskList />} />
                   <Route path="/tasks/:taskId" element={<TaskDetail />} />
-                  <Route path="/system-settings" element={<SystemSettings />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />

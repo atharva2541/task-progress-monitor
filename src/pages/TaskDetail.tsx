@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTask } from '@/contexts/TaskContext';
@@ -45,20 +46,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
-
-// Mock users data - in a real app you would fetch this from your user context
-const users = [
-  { id: '1', name: 'Admin User', role: 'admin' },
-  { id: '2', name: 'Maker User', role: 'maker' },
-  { id: '3', name: 'Checker One', role: 'checker1' },
-  { id: '4', name: 'Checker Two', role: 'checker2' },
-];
-
-// Helper function to get username by ID
-const getUserNameById = (userId: string): string => {
-  const found = users.find(u => u.id === userId);
-  return found ? found.name : `User ${userId}`;
-};
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -212,7 +199,7 @@ const TaskDetail = () => {
                             <div className="flex items-start gap-3">
                               <User className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
                               <div>
-                                <p className="text-sm font-medium">{getUserNameById(comment.userId)}</p>
+                                <p className="text-sm font-medium">User {comment.userId}</p>
                                 <p className="text-sm text-muted-foreground">
                                   {new Date(comment.createdAt).toLocaleString()}
                                 </p>
@@ -369,7 +356,7 @@ const TaskDetail = () => {
                   <User className="h-4 w-4" />
                   <span>Maker</span>
                 </div>
-                <span className="font-medium">{getUserNameById(task.assignedTo)}</span>
+                <span className="font-medium">User {task.assignedTo}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center py-2">
@@ -377,7 +364,7 @@ const TaskDetail = () => {
                   <UserCheck className="h-4 w-4" />
                   <span>Checker 1</span>
                 </div>
-                <span className="font-medium">{getUserNameById(task.checker1)}</span>
+                <span className="font-medium">User {task.checker1}</span>
               </div>
               <Separator />
               <div className="flex justify-between items-center py-2">
@@ -385,7 +372,7 @@ const TaskDetail = () => {
                   <UserCheck className="h-4 w-4" />
                   <span>Checker 2</span>
                 </div>
-                <span className="font-medium">{getUserNameById(task.checker2)}</span>
+                <span className="font-medium">User {task.checker2}</span>
               </div>
             </CardContent>
           </Card>
