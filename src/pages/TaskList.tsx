@@ -30,6 +30,7 @@ import {
   FilterX,
   Plus,
   Search,
+  Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -48,20 +49,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { UserTasksView } from '@/components/tasks/UserTasksView';
 
 const TaskList = () => {
-  const { tasks } = useTask();
-  const { user } = useAuth();
+  const { tasks, getUserById } = useTask();
+  const { user, users } = useAuth();
   const navigate = useNavigate();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 10;
   
   if (!user) return null;
+  
+  // If admin has selected a user, show their tasks view
+  if (user.role === 'admin' && selectedUserId) {
+    return (
+      <UserTasksView 
+        userId={selectedUserId} 
+        onBack={() => setSelectedUserId(null)} 
+      />
+    );
+  }
   
   // Filter tasks based on user role
   let filteredTasks = [...tasks];
@@ -142,30 +155,48 @@ const TaskList = () => {
         </div>
         
         {user.role === 'admin' && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                New Task
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Task</DialogTitle>
-                <DialogDescription>
-                  This feature will be available in the next release.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" type="button">
-                  Cancel
+          <div className="flex gap-4">
+            <Select
+              value={selectedUserId || ''}
+              onValueChange={(value) => value && setSelectedUserId(value)}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="View User Tasks" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name} ({u.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Task
                 </Button>
-                <Button type="button">
-                  Create Task
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Task</DialogTitle>
+                  <DialogDescription>
+                    This feature will be available in the next release.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="outline" type="button">
+                    Cancel
+                  </Button>
+                  <Button type="button">
+                    Create Task
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
       
@@ -234,6 +265,7 @@ const TaskList = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Task Name</TableHead>
+                  <TableHead>Assigned To</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Due Date</TableHead>
@@ -242,29 +274,33 @@ const TaskList = () => {
               </TableHeader>
               <TableBody>
                 {currentTasks.length > 0 ? (
-                  currentTasks.map((task) => (
-                    <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.name}</TableCell>
-                      <TableCell>{getPriorityBadge(task.priority)}</TableCell>
-                      <TableCell>{getStatusBadge(task.status)}</TableCell>
-                      <TableCell>
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/tasks/${task.id}`)}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  currentTasks.map((task) => {
+                    const assignedUser = getUserById(task.assignedTo);
+                    return (
+                      <TableRow key={task.id}>
+                        <TableCell className="font-medium">{task.name}</TableCell>
+                        <TableCell>{assignedUser?.name || 'Unknown'}</TableCell>
+                        <TableCell>{getPriorityBadge(task.priority)}</TableCell>
+                        <TableCell>{getStatusBadge(task.status)}</TableCell>
+                        <TableCell>
+                          {new Date(task.dueDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => navigate(`/tasks/${task.id}`)}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No tasks found.
                     </TableCell>
                   </TableRow>

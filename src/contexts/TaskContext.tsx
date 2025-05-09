@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, TaskFrequency } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Mock tasks for demonstration
 const mockTasks: Task[] = [
@@ -105,6 +106,7 @@ interface TaskContextType {
   getTasksByStatus: (status: TaskStatus) => Task[];
   getTasksByAssignee: (userId: string) => Task[];
   getTasksByChecker: (userId: string) => Task[];
+  getUserById: (userId: string) => any | undefined; // Added this function
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -112,6 +114,7 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const { toast } = useToast();
+  const { getUserById: authGetUserById } = useAuth();
 
   const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newTask: Task = {
@@ -217,6 +220,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     return tasks.filter(task => task.checker1 === userId || task.checker2 === userId);
   };
 
+  // Use the getUserById function from AuthContext
+  const getUserById = (userId: string) => {
+    return authGetUserById(userId);
+  };
+
   // Persist tasks to localStorage
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -244,7 +252,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getTaskById,
       getTasksByStatus,
       getTasksByAssignee,
-      getTasksByChecker
+      getTasksByChecker,
+      getUserById
     }}>
       {children}
     </TaskContext.Provider>
