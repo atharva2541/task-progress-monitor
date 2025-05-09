@@ -1,9 +1,11 @@
 
 import { useTask } from '@/contexts/TaskContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ArrowUpRight, BarChart4, CheckCircle, Clock, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   PieChart,
   Pie,
@@ -20,6 +22,8 @@ import {
 
 export function AdminDashboard() {
   const { tasks } = useTask();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   
   // Calculate task statistics
   const totalTasks = tasks.length;
@@ -57,11 +61,35 @@ export function AdminDashboard() {
     { name: 'Team D', completed: 18, inProgress: 6, rejected: 0 }
   ];
 
+  // Mock users data - in a real app you would fetch this from your user context
+  const users = [
+    { id: '1', name: 'Admin User', role: 'admin' },
+    { id: '2', name: 'Maker User', role: 'maker' },
+    { id: '3', name: 'Checker One', role: 'checker1' },
+    { id: '4', name: 'Checker Two', role: 'checker2' },
+  ];
+
+  // Helper function to get username by ID
+  const getUserNameById = (userId: string): string => {
+    const found = users.find(u => u.id === userId);
+    return found ? found.name : `User ${userId}`;
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Overview of system performance and metrics</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <p className="text-muted-foreground">Overview of system performance and metrics</p>
+        </div>
+        <Button 
+          variant="outline" 
+          className="gap-2"
+          onClick={() => navigate('/system-settings')}
+        >
+          <Users className="h-4 w-4" />
+          User Management
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -196,7 +224,7 @@ export function AdminDashboard() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Recent Tasks</CardTitle>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => navigate('/tasks')}>
                     View All
                     <ArrowUpRight className="ml-1 h-4 w-4" />
                   </Button>
@@ -208,7 +236,11 @@ export function AdminDashboard() {
                     <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
                       <div>
                         <p className="font-medium">{task.name}</p>
-                        <p className="text-sm text-muted-foreground">Due: {new Date(task.dueDate).toLocaleDateString()}</p>
+                        <div className="flex gap-2 text-sm text-muted-foreground">
+                          <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                          <span>•</span>
+                          <span>Assigned to: {getUserNameById(task.assignedTo)}</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span 
