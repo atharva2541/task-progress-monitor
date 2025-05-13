@@ -13,6 +13,7 @@ interface Toast {
   variant?: "default" | "destructive";
 }
 
+// Initialize the toast state with an empty array to prevent undefined
 const toastState = {
   toasts: [] as Toast[],
   listeners: new Set<() => void>(),
@@ -39,7 +40,7 @@ const createToast = ({ title, description, variant = "default" }: ToastProps) =>
   toastState.listeners.forEach((listener) => listener());
 
   // Also use sonner toast for visual display
-  sonnerToast(title, {
+  sonnerToast(title || "", {
     description,
     className: variant === "destructive" ? "bg-red-50 border-red-200" : "",
   });
@@ -68,7 +69,7 @@ export const useToast = () => {
 
   return {
     toast,
-    toasts,
+    toasts: toasts || [], // Ensure toasts is never undefined
   };
 };
 
