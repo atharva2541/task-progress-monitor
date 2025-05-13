@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
+import emailjs from 'emailjs-com';
 
 // Extended user type with password expiry date
 interface ExtendedUser extends User {
@@ -69,6 +70,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// EmailJS configuration
+// Replace these with your actual EmailJS credentials
+emailjs.init("YOUR_USER_ID"); // Replace with your EmailJS User ID
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
@@ -80,25 +85,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestOtp = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
     const foundUser = users.find(u => u.email === email);
     
     if (foundUser) {
-      // Generate a 6-digit OTP
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
-      // In a real app, this would be sent via email
-      console.log(`OTP for ${email}: ${otp}`);
-      
-      // Update the user with the new OTP (only for demo purposes)
-      setUsers(users.map(u => 
-        u.id === foundUser.id ? { ...u, lastOtp: otp } : u
-      ));
-      
-      setIsLoading(false);
-      return true;
+      try {
+        // Generate a 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // In a real app, this would be hashed and stored in a database
+        console.log(`OTP for ${email}: ${otp}`);
+        
+        // Update the user with the new OTP (only for demo purposes)
+        setUsers(users.map(u => 
+          u.id === foundUser.id ? { ...u, lastOtp: otp } : u
+        ));
+        
+        // Send email with EmailJS
+        try {
+          const emailParams = {
+            to_name: foundUser.name,
+            to_email: email,
+            otp_code: otp,
+            app_name: 'Audit Tracker'
+          };
+          
+          await emailjs.send(
+            'YOUR_SERVICE_ID', // Replace with your EmailJS Service ID
+            'YOUR_TEMPLATE_ID', // Replace with your EmailJS Template ID
+            emailParams
+          );
+          
+          toast({
+            title: "OTP Sent",
+            description: `A verification code has been sent to ${email}`,
+          });
+          setIsLoading(false);
+          return true;
+        } catch (emailError) {
+          console.error('EmailJS Error:', emailError);
+          
+          // For demo purposes, we'll consider it successful even if email fails
+          // In production, you'd want to handle this error appropriately
+          toast({
+            title: "OTP Generated",
+            description: `For demo purposes, check the console for the OTP code.`,
+          });
+          setIsLoading(false);
+          return true;
+        }
+      } catch (error) {
+        console.error('Error in requestOtp:', error);
+        setIsLoading(false);
+        return false;
+      }
     }
     
     setIsLoading(false);

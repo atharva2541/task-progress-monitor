@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,19 +94,14 @@ const LoginPage = () => {
     setEmail(values.email);
     
     try {
-      // Request OTP after successful login credentials validation
+      // In a real app, validate password against server first
+      // For demo, we're just checking if the user exists before sending OTP
       const success = await requestOtp(values.email);
       
       if (success) {
         setLoginState('VERIFY_OTP');
-        toast({
-          title: 'OTP Sent',
-          description: `A verification code has been sent to ${values.email}`,
-          variant: 'default',
-        });
-        console.log(`OTP should be sent to ${values.email}`);
       } else {
-        setError('Failed to send OTP. Please check your email address.');
+        setError('User not found. Please check your email address.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -182,7 +176,7 @@ const LoginPage = () => {
           <CardHeader className="space-y-2 text-center pb-6">
             <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
             <CardDescription className="text-gray-500">
-              {loginState === 'LOGIN' && 'Sign in to your account'}
+              {loginState === 'LOGIN' && 'Enter your credentials to login'}
               {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
               {loginState === 'RESET_PASSWORD' && 'Create a new password'}
             </CardDescription>
