@@ -68,23 +68,23 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-audit-purple-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-audit-purple-50 p-4">
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-6">
-          <div className="rounded-full bg-audit-purple-100 p-3">
-            <CheckSquare className="h-8 w-8 text-audit-purple-600" />
+        <div className="flex justify-center mb-8">
+          <div className="rounded-full bg-audit-purple-100 p-4 shadow-md">
+            <CheckSquare className="h-10 w-10 text-audit-purple-600" />
           </div>
         </div>
         
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl font-bold">Audit Tracker</CardTitle>
-            <CardDescription>Sign in to your account</CardDescription>
+        <Card className="border-0 shadow-xl">
+          <CardHeader className="space-y-2 text-center pb-6">
+            <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
+            <CardDescription className="text-gray-500">Sign in to your account</CardDescription>
           </CardHeader>
           
           <CardContent>
             {error && (
-              <Alert variant="destructive" className="mb-4">
+              <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
@@ -92,17 +92,18 @@ const LoginPage = () => {
             )}
             
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 <FormField
                   control={form.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel className="text-gray-700">Email</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Enter your email" 
                           type="email" 
+                          className="bg-gray-50"
                           {...field} 
                         />
                       </FormControl>
@@ -116,11 +117,12 @@ const LoginPage = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel className="text-gray-700">Password</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Enter your password" 
                           type="password" 
+                          className="bg-gray-50"
                           {...field} 
                         />
                       </FormControl>
@@ -130,14 +132,14 @@ const LoginPage = () => {
                 />
                 
                 <div className="text-right">
-                  <a href="#" className="text-sm text-audit-purple-600 hover:underline">
+                  <a href="#" className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors">
                     Forgot password?
                   </a>
                 </div>
                 
                 <Button 
                   type="submit" 
-                  className="w-full bg-audit-purple-600 hover:bg-audit-purple-700" 
+                  className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
                   disabled={isLoading}
                 >
                   {isLoading ? 'Signing in...' : 'Sign in'}
@@ -146,17 +148,8 @@ const LoginPage = () => {
             </Form>
           </CardContent>
           
-          <CardFooter className="text-center text-sm text-muted-foreground">
-            <div className="w-full">
-              <p className="mb-1">Demo accounts:</p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <p>admin@example.com</p>
-                <p>maker@example.com</p>
-                <p>checker1@example.com</p>
-                <p>checker2@example.com</p>
-              </div>
-              <p className="mt-1">Password: password</p>
-            </div>
+          <CardFooter className="flex justify-center py-6 text-sm text-gray-500 border-t">
+            <p>Secure enterprise access management system</p>
           </CardFooter>
         </Card>
       </div>
