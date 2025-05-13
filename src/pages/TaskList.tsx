@@ -47,7 +47,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { UserTasksView } from '@/components/tasks/UserTasksView';
 import { Textarea } from "@/components/ui/textarea";
@@ -124,7 +123,7 @@ const TaskList = () => {
       assignedTo: data.assignedTo,
       checker1: data.checker1,
       checker2: data.checker2,
-      priority: data.priority,
+      priority: data.priority as TaskPriority,
       status: 'pending',
       frequency: data.frequency as TaskFrequency,
       isRecurring: data.isRecurring,
@@ -424,7 +423,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.roles?.includes('maker'))
+                                  .filter(user => user.role === 'maker')
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
@@ -453,7 +452,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.roles?.includes('checker1'))
+                                  .filter(user => user.role === 'checker1')
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
@@ -482,7 +481,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.roles?.includes('checker2'))
+                                  .filter(user => user.role === 'checker2')
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
