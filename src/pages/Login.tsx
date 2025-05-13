@@ -1,7 +1,8 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole } from 'lucide-react';
+import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole, UserCircle, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -30,6 +31,7 @@ import {
   InputOTPGroup, 
   InputOTPSlot 
 } from '@/components/ui/input-otp';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Initial login form schema with email and password
 const loginFormSchema = z.object({
@@ -52,16 +54,22 @@ const resetFormSchema = z.object({
   path: ["confirmPassword"]
 });
 
+// Direct login schema
+const directLoginSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+});
+
 // Login page states
 type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD';
 
 const LoginPage = () => {
-  const { requestOtp, verifyOtp, resetPassword, isLoading, isPasswordExpired } = useAuth();
+  const { requestOtp, verifyOtp, resetPassword, directLogin, isLoading, isPasswordExpired } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [loginState, setLoginState] = useState<LoginPageState>('LOGIN');
+  const [loginMode, setLoginMode] = useState<'otp' | 'direct'>('direct');
 
   // Form for initial login
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
@@ -69,6 +77,14 @@ const LoginPage = () => {
     defaultValues: { 
       email: '', 
       password: '' 
+    },
+  });
+
+  // Form for direct login
+  const directLoginForm = useForm<z.infer<typeof directLoginSchema>>({
+    resolver: zodResolver(directLoginSchema),
+    defaultValues: { 
+      email: '' 
     },
   });
 
@@ -100,6 +116,28 @@ const LoginPage = () => {
       
       if (success) {
         setLoginState('VERIFY_OTP');
+      } else {
+        setError('User not found. Please check your email address.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
+  // Handle direct login (test mode)
+  const onDirectLogin = async (values: z.infer<typeof directLoginSchema>) => {
+    setError(null);
+    
+    try {
+      const success = await directLogin(values.email);
+      
+      if (success) {
+        toast({
+          title: 'Login successful',
+          description: 'Welcome to Audit Tracker! (Test Mode)',
+          variant: 'default',
+        });
+        navigate('/');
       } else {
         setError('User not found. Please check your email address.');
       }
@@ -191,60 +229,116 @@ const LoginPage = () => {
               </Alert>
             )}
             
-            {/* Initial Login Form */}
+            {/* Login Tabs */}
             {loginState === 'LOGIN' && (
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
-                  <FormField
-                    control={loginForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Email</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your email" 
-                            type="email" 
-                            className="bg-gray-50"
-                            autoComplete="email"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={loginForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Password</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your password" 
-                            type="password" 
-                            className="bg-gray-50"
-                            autoComplete="current-password"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                    disabled={isLoading}
-                  >
-                    <LockKeyhole className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Authenticating...' : 'Sign In'}
-                  </Button>
-                </form>
-              </Form>
+              <Tabs defaultValue="direct" onValueChange={(val) => setLoginMode(val as 'otp' | 'direct')}>
+                <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsTrigger value="direct">Direct Login (Test)</TabsTrigger>
+                  <TabsTrigger value="otp">OTP Login</TabsTrigger>
+                </TabsList>
+                
+                {/* Direct Login Form */}
+                <TabsContent value="direct">
+                  <Form {...directLoginForm}>
+                    <form onSubmit={directLoginForm.handleSubmit(onDirectLogin)} className="space-y-5">
+                      <FormField
+                        control={directLoginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-700">Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter your email" 
+                                type="email" 
+                                className="bg-gray-50"
+                                autoComplete="email"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="text-sm text-gray-500 mt-2 mb-4 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                        <p>You can use these test accounts:</p>
+                        <ul className="list-disc pl-5 mt-1">
+                          <li>admin@example.com (Admin)</li>
+                          <li>maker@example.com (Maker)</li>
+                          <li>checker1@example.com (Checker 1)</li>
+                          <li>checker2@example.com (Checker 2)</li>
+                        </ul>
+                      </div>
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                        disabled={isLoading}
+                      >
+                        <UserCircle className="mr-2 h-4 w-4" />
+                        {isLoading ? 'Logging in...' : 'Direct Login (Testing)'}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+                
+                {/* OTP Login Form */}
+                <TabsContent value="otp">
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
+                      <FormField
+                        control={loginForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-700">Email</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter your email" 
+                                type="email" 
+                                className="bg-gray-50"
+                                autoComplete="email"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-700">Password</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter your password" 
+                                type="password" 
+                                className="bg-gray-50"
+                                autoComplete="current-password"
+                                {...field} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button 
+                        type="submit" 
+                        className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                        disabled={isLoading}
+                      >
+                        <LockKeyhole className="mr-2 h-4 w-4" />
+                        {isLoading ? 'Authenticating...' : 'Sign In with OTP'}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
             )}
             
             {/* OTP Verification Form */}

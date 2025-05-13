@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,6 +61,9 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   isPasswordExpired: boolean;
+  
+  // Direct login method for testing
+  directLogin: (email: string) => Promise<boolean>;
   
   // User management methods
   addUser: (newUser: Omit<User, 'id'>) => void;
@@ -157,6 +161,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setIsLoading(false);
     return { success: false, passwordExpired: false };
+  };
+  
+  // Function for direct login (bypass OTP for testing)
+  const directLogin = async (email: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    // Find user by email
+    const foundUser = users.find(u => u.email === email);
+    
+    if (foundUser) {
+      // Check if password has expired
+      const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
+      
+      if (!passwordExpired) {
+        // If not expired, log the user in
+        setUser(foundUser);
+        localStorage.setItem('currentUser', JSON.stringify(foundUser));
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome, ${foundUser.name}! (Testing mode)`,
+        });
+        
+        setIsLoading(false);
+        return true;
+      } else {
+        // For testing, reset the password expiry date
+        const updatedUser = {
+          ...foundUser,
+          passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        };
+        
+        // Update user in state
+        setUsers(users.map(u => 
+          u.id === foundUser.id ? updatedUser : u
+        ));
+        
+        // Log in with updated user
+        setUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome, ${foundUser.name}! (Testing mode)`,
+        });
+        
+        setIsLoading(false);
+        return true;
+      }
+    }
+    
+    toast({
+      title: "Login Failed",
+      description: "User not found",
+      variant: "destructive"
+    });
+    
+    setIsLoading(false);
+    return false;
   };
 
   // Function to reset password
@@ -361,6 +424,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout, 
       isLoading,
       isPasswordExpired,
+      directLogin,
       addUser,
       updateUser,
       deleteUser,
