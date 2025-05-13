@@ -116,7 +116,12 @@ interface TaskContextType {
   getTasksByAssignee: (userId: string) => Task[];
   getTasksByChecker: (userId: string) => Task[];
   getUserById: (userId: string) => any | undefined;
-  addTaskAttachment: (taskId: string, file: File) => Promise<void>;
+  addTaskAttachment: (taskId: string, attachmentData: {
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+    s3Key: string;
+  }) => Promise<void>;
   removeTaskAttachment: (taskId: string, attachmentId: string) => void;
 }
 
@@ -216,41 +221,37 @@ export function TaskProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addTaskAttachment = async (taskId: string, file: File): Promise<void> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const attachment: TaskAttachment = {
-          id: Date.now().toString(),
-          taskId,
-          fileName: file.name,
-          fileUrl: reader.result as string,
-          fileType: file.type,
-          uploadedBy: user?.id || '1',
-          uploadedAt: new Date().toISOString()
+  const addTaskAttachment = async (taskId: string, attachmentData: {
+    fileName: string;
+    fileType: string;
+    fileUrl: string;
+    s3Key: string;
+  }): Promise<void> => {
+    const attachment: TaskAttachment = {
+      id: Date.now().toString(),
+      taskId,
+      fileName: attachmentData.fileName,
+      fileUrl: attachmentData.fileUrl,
+      fileType: attachmentData.fileType,
+      s3Key: attachmentData.s3Key,
+      uploadedBy: user?.id || '1',
+      uploadedAt: new Date().toISOString()
+    };
+    
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          attachments: [...(task.attachments || []), attachment],
+          updatedAt: new Date().toISOString()
         };
-        
-        setTasks(tasks.map(task => {
-          if (task.id === taskId) {
-            return {
-              ...task,
-              attachments: [...(task.attachments || []), attachment],
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return task;
-        }));
-        
-        toast({
-          title: 'File uploaded',
-          description: `${file.name} has been attached to the task.`
-        });
-        
-        resolve();
-      };
-      
-      // Simulate network delay
-      setTimeout(() => reader.readAsDataURL(file), 500);
+      }
+      return task;
+    }));
+    
+    toast({
+      title: 'File uploaded',
+      description: `${attachmentData.fileName} has been attached to the task.`
     });
   };
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { TaskAttachment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -48,8 +47,13 @@ export const TaskAttachments = ({
         // Upload to S3 and get signed URL
         const fileUrl = await uploadFileToS3(file, s3Key);
         
-        // Save the attachment reference
-        await addTaskAttachment(taskId, file, fileUrl, s3Key);
+        // Save the attachment reference - fixed parameter count
+        await addTaskAttachment(taskId, {
+          fileName: file.name,
+          fileType: file.type,
+          fileUrl: fileUrl,
+          s3Key: s3Key
+        });
       }
     } catch (error) {
       console.error('Error uploading files:', error);
