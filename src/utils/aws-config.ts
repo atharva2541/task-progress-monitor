@@ -1,11 +1,23 @@
 
 // AWS Configuration
-// These should ideally come from environment variables in production
-export const AWS_REGION = "us-east-1"; // Change to your preferred AWS region
-export const AWS_ACCESS_KEY_ID = "YOUR_ACCESS_KEY_ID"; // Replace with your actual AWS access key
-export const AWS_SECRET_ACCESS_KEY = "YOUR_SECRET_ACCESS_KEY"; // Replace with your actual AWS secret key
-export const S3_BUCKET_NAME = "your-s3-bucket-name"; // Replace with your S3 bucket name
-export const SES_FROM_EMAIL = "your-verified-email@example.com"; // Replace with your verified SES email
+// These values will be loaded from environment variables
 
-// In a production app, you would use environment variables like:
-// export const AWS_REGION = import.meta.env.VITE_AWS_REGION;
+// Define default values for local development only
+const defaultRegion = "us-east-1";
+
+// Export configured values with fallbacks for development
+export const AWS_REGION = process.env.AWS_REGION || defaultRegion;
+export const AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || "";
+export const AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || "";
+export const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME || "";
+export const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL || "";
+
+// Helper function to check if credentials are properly configured
+export const isAwsConfigured = (): boolean => {
+  return Boolean(
+    AWS_ACCESS_KEY_ID &&
+    AWS_SECRET_ACCESS_KEY &&
+    S3_BUCKET_NAME &&
+    SES_FROM_EMAIL
+  );
+};
