@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { sonner } from "sonner";
+import { toast as sonnerToast } from "sonner";
 
 const TOAST_LIMIT = 20;
 export type ToasterToast = ReturnType<typeof createToast>;
@@ -39,7 +39,7 @@ const createToast = ({ title, description, variant = "default" }: ToastProps) =>
   toastState.listeners.forEach((listener) => listener());
 
   // Also use sonner toast for visual display
-  sonner.toast(title, {
+  sonnerToast(title, {
     description,
     className: variant === "destructive" ? "bg-red-50 border-red-200" : "",
   });
