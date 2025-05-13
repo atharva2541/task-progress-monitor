@@ -115,8 +115,12 @@ const UserManagementPage = () => {
       });
       setUserToEdit(null);
     } else {
-      // Create new user
-      addUser(data);
+      // Create new user - pass all required fields to match the Omit<User, "id"> type
+      addUser({
+        name: data.name,
+        email: data.email,
+        role: data.role
+      });
       toast({
         title: 'User Created',
         description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
