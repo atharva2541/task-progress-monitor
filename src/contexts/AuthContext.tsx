@@ -1,17 +1,23 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 
+// Extended user type with password expiry date
+interface ExtendedUser extends User {
+  passwordExpiryDate: string; // ISO string date
+  lastOtp?: string; // For demo purposes only, in real app this would be stored server-side
+}
+
 // Mock users for demonstration
-const mockUsers: User[] = [
+const mockUsers: ExtendedUser[] = [
   {
     id: '1',
     name: 'Admin User',
     email: 'admin@example.com',
     role: 'admin',
     roles: ['admin'],
-    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=8b5cf6&color=fff'
+    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=8b5cf6&color=fff',
+    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
   },
   {
     id: '2',
@@ -19,7 +25,8 @@ const mockUsers: User[] = [
     email: 'maker@example.com',
     role: 'maker',
     roles: ['maker', 'checker1'],
-    avatar: 'https://ui-avatars.com/api/?name=Maker+User&background=8b5cf6&color=fff'
+    avatar: 'https://ui-avatars.com/api/?name=Maker+User&background=8b5cf6&color=fff',
+    passwordExpiryDate: new Date(Date.now() - 1000).toISOString(), // Expired password
   },
   {
     id: '3',
@@ -27,7 +34,8 @@ const mockUsers: User[] = [
     email: 'checker1@example.com',
     role: 'checker1',
     roles: ['checker1'],
-    avatar: 'https://ui-avatars.com/api/?name=Checker+One&background=8b5cf6&color=fff'
+    avatar: 'https://ui-avatars.com/api/?name=Checker+One&background=8b5cf6&color=fff',
+    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: '4',
@@ -35,16 +43,24 @@ const mockUsers: User[] = [
     email: 'checker2@example.com',
     role: 'checker2',
     roles: ['checker2', 'maker'],
-    avatar: 'https://ui-avatars.com/api/?name=Checker+Two&background=8b5cf6&color=fff'
+    avatar: 'https://ui-avatars.com/api/?name=Checker+Two&background=8b5cf6&color=fff',
+    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
 
 interface AuthContextType {
   user: User | null;
   users: User[];
-  login: (email: string, password: string) => Promise<boolean>;
+  
+  // OTP and login methods
+  requestOtp: (email: string) => Promise<boolean>;
+  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, passwordExpired: boolean}>;
+  resetPassword: (email: string, newPassword: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  isPasswordExpired: boolean;
+  
+  // User management methods
   addUser: (newUser: Omit<User, 'id'>) => void;
   updateUser: (id: string, userData: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -54,10 +70,107 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
+  const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Function to request OTP
+  const requestOtp = async (email: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const foundUser = users.find(u => u.email === email);
+    
+    if (foundUser) {
+      // Generate a 6-digit OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // In a real app, this would be sent via email
+      console.log(`OTP for ${email}: ${otp}`);
+      
+      // Update the user with the new OTP (only for demo purposes)
+      setUsers(users.map(u => 
+        u.id === foundUser.id ? { ...u, lastOtp: otp } : u
+      ));
+      
+      setIsLoading(false);
+      return true;
+    }
+    
+    setIsLoading(false);
+    return false;
+  };
+
+  // Function to verify OTP
+  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, passwordExpired: boolean}> => {
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const foundUser = users.find(u => u.email === email && u.lastOtp === otp);
+    
+    if (foundUser) {
+      // Check if password has expired
+      const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
+      
+      if (!passwordExpired) {
+        // If not expired, log the user in
+        setUser(foundUser);
+        localStorage.setItem('currentUser', JSON.stringify(foundUser));
+      } else {
+        // Flag that password reset is needed
+        setIsPasswordExpired(true);
+      }
+      
+      setIsLoading(false);
+      return { success: true, passwordExpired };
+    }
+    
+    setIsLoading(false);
+    return { success: false, passwordExpired: false };
+  };
+
+  // Function to reset password
+  const resetPassword = async (email: string, newPassword: string): Promise<boolean> => {
+    setIsLoading(true);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const foundUser = users.find(u => u.email === email);
+    
+    if (foundUser) {
+      // Set new password expiry date to 30 days from now
+      const newExpiryDate = new Date();
+      newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+      
+      const updatedUser = { 
+        ...foundUser, 
+        passwordExpiryDate: newExpiryDate.toISOString() 
+      };
+      
+      // Update user in state
+      setUsers(users.map(u => 
+        u.id === foundUser.id ? updatedUser : u
+      ));
+      
+      // Log in the user
+      setUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+      setIsPasswordExpired(false);
+      setIsLoading(false);
+      return true;
+    }
+    
+    setIsLoading(false);
+    return false;
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -81,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    setIsPasswordExpired(false);
     localStorage.removeItem('currentUser');
   };
 
@@ -169,12 +283,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return users.find(u => u.id === id);
   };
 
-  // Check for saved user on initial load
+  // Check for saved user on initial load and verify password expiry
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser) as ExtendedUser;
+        
+        // Check if password has expired
+        if (new Date(parsedUser.passwordExpiryDate) < new Date()) {
+          // Password expired, remove from localStorage and don't set user
+          localStorage.removeItem('currentUser');
+          setIsPasswordExpired(true);
+        } else {
+          setUser(parsedUser);
+        }
       } catch (error) {
         console.error('Failed to parse saved user:', error);
         localStorage.removeItem('currentUser');
@@ -203,9 +326,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{ 
       user, 
       users,
-      login, 
+      requestOtp,
+      verifyOtp,
+      resetPassword,
       logout, 
       isLoading,
+      isPasswordExpired,
       addUser,
       updateUser,
       deleteUser,
