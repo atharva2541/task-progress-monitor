@@ -14,6 +14,16 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'approved' | 'rejected';
 export type TaskFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'annually' | 'one-time';
 
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  uploadedBy: string; // User ID
+  uploadedAt: string; // ISO date string
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -30,6 +40,7 @@ export interface Task {
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
   comments?: TaskComment[];
+  attachments?: TaskAttachment[]; // New field for file attachments
 }
 
 export interface TaskComment {

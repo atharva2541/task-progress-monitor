@@ -1,7 +1,6 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Task, TaskStatus, TaskPriority, TaskFrequency } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { Task, TaskStatus, TaskPriority, TaskFrequency, TaskAttachment } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Mock tasks for demonstration
@@ -17,11 +16,12 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'pending',
     frequency: 'monthly',
-    isRecurring: true, // Added missing property
+    isRecurring: true,
     dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    comments: []
+    comments: [],
+    attachments: [] // Initialize empty attachments array
   },
   {
     id: '2',
@@ -34,11 +34,12 @@ const mockTasks: Task[] = [
     priority: 'medium',
     status: 'in-progress',
     frequency: 'daily',
-    isRecurring: true, // Added missing property
+    isRecurring: true,
     dueDate: new Date().toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     updatedAt: new Date().toISOString(),
-    comments: []
+    comments: [],
+    attachments: [] // Initialize empty attachments array
   },
   {
     id: '3',
@@ -51,11 +52,12 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'submitted',
     frequency: 'quarterly',
-    isRecurring: true, // Added missing property
+    isRecurring: true,
     dueDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
     updatedAt: new Date().toISOString(),
-    comments: []
+    comments: [],
+    attachments: [] // Initialize empty attachments array
   },
   {
     id: '4',
@@ -68,11 +70,12 @@ const mockTasks: Task[] = [
     priority: 'low',
     status: 'approved',
     frequency: 'weekly',
-    isRecurring: true, // Added missing property
+    isRecurring: true,
     dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
     updatedAt: new Date().toISOString(),
-    comments: []
+    comments: [],
+    attachments: [] // Initialize empty attachments array
   },
   {
     id: '5',
@@ -85,7 +88,7 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'rejected',
     frequency: 'monthly',
-    isRecurring: false, // Added missing property
+    isRecurring: false,
     dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -97,7 +100,8 @@ const mockTasks: Task[] = [
         content: 'Please include more details about the security vulnerabilities found.',
         createdAt: new Date().toISOString()
       }
-    ]
+    ],
+    attachments: [] // Initialize empty attachments array
   }
 ];
 
@@ -111,7 +115,9 @@ interface TaskContextType {
   getTasksByStatus: (status: TaskStatus) => Task[];
   getTasksByAssignee: (userId: string) => Task[];
   getTasksByChecker: (userId: string) => Task[];
-  getUserById: (userId: string) => any | undefined; // Added this function
+  getUserById: (userId: string) => any | undefined;
+  addTaskAttachment: (taskId: string, file: File) => Promise<void>;
+  removeTaskAttachment: (taskId: string, attachmentId: string) => void;
 }
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
@@ -119,7 +125,7 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const { toast } = useToast();
-  const { getUserById: authGetUserById } = useAuth();
+  const { getUserById: authGetUserById, user } = useAuth();
 
   const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newTask: Task = {
@@ -127,7 +133,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      comments: []
+      comments: [],
+      attachments: [] // Initialize empty attachments array
     };
     
     setTasks([...tasks, newTask]);
@@ -182,7 +189,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
             {
               id: Date.now().toString(),
               taskId,
-              userId: '1', // Placeholder - would be the current user's ID
+              userId: user?.id || '1',
               content: comment,
               createdAt: new Date().toISOString()
             }
@@ -206,6 +213,62 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       title: statusMessages[status],
       description: `The task status has been updated to ${status}.`,
       variant: status === 'rejected' ? 'destructive' : 'default'
+    });
+  };
+
+  const addTaskAttachment = async (taskId: string, file: File): Promise<void> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const attachment: TaskAttachment = {
+          id: Date.now().toString(),
+          taskId,
+          fileName: file.name,
+          fileUrl: reader.result as string,
+          fileType: file.type,
+          uploadedBy: user?.id || '1',
+          uploadedAt: new Date().toISOString()
+        };
+        
+        setTasks(tasks.map(task => {
+          if (task.id === taskId) {
+            return {
+              ...task,
+              attachments: [...(task.attachments || []), attachment],
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return task;
+        }));
+        
+        toast({
+          title: 'File uploaded',
+          description: `${file.name} has been attached to the task.`
+        });
+        
+        resolve();
+      };
+      
+      // Simulate network delay
+      setTimeout(() => reader.readAsDataURL(file), 500);
+    });
+  };
+
+  const removeTaskAttachment = (taskId: string, attachmentId: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId && task.attachments) {
+        return {
+          ...task,
+          attachments: task.attachments.filter(att => att.id !== attachmentId),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return task;
+    }));
+    
+    toast({
+      title: 'File removed',
+      description: 'The attachment has been removed from the task.'
     });
   };
 
@@ -258,7 +321,9 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       getTasksByStatus,
       getTasksByAssignee,
       getTasksByChecker,
-      getUserById
+      getUserById,
+      addTaskAttachment,
+      removeTaskAttachment
     }}>
       {children}
     </TaskContext.Provider>
