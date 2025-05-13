@@ -12,6 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
+import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -40,6 +41,7 @@ const App = () => (
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/tasks" element={<TaskList />} />
                   <Route path="/tasks/:taskId" element={<TaskDetail />} />
+                  <Route path="/admin/tasks" element={<AdminTasksPage />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />
