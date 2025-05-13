@@ -30,6 +30,8 @@ import {
   FilterX,
   Plus,
   Search,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -47,6 +49,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { UserTasksView } from '@/components/tasks/UserTasksView';
 import { Textarea } from "@/components/ui/textarea";
@@ -64,7 +67,17 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Task, TaskFrequency, TaskPriority, TaskStatus } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Task form schema for validation
 const taskFormSchema = z.object({
@@ -83,7 +96,7 @@ const taskFormSchema = z.object({
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
 const TaskList = () => {
-  const { tasks, getUserById, addTask } = useTask();
+  const { tasks, getUserById, addTask, updateTask, deleteTask } = useTask();
   const { user, users } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -93,6 +106,9 @@ const TaskList = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 10;
@@ -105,6 +121,23 @@ const TaskList = () => {
       description: "",
       category: "",
       assignedTo: user?.id || "",
+      checker1: "",
+      checker2: "",
+      priority: "medium",
+      frequency: "monthly",
+      isRecurring: false,
+      dueDate: new Date().toISOString().split('T')[0],
+    },
+  });
+  
+  // Edit task form
+  const editForm = useForm<TaskFormValues>({
+    resolver: zodResolver(taskFormSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      category: "",
+      assignedTo: "",
       checker1: "",
       checker2: "",
       priority: "medium",
@@ -137,6 +170,65 @@ const TaskList = () => {
       title: "Task Created",
       description: "The task has been created successfully"
     });
+  };
+  
+  // Handle opening edit dialog
+  const handleEditClick = (task: Task) => {
+    setSelectedTask(task);
+    editForm.reset({
+      name: task.name,
+      description: task.description,
+      category: task.category,
+      assignedTo: task.assignedTo,
+      checker1: task.checker1,
+      checker2: task.checker2,
+      priority: task.priority,
+      frequency: task.frequency,
+      isRecurring: task.isRecurring,
+      dueDate: new Date(task.dueDate).toISOString().split('T')[0],
+    });
+    setIsEditDialogOpen(true);
+  };
+  
+  // Handle task update
+  const handleUpdateTask = (data: TaskFormValues) => {
+    if (!selectedTask) return;
+    
+    updateTask(selectedTask.id, {
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      assignedTo: data.assignedTo,
+      checker1: data.checker1,
+      checker2: data.checker2,
+      priority: data.priority as TaskPriority,
+      frequency: data.frequency as TaskFrequency,
+      isRecurring: data.isRecurring,
+      dueDate: data.dueDate,
+    });
+    
+    setIsEditDialogOpen(false);
+    setSelectedTask(null);
+    
+    toast({
+      title: "Task Updated",
+      description: "The task has been updated successfully"
+    });
+  };
+  
+  // Handle opening delete confirmation
+  const handleDeleteClick = (task: Task) => {
+    setSelectedTask(task);
+    setIsDeleteAlertOpen(true);
+  };
+  
+  // Handle task deletion
+  const handleConfirmDelete = () => {
+    if (!selectedTask) return;
+    
+    deleteTask(selectedTask.id);
+    setIsDeleteAlertOpen(false);
+    setSelectedTask(null);
   };
   
   if (!user) return null;
@@ -591,14 +683,35 @@ const TaskList = () => {
                           {new Date(task.dueDate).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => navigate(`/tasks/${task.id}`)}
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View
-                          </Button>
+                          <div className="flex justify-end space-x-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/tasks/${task.id}`)}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            
+                            {(user.role === 'admin') && (
+                              <>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEditClick(task)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  className="text-red-600 hover:bg-red-50"
+                                  onClick={() => handleDeleteClick(task)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     )
@@ -658,6 +771,275 @@ const TaskList = () => {
               </Button>
             </div>
           )}
+          
+          {/* Edit Task Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Edit Task</DialogTitle>
+                <DialogDescription>
+                  Update task details. You can change the assigned users and task frequency.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(handleUpdateTask)} className="space-y-4">
+                  <FormField
+                    control={editForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Task Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter task name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Describe the task details" 
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Finance, IT, Compliance" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="dueDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Due Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="priority"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Priority</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select priority" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="frequency"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Frequency</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="daily">Daily</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="annually">Annually</SelectItem>
+                              <SelectItem value="one-time">One-time</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={editForm.control}
+                    name="isRecurring"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                          <FormLabel>Recurring Task</FormLabel>
+                          <FormDescription>
+                            Will this task repeat based on the frequency?
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="assignedTo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assigned To (Maker)</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select maker" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {users
+                                .filter(user => user.role === 'maker')
+                                .map(user => (
+                                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="checker1"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First Checker</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select checker 1" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {users
+                                .filter(user => user.role === 'checker1')
+                                .map(user => (
+                                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={editForm.control}
+                      name="checker2"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Second Checker</FormLabel>
+                          <Select 
+                            value={field.value} 
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select checker 2" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {users
+                                .filter(user => user.role === 'checker2')
+                                .map(user => (
+                                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                                ))
+                              }
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Update Task</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+          
+          {/* Delete Task Confirmation */}
+          <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the task "{selectedTask?.name}". This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 text-white hover:bg-red-700">
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
     </div>
