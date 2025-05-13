@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -22,6 +21,7 @@ export interface TaskAttachment {
   fileType: string;
   uploadedBy: string; // User ID
   uploadedAt: string; // ISO date string
+  s3Key?: string; // S3 object key for AWS S3 integration
 }
 
 export interface Task {

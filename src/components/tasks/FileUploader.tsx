@@ -3,16 +3,18 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Upload, X, FileText } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface FileUploaderProps {
   onFileChange: (files: File[]) => void;
   multiple?: boolean;
+  maxFileSize?: number; // In megabytes
 }
 
 export const FileUploader = ({
   onFileChange,
   multiple = false,
+  maxFileSize = 10, // Default 10MB max file size
 }: FileUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const { toast } = useToast();
@@ -20,14 +22,42 @@ export const FileUploader = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     
-    // Add files to state
-    if (multiple) {
-      const newFiles = [...files, ...selectedFiles];
-      setFiles(newFiles);
-      onFileChange(newFiles);
+    // Check file size limits
+    const oversizedFiles = selectedFiles.filter(file => 
+      file.size > maxFileSize * 1024 * 1024
+    );
+    
+    if (oversizedFiles.length > 0) {
+      toast({
+        title: "File too large",
+        description: `Some files exceed the ${maxFileSize}MB size limit and were not added.`,
+        variant: "destructive"
+      });
+      
+      // Filter out oversized files
+      const validFiles = selectedFiles.filter(file => 
+        file.size <= maxFileSize * 1024 * 1024
+      );
+      
+      // Add valid files to state
+      if (multiple) {
+        const newFiles = [...files, ...validFiles];
+        setFiles(newFiles);
+        onFileChange(newFiles);
+      } else if (validFiles.length > 0) {
+        setFiles([validFiles[0]]);
+        onFileChange([validFiles[0]]);
+      }
     } else {
-      setFiles(selectedFiles);
-      onFileChange(selectedFiles);
+      // All files are within size limit
+      if (multiple) {
+        const newFiles = [...files, ...selectedFiles];
+        setFiles(newFiles);
+        onFileChange(newFiles);
+      } else {
+        setFiles(selectedFiles);
+        onFileChange(selectedFiles);
+      }
     }
   };
   

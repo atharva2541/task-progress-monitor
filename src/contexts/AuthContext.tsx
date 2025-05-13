@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
-import emailjs from 'emailjs-com';
+import { sendOtpEmail } from '@/utils/aws-ses';
 
 // Extended user type with password expiry date
 interface ExtendedUser extends User {
@@ -70,10 +70,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// EmailJS configuration
-// Replace these with your actual EmailJS credentials
-emailjs.init("YOUR_USER_ID"); // Replace with your EmailJS User ID
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
@@ -100,20 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           u.id === foundUser.id ? { ...u, lastOtp: otp } : u
         ));
         
-        // Send email with EmailJS
+        // Send email with Amazon SES
         try {
-          const emailParams = {
-            to_name: foundUser.name,
-            to_email: email,
-            otp_code: otp,
-            app_name: 'Audit Tracker'
-          };
-          
-          await emailjs.send(
-            'YOUR_SERVICE_ID', // Replace with your EmailJS Service ID
-            'YOUR_TEMPLATE_ID', // Replace with your EmailJS Template ID
-            emailParams
-          );
+          await sendOtpEmail(email, otp, foundUser.name);
           
           toast({
             title: "OTP Sent",
@@ -122,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsLoading(false);
           return true;
         } catch (emailError) {
-          console.error('EmailJS Error:', emailError);
+          console.error('Email Error:', emailError);
           
           // For demo purposes, we'll consider it successful even if email fails
           // In production, you'd want to handle this error appropriately

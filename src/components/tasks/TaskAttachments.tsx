@@ -6,6 +6,7 @@ import { FileUploader } from '@/components/tasks/FileUploader';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Download, FileText, Trash2 } from 'lucide-react';
+import { uploadFileToS3, deleteFileFromS3 } from '@/utils/aws-s3';
 import {
   Dialog,
   DialogContent,
@@ -39,9 +40,16 @@ export const TaskAttachments = ({
     setIsUploading(true);
     
     try {
-      // Upload each file in sequence
+      // Upload each file in sequence to S3
       for (const file of files) {
-        await addTaskAttachment(taskId, file);
+        // Create a unique S3 key for the file
+        const s3Key = `tasks/${taskId}/${Date.now()}-${file.name}`;
+        
+        // Upload to S3 and get signed URL
+        const fileUrl = await uploadFileToS3(file, s3Key);
+        
+        // Save the attachment reference
+        await addTaskAttachment(taskId, file, fileUrl, s3Key);
       }
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -50,9 +58,21 @@ export const TaskAttachments = ({
     }
   };
   
-  const handleDelete = (attachmentId: string) => {
+  const handleDelete = async (attachmentId: string) => {
     if (window.confirm('Are you sure you want to remove this attachment?')) {
-      removeTaskAttachment(taskId, attachmentId);
+      try {
+        // Find the attachment to get the S3 key
+        const attachment = attachments.find(a => a.id === attachmentId);
+        if (attachment && attachment.s3Key) {
+          // Delete from S3
+          await deleteFileFromS3(attachment.s3Key);
+        }
+        
+        // Remove from task
+        removeTaskAttachment(taskId, attachmentId);
+      } catch (error) {
+        console.error('Error deleting attachment:', error);
+      }
     }
   };
 
