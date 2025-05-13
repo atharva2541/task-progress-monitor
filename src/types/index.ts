@@ -12,7 +12,7 @@ export interface User {
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'approved' | 'rejected';
-export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'one-time';
+export type TaskFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'annually' | 'one-time';
 
 export interface Task {
   id: string;

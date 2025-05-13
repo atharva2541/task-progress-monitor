@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -80,7 +81,7 @@ const taskFormSchema = z.object({
   checker1: z.string().min(1, "Please select a first checker"),
   checker2: z.string().min(1, "Please select a second checker"),
   priority: z.enum(["low", "medium", "high"]),
-  frequency: z.enum(["daily", "weekly", "monthly", "quarterly", "annually", "one-time"]),
+  frequency: z.enum(["daily", "weekly", "fortnightly", "monthly", "quarterly", "annually", "one-time"]),
   isRecurring: z.boolean().default(false),
   dueDate: z.string().min(1, "Due date is required"),
 });
@@ -195,7 +196,7 @@ const AdminTasksPage = () => {
       checker2: data.checker2,
       priority: data.priority,
       status: 'pending',
-      frequency: data.frequency,
+      frequency: data.frequency as TaskFrequency,
       isRecurring: data.isRecurring,
       dueDate: data.dueDate,
     });
@@ -232,6 +233,7 @@ const AdminTasksPage = () => {
     if (selectedTask) {
       updateTask(selectedTask.id, {
         ...data,
+        frequency: data.frequency as TaskFrequency
       });
       
       setIsEditDialogOpen(false);
@@ -640,6 +642,7 @@ const AdminTasksPage = () => {
                         <SelectContent>
                           <SelectItem value="daily">Daily</SelectItem>
                           <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="fortnightly">Fortnightly</SelectItem>
                           <SelectItem value="monthly">Monthly</SelectItem>
                           <SelectItem value="quarterly">Quarterly</SelectItem>
                           <SelectItem value="annually">Annually</SelectItem>
@@ -889,6 +892,7 @@ const AdminTasksPage = () => {
                         <SelectContent>
                           <SelectItem value="daily">Daily</SelectItem>
                           <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="fortnightly">Fortnightly</SelectItem>
                           <SelectItem value="monthly">Monthly</SelectItem>
                           <SelectItem value="quarterly">Quarterly</SelectItem>
                           <SelectItem value="annually">Annually</SelectItem>
