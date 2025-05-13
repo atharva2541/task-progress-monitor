@@ -37,7 +37,7 @@ export function AppSidebar() {
 
     const roleSpecificItems = {
       admin: [
-        { title: 'User Management', icon: Users, path: '/users' },
+        { title: 'User Management', icon: Users, path: '/admin/users' },
         { title: 'Reports', icon: FileText, path: '/reports' },
         { title: 'Settings', icon: Settings, path: '/settings' },
       ],

@@ -3,11 +3,14 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { sendOtpEmail } from '@/utils/aws-ses';
+import { generateStrongPassword, sendWelcomeEmail } from '@/utils/auth-helpers';
 
-// Extended user type with password expiry date
+// Extended user type with password expiry and first login flag
 interface ExtendedUser extends User {
   passwordExpiryDate: string; // ISO string date
   lastOtp?: string; // For demo purposes only, in real app this would be stored server-side
+  isFirstLogin?: boolean; // Track if this is the user's first login
+  passwordStrength?: 'weak' | 'medium' | 'strong';
 }
 
 // Mock users for demonstration
@@ -56,11 +59,13 @@ interface AuthContextType {
   
   // OTP and login methods
   requestOtp: (email: string) => Promise<boolean>;
-  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, passwordExpired: boolean}>;
+  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}>;
   resetPassword: (email: string, newPassword: string) => Promise<boolean>;
+  checkPasswordStrength: (password: string) => 'weak' | 'medium' | 'strong';
   logout: () => void;
   isLoading: boolean;
   isPasswordExpired: boolean;
+  isFirstLogin: boolean;
   
   // Direct login method for testing
   directLogin: (email: string) => Promise<boolean>;
@@ -79,7 +84,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
+  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Function to check password strength
+  const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
+    // Check for at least 8 characters
+    if (password.length < 8) return 'weak';
+    
+    // Check for at least one uppercase letter, one lowercase letter, one number, and one special character
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    
+    if (hasUppercase && hasLowercase && hasNumber && hasSpecial) {
+      return 'strong';
+    } else if ((hasUppercase || hasLowercase) && hasNumber) {
+      return 'medium';
+    } else {
+      return 'weak';
+    }
+  };
 
   // Function to request OTP
   const requestOtp = async (email: string): Promise<boolean> => {
@@ -134,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Function to verify OTP
-  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, passwordExpired: boolean}> => {
+  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}> => {
     setIsLoading(true);
     
     // Simulate API call delay
@@ -143,24 +169,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = users.find(u => u.email === email && u.lastOtp === otp);
     
     if (foundUser) {
-      // Check if password has expired
+      // Check if password has expired or if it's first login
       const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
+      const isFirstTimeLogin = foundUser.isFirstLogin === true;
       
-      if (!passwordExpired) {
-        // If not expired, log the user in
+      if (!passwordExpired && !isFirstTimeLogin) {
+        // If not expired and not first login, log the user in
         setUser(foundUser);
         localStorage.setItem('currentUser', JSON.stringify(foundUser));
+        setIsFirstLogin(false);
+      } else if (isFirstTimeLogin) {
+        // If it's first login, set flag for mandatory password change
+        setIsFirstLogin(true);
       } else {
-        // Flag that password reset is needed
+        // If password expired, flag that password reset is needed
         setIsPasswordExpired(true);
       }
       
       setIsLoading(false);
-      return { success: true, passwordExpired };
+      return { success: true, passwordExpired, isFirstLogin: isFirstTimeLogin };
     }
     
     setIsLoading(false);
-    return { success: false, passwordExpired: false };
+    return { success: false, passwordExpired: false, isFirstLogin: false };
   };
   
   // Function for direct login (bypass OTP for testing)
@@ -171,17 +202,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = users.find(u => u.email === email);
     
     if (foundUser) {
-      // Check if password has expired
+      // Check if password has expired or if it's first login
       const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
+      const isFirstTimeLogin = foundUser.isFirstLogin === true;
       
-      if (!passwordExpired) {
-        // If not expired, log the user in
+      if (!passwordExpired && !isFirstTimeLogin) {
+        // If not expired and not first login, log the user in
         setUser(foundUser);
         localStorage.setItem('currentUser', JSON.stringify(foundUser));
         
         toast({
           title: "Login Successful",
           description: `Welcome, ${foundUser.name}! (Testing mode)`,
+        });
+        
+        setIsLoading(false);
+        return true;
+      } else if (isFirstTimeLogin) {
+        // If it's first login, handle mandatory password change
+        // For testing, we'll just update the user and log them in
+        const updatedUser = {
+          ...foundUser,
+          isFirstLogin: false,
+          passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        };
+        
+        // Update user in state
+        setUsers(users.map(u => 
+          u.id === foundUser.id ? updatedUser : u
+        ));
+        
+        // Log in with updated user
+        setUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome, ${foundUser.name}! Password has been reset. (Testing mode)`,
         });
         
         setIsLoading(false);
@@ -204,7 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         toast({
           title: "Login Successful",
-          description: `Welcome, ${foundUser.name}! (Testing mode)`,
+          description: `Welcome, ${foundUser.name}! Password has been reset. (Testing mode)`,
         });
         
         setIsLoading(false);
@@ -222,9 +279,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
-  // Function to reset password
+  // Function to reset password with strong password validation
   const resetPassword = async (email: string, newPassword: string): Promise<boolean> => {
     setIsLoading(true);
+    
+    // Check password strength
+    const strength = checkPasswordStrength(newPassword);
+    
+    if (strength === 'weak') {
+      toast({
+        title: "Password Too Weak",
+        description: "Please use a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and special characters",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return false;
+    }
     
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -238,7 +308,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       const updatedUser = { 
         ...foundUser, 
-        passwordExpiryDate: newExpiryDate.toISOString() 
+        passwordExpiryDate: newExpiryDate.toISOString(),
+        isFirstLogin: false,
+        passwordStrength: strength
       };
       
       // Update user in state
@@ -251,7 +323,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       
       setIsPasswordExpired(false);
+      setIsFirstLogin(false);
       setIsLoading(false);
+      
+      toast({
+        title: "Password Updated",
+        description: `Your password has been successfully updated and will expire in 30 days.`,
+      });
+      
       return true;
     }
     
@@ -282,6 +361,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setIsPasswordExpired(false);
+    setIsFirstLogin(false);
     localStorage.removeItem('currentUser');
   };
 
@@ -301,18 +381,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newExpiryDate = new Date();
     newExpiryDate.setDate(newExpiryDate.getDate() + 30);
     
+    const tempPassword = generateStrongPassword();
+    
     const createdUser: ExtendedUser = {
       ...newUser,
       id,
       roles: [newUser.role],
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newUser.name)}&background=8b5cf6&color=fff`,
-      passwordExpiryDate: newExpiryDate.toISOString()
+      passwordExpiryDate: newExpiryDate.toISOString(),
+      isFirstLogin: true, // Mark as first login to force password change
     };
+
+    // Send welcome email with temporary password
+    try {
+      sendWelcomeEmail(createdUser.email, createdUser.name, tempPassword);
+      console.log(`Temporary password for ${createdUser.email}: ${tempPassword}`);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // For demo, we'll still show the password in console
+      console.log(`Temporary password for ${createdUser.email}: ${tempPassword}`);
+    }
 
     setUsers([...users, createdUser]);
     toast({
       title: "User Created",
-      description: `User ${newUser.name} has been successfully created`
+      description: `User ${newUser.name} has been created successfully. An email has been sent with login information.`
     });
   };
 
@@ -382,11 +475,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const parsedUser = JSON.parse(savedUser) as ExtendedUser;
         
-        // Check if password has expired
+        // Check if password has expired or if it's first login
         if (new Date(parsedUser.passwordExpiryDate) < new Date()) {
           // Password expired, remove from localStorage and don't set user
           localStorage.removeItem('currentUser');
           setIsPasswordExpired(true);
+        } else if (parsedUser.isFirstLogin) {
+          // First login, needs password change
+          localStorage.removeItem('currentUser');
+          setIsFirstLogin(true);
         } else {
           setUser(parsedUser);
         }
@@ -421,9 +518,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestOtp,
       verifyOtp,
       resetPassword,
+      checkPasswordStrength,
       logout, 
       isLoading,
       isPasswordExpired,
+      isFirstLogin,
       directLogin,
       addUser,
       updateUser,

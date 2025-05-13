@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
+import UserManagementPage from "@/pages/admin/UserManagementPage";
 import CalendarPage from "@/pages/CalendarPage";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
@@ -43,6 +44,7 @@ const App = () => (
                   <Route path="/tasks" element={<TaskList />} />
                   <Route path="/tasks/:taskId" element={<TaskDetail />} />
                   <Route path="/admin/tasks" element={<AdminTasksPage />} />
+                  <Route path="/admin/users" element={<UserManagementPage />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                 </Route>
                 

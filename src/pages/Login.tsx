@@ -1,8 +1,8 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole, UserCircle, LogIn } from 'lucide-react';
+import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole, UserCircle, LogIn, Shield, ShieldCheck, ShieldX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -19,7 +19,8 @@ import {
   FormField, 
   FormItem, 
   FormLabel, 
-  FormMessage 
+  FormMessage,
+  FormDescription 
 } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
@@ -32,6 +33,7 @@ import {
   InputOTPSlot 
 } from '@/components/ui/input-otp';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 
 // Initial login form schema with email and password
 const loginFormSchema = z.object({
@@ -44,11 +46,27 @@ const otpFormSchema = z.object({
   otp: z.string().length(6, { message: 'OTP must be 6 digits' })
 });
 
-// Reset password form schema
+// Strong password schema with custom validation
+const passwordSchema = z.string()
+  .min(8, { message: 'Password must be at least 8 characters' })
+  .refine((val) => /[A-Z]/.test(val), {
+    message: 'Password must contain at least one uppercase letter',
+  })
+  .refine((val) => /[a-z]/.test(val), {
+    message: 'Password must contain at least one lowercase letter',
+  })
+  .refine((val) => /[0-9]/.test(val), {
+    message: 'Password must contain at least one number',
+  })
+  .refine((val) => /[^A-Za-z0-9]/.test(val), {
+    message: 'Password must contain at least one special character',
+  });
+
+// Reset password form schema with strong password requirements
 const resetFormSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  confirmPassword: z.string()
+  password: passwordSchema,
+  confirmPassword: z.string().min(8, { message: 'Please confirm your password' })
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"]
@@ -60,16 +78,17 @@ const directLoginSchema = z.object({
 });
 
 // Login page states
-type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD';
+type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD' | 'FIRST_LOGIN';
 
 const LoginPage = () => {
-  const { requestOtp, verifyOtp, resetPassword, directLogin, isLoading, isPasswordExpired } = useAuth();
+  const { requestOtp, verifyOtp, resetPassword, directLogin, isLoading, isPasswordExpired, isFirstLogin, checkPasswordStrength } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [loginState, setLoginState] = useState<LoginPageState>('LOGIN');
   const [loginMode, setLoginMode] = useState<'otp' | 'direct'>('direct');
+  const [passwordStrength, setPasswordStrength] = useState(0);
 
   // Form for initial login
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
@@ -94,7 +113,7 @@ const LoginPage = () => {
     defaultValues: { otp: '' },
   });
 
-  // Form for password reset
+  // Form for password reset or first login
   const resetForm = useForm<z.infer<typeof resetFormSchema>>({
     resolver: zodResolver(resetFormSchema),
     defaultValues: {
@@ -103,6 +122,31 @@ const LoginPage = () => {
       confirmPassword: ''
     },
   });
+
+  // Update password strength meter when password changes
+  useEffect(() => {
+    const subscription = resetForm.watch((value, { name }) => {
+      if (name === 'password' && value.password) {
+        const password = value.password as string;
+        const strength = checkPasswordStrength(password);
+        
+        if (strength === 'weak') setPasswordStrength(33);
+        else if (strength === 'medium') setPasswordStrength(66);
+        else setPasswordStrength(100);
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [resetForm, checkPasswordStrength]);
+
+  // Check if user needs to reset password or it's their first login
+  useEffect(() => {
+    if (isPasswordExpired) {
+      setLoginState('RESET_PASSWORD');
+    } else if (isFirstLogin) {
+      setLoginState('FIRST_LOGIN');
+    }
+  }, [isPasswordExpired, isFirstLogin]);
 
   // Handle initial login submission
   const onLogin = async (values: z.infer<typeof loginFormSchema>) => {
@@ -127,6 +171,7 @@ const LoginPage = () => {
   // Handle direct login (test mode)
   const onDirectLogin = async (values: z.infer<typeof directLoginSchema>) => {
     setError(null);
+    setEmail(values.email);
     
     try {
       const success = await directLogin(values.email);
@@ -162,6 +207,14 @@ const LoginPage = () => {
             title: 'Password Reset Required',
             description: 'Your password has expired. Please create a new one.',
           });
+        } else if (result.isFirstLogin) {
+          // First login, needs to set a new password
+          setLoginState('FIRST_LOGIN');
+          resetForm.setValue('email', email);
+          toast({
+            title: 'Password Setup Required',
+            description: 'This is your first login. Please set a new secure password.',
+          });
         } else {
           // Login successful, redirect to dashboard
           toast({
@@ -194,11 +247,23 @@ const LoginPage = () => {
         });
         navigate('/');
       } else {
-        setError('Failed to update password. Please try again.');
+        setError('Failed to update password. Please make sure it meets all requirements.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
     }
+  };
+
+  // Handle first login password setup - uses the same flow as reset password
+  const onSetInitialPassword = async (values: z.infer<typeof resetFormSchema>) => {
+    return onResetPassword(values);
+  };
+
+  // Get password strength indicator color
+  const getPasswordStrengthColor = (): string => {
+    if (passwordStrength <= 33) return "bg-destructive";
+    if (passwordStrength <= 66) return "bg-yellow-500";
+    return "bg-green-500";
   };
 
   return (
@@ -217,6 +282,7 @@ const LoginPage = () => {
               {loginState === 'LOGIN' && 'Enter your credentials to login'}
               {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
               {loginState === 'RESET_PASSWORD' && 'Create a new password'}
+              {loginState === 'FIRST_LOGIN' && 'Set your new password for first time login'}
             </CardDescription>
           </CardHeader>
           
@@ -423,10 +489,20 @@ const LoginPage = () => {
               </div>
             )}
             
-            {/* Reset Password Form */}
-            {loginState === 'RESET_PASSWORD' && (
+            {/* First Time Login Password Form */}
+            {loginState === 'FIRST_LOGIN' && (
               <Form {...resetForm}>
-                <form onSubmit={resetForm.handleSubmit(onResetPassword)} className="space-y-5">
+                <form onSubmit={resetForm.handleSubmit(onSetInitialPassword)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertTitle>First Time Login</AlertTitle>
+                      <AlertDescription>
+                        You need to set a strong password for your account.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
                   <FormField
                     control={resetForm.control}
                     name="email"
@@ -463,6 +539,19 @@ const LoginPage = () => {
                             {...field} 
                           />
                         </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -491,7 +580,107 @@ const LoginPage = () => {
                   <Button 
                     type="submit" 
                     className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                    disabled={isLoading}
+                    disabled={isLoading || passwordStrength <= 33}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Setting Password...' : 'Set Password & Login'}
+                  </Button>
+                </form>
+              </Form>
+            )}
+            
+            {/* Reset Password Form */}
+            {loginState === 'RESET_PASSWORD' && (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(onResetPassword)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertTitle>Password Reset Required</AlertTitle>
+                      <AlertDescription>
+                        Your password has expired. Please set a new strong password.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            readOnly
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">New Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Confirm your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                    disabled={isLoading || passwordStrength <= 33}
                   >
                     {isLoading ? 'Updating...' : 'Update Password'}
                   </Button>
