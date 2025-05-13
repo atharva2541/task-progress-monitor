@@ -12,7 +12,7 @@ export interface User {
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'approved' | 'rejected';
-export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly';
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annually' | 'one-time';
 
 export interface Task {
   id: string;
@@ -25,6 +25,7 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   frequency: TaskFrequency;
+  isRecurring: boolean; // Whether the task repeats
   dueDate: string; // ISO date string
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
