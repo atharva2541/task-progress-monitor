@@ -8,49 +8,17 @@ import { useToast } from '@/hooks/use-toast';
 interface FileUploaderProps {
   onFileChange: (files: File[]) => void;
   multiple?: boolean;
-  maxSize?: number; // in MB
-  allowedTypes?: string[];
 }
 
 export const FileUploader = ({
   onFileChange,
   multiple = false,
-  maxSize = 5, // Default 5MB
-  allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
 }: FileUploaderProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const { toast } = useToast();
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    
-    // Validate file types
-    const invalidTypeFiles = selectedFiles.filter(file => 
-      !allowedTypes.includes(file.type)
-    );
-    
-    if (invalidTypeFiles.length > 0) {
-      toast({
-        title: "Invalid file type",
-        description: "Please upload only supported file types.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Validate file size
-    const oversizedFiles = selectedFiles.filter(file => 
-      file.size > maxSize * 1024 * 1024
-    );
-    
-    if (oversizedFiles.length > 0) {
-      toast({
-        title: "File too large",
-        description: `Files must be smaller than ${maxSize}MB.`,
-        variant: "destructive"
-      });
-      return;
-    }
     
     // Add files to state
     if (multiple) {
@@ -88,7 +56,7 @@ export const FileUploader = ({
               <span className="font-semibold">Click to upload</span> or drag and drop
             </p>
             <p className="text-xs text-gray-500">
-              {multiple ? 'Upload files' : 'Upload a file'} (max {maxSize}MB)
+              {multiple ? 'Upload files' : 'Upload a file'} (any type accepted)
             </p>
           </div>
           <Input
@@ -97,6 +65,7 @@ export const FileUploader = ({
             className="hidden"
             onChange={handleFileChange}
             multiple={multiple}
+            accept="*/*" // Accept all file types
           />
         </label>
       </div>
