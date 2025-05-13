@@ -210,11 +210,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const id = Date.now().toString();
-    const createdUser = {
+    // Set new password expiry date to 30 days from now
+    const newExpiryDate = new Date();
+    newExpiryDate.setDate(newExpiryDate.getDate() + 30);
+    
+    const createdUser: ExtendedUser = {
       ...newUser,
       id,
       roles: [newUser.role],
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newUser.name)}&background=8b5cf6&color=fff`
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newUser.name)}&background=8b5cf6&color=fff`,
+      passwordExpiryDate: newExpiryDate.toISOString()
     };
 
     setUsers([...users, createdUser]);
