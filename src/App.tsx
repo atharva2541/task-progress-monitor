@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
+import CalendarPage from "@/pages/CalendarPage";
 import Login from "@/pages/Login";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -42,6 +43,7 @@ const App = () => (
                   <Route path="/tasks" element={<TaskList />} />
                   <Route path="/tasks/:taskId" element={<TaskDetail />} />
                   <Route path="/admin/tasks" element={<AdminTasksPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
                 </Route>
                 
                 <Route path="*" element={<NotFound />} />
