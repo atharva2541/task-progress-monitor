@@ -17,6 +17,7 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'pending',
     frequency: 'monthly',
+    isRecurring: true, // Added missing property
     dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -33,6 +34,7 @@ const mockTasks: Task[] = [
     priority: 'medium',
     status: 'in-progress',
     frequency: 'daily',
+    isRecurring: true, // Added missing property
     dueDate: new Date().toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -49,6 +51,7 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'submitted',
     frequency: 'quarterly',
+    isRecurring: true, // Added missing property
     dueDate: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -65,6 +68,7 @@ const mockTasks: Task[] = [
     priority: 'low',
     status: 'approved',
     frequency: 'weekly',
+    isRecurring: true, // Added missing property
     dueDate: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -81,6 +85,7 @@ const mockTasks: Task[] = [
     priority: 'high',
     status: 'rejected',
     frequency: 'monthly',
+    isRecurring: false, // Added missing property
     dueDate: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
     createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
     updatedAt: new Date().toISOString(),

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -190,6 +189,8 @@ const AdminTasksPage = () => {
     addTask({
       ...data,
       status: 'pending',
+      checker1: data.checker1, // Ensure checker1 is explicitly passed
+      checker2: data.checker2, // Ensure checker2 is explicitly passed
     });
     
     createForm.reset();
