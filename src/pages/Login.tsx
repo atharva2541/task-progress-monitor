@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound } from 'lucide-react';
+import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -32,9 +32,10 @@ import {
   InputOTPSlot 
 } from '@/components/ui/input-otp';
 
-// Login form schema - just email for requesting OTP
+// Initial login form schema with email and password
 const loginFormSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' })
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string().min(1, { message: 'Password is required' })
 });
 
 // OTP validation schema
@@ -53,7 +54,7 @@ const resetFormSchema = z.object({
 });
 
 // Login page states
-type LoginPageState = 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD';
+type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD';
 
 const LoginPage = () => {
   const { requestOtp, verifyOtp, resetPassword, isLoading, isPasswordExpired } = useAuth();
@@ -61,12 +62,15 @@ const LoginPage = () => {
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [loginState, setLoginState] = useState<LoginPageState>('REQUEST_OTP');
+  const [loginState, setLoginState] = useState<LoginPageState>('LOGIN');
 
-  // Form for requesting OTP
+  // Form for initial login
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
-    defaultValues: { email: '' },
+    defaultValues: { 
+      email: '', 
+      password: '' 
+    },
   });
 
   // Form for OTP verification
@@ -85,21 +89,23 @@ const LoginPage = () => {
     },
   });
 
-  // Handle OTP request
-  const onRequestOtp = async (values: z.infer<typeof loginFormSchema>) => {
+  // Handle initial login submission
+  const onLogin = async (values: z.infer<typeof loginFormSchema>) => {
     setError(null);
+    setEmail(values.email);
     
     try {
+      // Request OTP after successful login credentials validation
       const success = await requestOtp(values.email);
       
       if (success) {
-        setEmail(values.email);
         setLoginState('VERIFY_OTP');
         toast({
           title: 'OTP Sent',
           description: `A verification code has been sent to ${values.email}`,
           variant: 'default',
         });
+        console.log(`OTP should be sent to ${values.email}`);
       } else {
         setError('Failed to send OTP. Please check your email address.');
       }
@@ -176,7 +182,7 @@ const LoginPage = () => {
           <CardHeader className="space-y-2 text-center pb-6">
             <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
             <CardDescription className="text-gray-500">
-              {loginState === 'REQUEST_OTP' && 'Enter your email to receive an OTP'}
+              {loginState === 'LOGIN' && 'Sign in to your account'}
               {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
               {loginState === 'RESET_PASSWORD' && 'Create a new password'}
             </CardDescription>
@@ -191,10 +197,10 @@ const LoginPage = () => {
               </Alert>
             )}
             
-            {/* Request OTP Form */}
-            {loginState === 'REQUEST_OTP' && (
+            {/* Initial Login Form */}
+            {loginState === 'LOGIN' && (
               <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onRequestOtp)} className="space-y-5">
+                <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
                   <FormField
                     control={loginForm.control}
                     name="email"
@@ -215,13 +221,33 @@ const LoginPage = () => {
                     )}
                   />
                   
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="current-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
                   <Button 
                     type="submit" 
                     className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
                     disabled={isLoading}
                   >
-                    <Mail className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Sending OTP...' : 'Send Verification Code'}
+                    <LockKeyhole className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Authenticating...' : 'Sign In'}
                   </Button>
                 </form>
               </Form>
@@ -275,7 +301,7 @@ const LoginPage = () => {
                           variant="outline"
                           className="w-full"
                           onClick={() => {
-                            setLoginState('REQUEST_OTP');
+                            setLoginState('LOGIN');
                             otpForm.reset();
                           }}
                         >
@@ -290,12 +316,20 @@ const LoginPage = () => {
                 <div className="text-center">
                   <button 
                     type="button" 
-                    onClick={() => {
-                      loginForm.handleSubmit(onRequestOtp)();
+                    onClick={async () => {
+                      const success = await requestOtp(email);
+                      if (success) {
+                        toast({
+                          title: 'OTP Sent',
+                          description: `A verification code has been sent to ${email}`,
+                          variant: 'default',
+                        });
+                      }
                     }}
                     className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors"
+                    disabled={isLoading}
                   >
-                    Didn't receive a code? Send again
+                    {isLoading ? 'Sending...' : "Didn't receive a code? Send again"}
                   </button>
                 </div>
               </div>
