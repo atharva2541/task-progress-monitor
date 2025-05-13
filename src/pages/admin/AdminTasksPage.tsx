@@ -187,10 +187,17 @@ const AdminTasksPage = () => {
   // Handle new task creation
   const handleCreateTask = (data: TaskFormValues) => {
     addTask({
-      ...data,
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      assignedTo: data.assignedTo,
+      checker1: data.checker1,
+      checker2: data.checker2,
+      priority: data.priority,
       status: 'pending',
-      checker1: data.checker1, // Ensure checker1 is explicitly passed
-      checker2: data.checker2, // Ensure checker2 is explicitly passed
+      frequency: data.frequency,
+      isRecurring: data.isRecurring,
+      dueDate: data.dueDate,
     });
     
     createForm.reset();
