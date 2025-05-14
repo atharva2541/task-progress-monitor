@@ -46,7 +46,7 @@ export const TaskNotificationSection: React.FC<TaskNotificationSectionProps> = (
             <div>
               <p className="font-medium text-primary">Pre-Submission Notifications</p>
               <p className="text-sm text-muted-foreground">
-                Notifications are always sent before the task due date
+                Notifications are automatically sent before the task due date
               </p>
             </div>
             <div className="bg-primary text-white text-xs font-medium px-3 py-1 rounded-full">
@@ -65,7 +65,7 @@ export const TaskNotificationSection: React.FC<TaskNotificationSectionProps> = (
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                These notification days are automatically enabled
+                These notification days are mandatory and automatically enabled
               </p>
             </div>
             
