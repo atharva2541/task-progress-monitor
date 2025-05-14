@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTask } from '@/contexts/TaskContext';
@@ -288,16 +287,9 @@ const TaskDetail = () => {
                         
                         <Button 
                           onClick={() => handleTaskAction('submitted')}
-                          disabled={task.attachments?.length === 0}
                         >
                           Submit for Review
                         </Button>
-                        
-                        {task.attachments?.length === 0 && (
-                          <p className="text-sm text-red-500 mt-2 w-full">
-                            You must upload at least one attachment before submitting.
-                          </p>
-                        )}
                       </>
                     )}
                     
