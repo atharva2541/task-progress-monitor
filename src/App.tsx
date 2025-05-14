@@ -35,20 +35,71 @@ const App = () => (
                 <Route path="/login" element={<Login />} />
                 
                 {/* Protected routes */}
-                <Route element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Outlet />
-                    </AppLayout>
-                  </ProtectedRoute>
-                }>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/tasks" element={<TaskList />} />
-                  <Route path="/tasks/:taskId" element={<TaskDetail />} />
-                  <Route path="/admin/tasks" element={<AdminTasksPage />} />
-                  <Route path="/admin/users" element={<UserManagementPage />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                </Route>
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <Dashboard />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="/tasks"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <TaskList />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="/tasks/:taskId"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <TaskDetail />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="/admin/tasks"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <AdminTasksPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="/admin/users"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <UserManagementPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="/calendar"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <CalendarPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
                 
                 <Route path="*" element={<NotFound />} />
               </Routes>
