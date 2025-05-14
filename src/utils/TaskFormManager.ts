@@ -15,12 +15,11 @@ export const taskFormSchema = z.object({
   isRecurring: z.boolean().default(false),
   dueDate: z.string().min(1, "Due date is required"),
   notifications: z.object({
-    enablePreNotifications: z.boolean().default(true),
+    // Pre-notification days are now always required with defaults
     preDays: z.array(z.number()).default([1, 3, 7]),
-    customDays: z.array(z.number()).optional(),
-    // We no longer need these in the form schema as they are mandatory
+    // Optional custom days
+    customDays: z.array(z.number()).default([]),
   }).default({
-    enablePreNotifications: true,
     preDays: [1, 3, 7],
     customDays: [],
   }),
@@ -42,24 +41,30 @@ export class TaskFormManager {
       isRecurring: false,
       dueDate: new Date().toISOString().split('T')[0],
       notifications: {
-        enablePreNotifications: true,
-        preDays: [1, 3, 7],
-        customDays: [],
+        preDays: [1, 3, 7], // Default mandatory days
+        customDays: [], // Optional custom days
       }
     };
   }
 
   static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Task {
-    // Always set the mandatory notification settings regardless of form input
+    // Create full notification settings with all mandatory settings enabled
     const notificationSettings: TaskNotificationSettings = {
-      enablePreNotifications: true, // Always mandatory now
+      // Pre-notifications settings
+      enablePreNotifications: true, // Always enabled
       preDays: [...data.notifications.preDays, ...(data.notifications.customDays || [])], // Combine mandatory and custom days
-      enablePostNotifications: true, // Always mandatory
+      
+      // Post-notifications settings
+      enablePostNotifications: true, // Always enabled 
       postNotificationFrequency: "daily", // Always daily
-      sendEmails: true, // Always mandatory
-      notifyMaker: true, // Always mandatory
-      notifyChecker1: true, // Always mandatory
-      notifyChecker2: true, // Always mandatory
+      
+      // Email settings
+      sendEmails: true, // Always enabled
+      
+      // Recipients settings
+      notifyMaker: true, // Always enabled
+      notifyChecker1: true, // Always enabled
+      notifyChecker2: true, // Always enabled
     };
     
     return {
@@ -96,8 +101,7 @@ export class TaskFormManager {
       isRecurring: task.isRecurring || false,
       dueDate: new Date(task.dueDate).toISOString().split('T')[0],
       notifications: {
-        enablePreNotifications: true,
-        preDays: [1, 3, 7],
+        preDays: [1, 3, 7], // Always set mandatory days
         customDays: task.notificationSettings?.preDays?.filter(day => ![1, 3, 7].includes(day)) || [],
       }
     };

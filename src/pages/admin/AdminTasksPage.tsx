@@ -26,7 +26,7 @@ const AdminTasksPage = () => {
     setIsCreateDialogOpen(false);
     toast({
       title: "Task Created",
-      description: `Task "${data.name}" has been created with pre-due and post-due date notifications enabled.`
+      description: `Task "${data.name}" has been created successfully with all required notifications enabled.`
     });
   };
 
@@ -41,7 +41,7 @@ const AdminTasksPage = () => {
       setSelectedTask(null);
       toast({
         title: "Task Updated",
-        description: `Task "${data.name}" has been updated with pre-due and post-due date notifications enabled.`
+        description: `Task "${data.name}" has been updated successfully with all required notifications enabled.`
       });
     }
   };
