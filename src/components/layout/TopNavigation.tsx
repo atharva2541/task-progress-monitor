@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
+import { Link } from 'react-router-dom';
 import { 
   Bell, 
   Search, 
@@ -77,6 +78,13 @@ export function TopNavigation() {
     <nav className="bg-white border-b px-4 py-2 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
+        
+        <Link 
+          to="/" 
+          className="text-xl font-bold text-audit-purple-600 flex items-center hover:text-audit-purple-700 transition-colors"
+        >
+          Audit Tracker
+        </Link>
 
         <div className="relative max-w-md hidden md:flex">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
