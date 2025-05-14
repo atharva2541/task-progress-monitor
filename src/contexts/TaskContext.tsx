@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, TaskFrequency, TaskAttachment, TaskNotificationSettings } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -27,7 +28,7 @@ const mockTasks: Task[] = [
       preDays: [1, 3, 7],
       enablePostNotifications: true,
       postNotificationFrequency: 'daily',
-      sendEmails: false,
+      sendEmails: true,
       notifyMaker: true,
       notifyChecker1: true,
       notifyChecker2: true
@@ -150,15 +151,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       updatedAt: new Date().toISOString(),
       comments: [],
       attachments: [], // Initialize empty attachments array
-      notificationSettings: task.notificationSettings || {
-        enablePreNotifications: false,
-        preDays: [1, 3, 7],
-        enablePostNotifications: false,
-        postNotificationFrequency: 'daily',
-        sendEmails: false,
-        notifyMaker: true,
-        notifyChecker1: true,
-        notifyChecker2: true
+      notificationSettings: {
+        enablePreNotifications: task.notificationSettings?.enablePreNotifications ?? true,
+        preDays: task.notificationSettings?.preDays ?? [1, 3, 7],
+        enablePostNotifications: true, // Always mandatory
+        postNotificationFrequency: task.notificationSettings?.postNotificationFrequency ?? 'daily',
+        sendEmails: true, // Always mandatory
+        notifyMaker: true, // Always mandatory
+        notifyChecker1: true, // Always mandatory
+        notifyChecker2: true // Always mandatory
       }
     };
     
@@ -172,9 +173,20 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     setTasks(tasks.map(task => {
       if (task.id === taskId) {
+        // Ensure mandatory notification settings are preserved
+        const updatedNotificationSettings = updates.notificationSettings ? {
+          ...updates.notificationSettings,
+          enablePostNotifications: true, // Always mandatory
+          sendEmails: true, // Always mandatory
+          notifyMaker: true, // Always mandatory
+          notifyChecker1: true, // Always mandatory
+          notifyChecker2: true, // Always mandatory
+        } : task.notificationSettings;
+
         return {
           ...task,
           ...updates,
+          notificationSettings: updatedNotificationSettings,
           updatedAt: new Date().toISOString()
         };
       }
