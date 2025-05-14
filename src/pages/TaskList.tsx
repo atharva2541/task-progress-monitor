@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +31,8 @@ import {
   Search,
   Pencil,
   Trash2,
+  Bell,
+  Mail
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -66,8 +67,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Task, TaskFrequency, TaskPriority, TaskStatus } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { Task, TaskFrequency, TaskPriority, TaskStatus, TaskNotificationSettings } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -78,6 +79,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { scheduleNotifications } from '@/utils/notification-scheduler';
 
 // Task form schema for validation
 const taskFormSchema = z.object({
@@ -91,6 +94,25 @@ const taskFormSchema = z.object({
   frequency: z.enum(["daily", "weekly", "fortnightly", "monthly", "quarterly", "annually", "one-time"]),
   isRecurring: z.boolean().default(false),
   dueDate: z.string().min(1, "Due date is required"),
+  notifications: z.object({
+    enablePreNotifications: z.boolean().default(false),
+    preDays: z.array(z.number()).default([1, 3, 7]),
+    enablePostNotifications: z.boolean().default(false),
+    postNotificationFrequency: z.enum(["daily", "weekly"]).default("daily"),
+    sendEmails: z.boolean().default(false),
+    notifyMaker: z.boolean().default(true),
+    notifyChecker1: z.boolean().default(true),
+    notifyChecker2: z.boolean().default(true),
+  }).default({
+    enablePreNotifications: false,
+    preDays: [1, 3, 7],
+    enablePostNotifications: false,
+    postNotificationFrequency: "daily",
+    sendEmails: false,
+    notifyMaker: true,
+    notifyChecker1: true,
+    notifyChecker2: true,
+  }),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -113,6 +135,10 @@ const TaskList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 10;
   
+  // State for custom days input
+  const [customPreDay, setCustomPreDay] = useState<string>("");
+  const [isAddingPreDay, setIsAddingPreDay] = useState<boolean>(false);
+  
   // Create task form
   const createForm = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
@@ -127,6 +153,16 @@ const TaskList = () => {
       frequency: "monthly",
       isRecurring: false,
       dueDate: new Date().toISOString().split('T')[0],
+      notifications: {
+        enablePreNotifications: false,
+        preDays: [1, 3, 7],
+        enablePostNotifications: false,
+        postNotificationFrequency: "daily",
+        sendEmails: false,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true,
+      }
     },
   });
   
@@ -144,12 +180,33 @@ const TaskList = () => {
       frequency: "monthly",
       isRecurring: false,
       dueDate: new Date().toISOString().split('T')[0],
+      notifications: {
+        enablePreNotifications: false,
+        preDays: [1, 3, 7],
+        enablePostNotifications: false,
+        postNotificationFrequency: "daily",
+        sendEmails: false,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true,
+      }
     },
   });
   
   // Handle task creation
   const handleCreateTask = (data: TaskFormValues) => {
-    addTask({
+    const notificationSettings: TaskNotificationSettings = {
+      enablePreNotifications: data.notifications.enablePreNotifications,
+      preDays: data.notifications.preDays,
+      enablePostNotifications: data.notifications.enablePostNotifications,
+      postNotificationFrequency: data.notifications.postNotificationFrequency,
+      sendEmails: data.notifications.sendEmails,
+      notifyMaker: data.notifications.notifyMaker,
+      notifyChecker1: data.notifications.notifyChecker1,
+      notifyChecker2: data.notifications.notifyChecker2,
+    };
+    
+    const newTask = {
       name: data.name,
       description: data.description,
       category: data.category,
@@ -157,25 +214,46 @@ const TaskList = () => {
       checker1: data.checker1,
       checker2: data.checker2,
       priority: data.priority as TaskPriority,
-      status: 'pending',
+      status: 'pending' as TaskStatus,
       frequency: data.frequency as TaskFrequency,
       isRecurring: data.isRecurring,
       dueDate: data.dueDate,
-    });
+      notificationSettings: notificationSettings
+    };
+    
+    // Add the task
+    addTask(newTask);
+    
+    // If notifications are enabled, schedule them
+    if (data.notifications.enablePreNotifications || data.notifications.enablePostNotifications) {
+      // Get the last task (the one we just created)
+      const addedTask = tasks[tasks.length - 1];
+      
+      console.log("Scheduling notifications for task:", addedTask);
+      
+      // Schedule notifications
+      scheduleNotifications({
+        task: addedTask,
+        notificationSettings: notificationSettings,
+        getUserById,
+      });
+    }
     
     createForm.reset();
     setIsCreateDialogOpen(false);
     
     toast({
       title: "Task Created",
-      description: "The task has been created successfully"
+      description: `The task "${data.name}" has been created successfully${data.notifications.enablePreNotifications || data.notifications.enablePostNotifications ? ' with notifications' : ''}`
     });
   };
   
   // Handle opening edit dialog
   const handleEditClick = (task: Task) => {
     setSelectedTask(task);
-    editForm.reset({
+    
+    // Initialize form with task data, including notification settings
+    const formData = {
       name: task.name,
       description: task.description,
       category: task.category,
@@ -184,9 +262,22 @@ const TaskList = () => {
       checker2: task.checker2,
       priority: task.priority,
       frequency: task.frequency,
-      isRecurring: task.isRecurring,
+      isRecurring: task.isRecurring || false,
       dueDate: new Date(task.dueDate).toISOString().split('T')[0],
-    });
+      notifications: task.notificationSettings || {
+        enablePreNotifications: false,
+        preDays: [1, 3, 7],
+        enablePostNotifications: false,
+        postNotificationFrequency: "daily",
+        sendEmails: false,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true,
+      }
+    };
+    
+    console.log("Setting edit form data:", formData);
+    editForm.reset(formData);
     setIsEditDialogOpen(true);
   };
   
@@ -194,7 +285,18 @@ const TaskList = () => {
   const handleUpdateTask = (data: TaskFormValues) => {
     if (!selectedTask) return;
     
-    updateTask(selectedTask.id, {
+    const notificationSettings: TaskNotificationSettings = {
+      enablePreNotifications: data.notifications.enablePreNotifications,
+      preDays: data.notifications.preDays,
+      enablePostNotifications: data.notifications.enablePostNotifications,
+      postNotificationFrequency: data.notifications.postNotificationFrequency,
+      sendEmails: data.notifications.sendEmails,
+      notifyMaker: data.notifications.notifyMaker,
+      notifyChecker1: data.notifications.notifyChecker1,
+      notifyChecker2: data.notifications.notifyChecker2,
+    };
+    
+    const updatedTask = {
       name: data.name,
       description: data.description,
       category: data.category,
@@ -205,15 +307,62 @@ const TaskList = () => {
       frequency: data.frequency as TaskFrequency,
       isRecurring: data.isRecurring,
       dueDate: data.dueDate,
-    });
+      notificationSettings: notificationSettings
+    };
+    
+    updateTask(selectedTask.id, updatedTask);
+    
+    // If notifications are enabled, reschedule them
+    if (data.notifications.enablePreNotifications || data.notifications.enablePostNotifications) {
+      const task = { ...selectedTask, ...updatedTask };
+      scheduleNotifications({
+        task,
+        notificationSettings,
+        getUserById,
+      });
+    }
     
     setIsEditDialogOpen(false);
     setSelectedTask(null);
     
     toast({
       title: "Task Updated",
-      description: "The task has been updated successfully"
+      description: `The task "${data.name}" has been updated successfully${data.notifications.enablePreNotifications || data.notifications.enablePostNotifications ? ' with notifications' : ''}`
     });
+  };
+  
+  // Add a custom pre-notification day
+  const handleAddPreDay = (form: any) => {
+    const dayValue = parseInt(customPreDay);
+    
+    if (isNaN(dayValue) || dayValue <= 0) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a positive number of days",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Get current pre-days
+    const currentPreDays = form.getValues("notifications.preDays") || [];
+    
+    // Add new day if it doesn't already exist
+    if (!currentPreDays.includes(dayValue)) {
+      form.setValue("notifications.preDays", [...currentPreDays, dayValue].sort((a, b) => a - b));
+    }
+    
+    setCustomPreDay("");
+    setIsAddingPreDay(false);
+  };
+
+  // Remove a pre-notification day
+  const handleRemovePreDay = (day: number, form: any) => {
+    const currentPreDays = form.getValues("notifications.preDays") || [];
+    form.setValue(
+      "notifications.preDays", 
+      currentPreDays.filter((d: number) => d !== day)
+    );
   };
   
   // Handle opening delete confirmation
@@ -346,7 +495,7 @@ const TaskList = () => {
                   New Task
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
+              <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Task</DialogTitle>
                   <DialogDescription>
@@ -515,7 +664,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.role === 'maker')
+                                  .filter(user => user.role === 'maker' || user.roles?.includes('maker'))
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
@@ -544,7 +693,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.role === 'checker1')
+                                  .filter(user => user.role === 'checker1' || user.roles?.includes('checker1'))
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
@@ -573,7 +722,7 @@ const TaskList = () => {
                               </FormControl>
                               <SelectContent>
                                 {users
-                                  .filter(user => user.role === 'checker2')
+                                  .filter(user => user.role === 'checker2' || user.roles?.includes('checker2'))
                                   .map(user => (
                                     <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                   ))
@@ -584,6 +733,238 @@ const TaskList = () => {
                           </FormItem>
                         )}
                       />
+                    </div>
+                    
+                    {/* Notification Settings Section */}
+                    <div className="border rounded-lg shadow-sm">
+                      <div className="flex items-center space-x-2 p-4 border-b">
+                        <Bell className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="text-lg font-medium">Notification Settings</h3>
+                      </div>
+                      
+                      <div className="p-4 space-y-4">
+                        {/* Pre-Submission Notifications */}
+                        <div className="space-y-2">
+                          <FormField
+                            control={createForm.control}
+                            name="notifications.enablePreNotifications"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                  <FormLabel>Pre-Submission Notifications</FormLabel>
+                                  <FormDescription>
+                                    Send notifications before the task due date
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          {createForm.watch("notifications.enablePreNotifications") && (
+                            <div className="ml-6 space-y-4 p-4 border rounded-md">
+                              <div>
+                                <Label>Notify Days Before Due Date</Label>
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  {createForm.watch("notifications.preDays")?.map((day: number) => (
+                                    <div 
+                                      key={day} 
+                                      className="flex items-center bg-secondary text-secondary-foreground px-3 py-1 rounded-md"
+                                    >
+                                      <span>{day} day{day !== 1 ? 's' : ''}</span>
+                                      <button
+                                        type="button"
+                                        className="ml-2 text-secondary-foreground/70 hover:text-secondary-foreground"
+                                        onClick={() => handleRemovePreDay(day, createForm)}
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                                      </button>
+                                    </div>
+                                  ))}
+                                  
+                                  {isAddingPreDay ? (
+                                    <div className="flex items-center gap-2">
+                                      <Input
+                                        type="number"
+                                        placeholder="Days"
+                                        className="w-20"
+                                        value={customPreDay}
+                                        onChange={(e) => setCustomPreDay(e.target.value)}
+                                        min="1"
+                                      />
+                                      <Button 
+                                        type="button" 
+                                        size="sm" 
+                                        variant="secondary"
+                                        onClick={() => handleAddPreDay(createForm)}
+                                      >
+                                        Add
+                                      </Button>
+                                      <Button 
+                                        type="button" 
+                                        size="sm" 
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setIsAddingPreDay(false);
+                                          setCustomPreDay("");
+                                        }}
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <Button 
+                                      type="button" 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => setIsAddingPreDay(true)}
+                                    >
+                                      Add Days
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Post-Submission Notifications */}
+                        <div className="space-y-2">
+                          <FormField
+                            control={createForm.control}
+                            name="notifications.enablePostNotifications"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                  <FormLabel>Post-Due Date Notifications</FormLabel>
+                                  <FormDescription>
+                                    Send notifications if task not submitted after due date
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          {createForm.watch("notifications.enablePostNotifications") && (
+                            <div className="ml-6 space-y-4 p-4 border rounded-md">
+                              <FormField
+                                control={createForm.control}
+                                name="notifications.postNotificationFrequency"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Reminder Frequency</FormLabel>
+                                    <Select 
+                                      value={field.value} 
+                                      onValueChange={field.onChange}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select frequency" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="daily">Daily</SelectItem>
+                                        <SelectItem value="weekly">Weekly</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormDescription>
+                                      How frequently to send reminders after the due date passes
+                                    </FormDescription>
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Email Notifications */}
+                        <FormField
+                          control={createForm.control}
+                          name="notifications.sendEmails"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <div className="flex items-center space-x-2">
+                                  <Mail className="h-4 w-4" />
+                                  <FormLabel>Email Notifications</FormLabel>
+                                </div>
+                                <FormDescription>
+                                  Also send email notifications in addition to in-app notifications
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {/* Recipients */}
+                        <div className="space-y-2 border p-3 rounded-lg">
+                          <div className="font-medium mb-2">Recipients</div>
+                          <FormField
+                            control={createForm.control}
+                            name="notifications.notifyMaker"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel>Notify Maker</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={createForm.control}
+                            name="notifications.notifyChecker1"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel>Notify First Checker</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={createForm.control}
+                            name="notifications.notifyChecker2"
+                            render={({ field }) => (
+                              <FormItem className="flex items-center space-x-2">
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                                <FormLabel>Notify Second Checker</FormLabel>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
                     </div>
                     
                     <DialogFooter>
@@ -774,11 +1155,11 @@ const TaskList = () => {
           
           {/* Edit Task Dialog */}
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Task</DialogTitle>
                 <DialogDescription>
-                  Update task details. You can change the assigned users and task frequency.
+                  Update task details. Fill in all required fields.
                 </DialogDescription>
               </DialogHeader>
               
@@ -943,7 +1324,7 @@ const TaskList = () => {
                             </FormControl>
                             <SelectContent>
                               {users
-                                .filter(user => user.role === 'maker')
+                                .filter(user => user.role === 'maker' || user.roles?.includes('maker'))
                                 .map(user => (
                                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                 ))
@@ -972,7 +1353,7 @@ const TaskList = () => {
                             </FormControl>
                             <SelectContent>
                               {users
-                                .filter(user => user.role === 'checker1')
+                                .filter(user => user.role === 'checker1' || user.roles?.includes('checker1'))
                                 .map(user => (
                                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                 ))
@@ -1001,7 +1382,7 @@ const TaskList = () => {
                             </FormControl>
                             <SelectContent>
                               {users
-                                .filter(user => user.role === 'checker2')
+                                .filter(user => user.role === 'checker2' || user.roles?.includes('checker2'))
                                 .map(user => (
                                   <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
                                 ))
@@ -1014,8 +1395,239 @@ const TaskList = () => {
                     />
                   </div>
                   
+                  {/* Notification Settings Section */}
+                  <div className="border rounded-lg shadow-sm">
+                    <div className="flex items-center space-x-2 p-4 border-b">
+                      <Bell className="h-5 w-5 text-muted-foreground" />
+                      <h3 className="text-lg font-medium">Notification Settings</h3>
+                    </div>
+                    
+                    <div className="p-4 space-y-4">
+                      {/* Pre-Submission Notifications */}
+                      <div className="space-y-2">
+                        <FormField
+                          control={editForm.control}
+                          name="notifications.enablePreNotifications"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Pre-Submission Notifications</FormLabel>
+                                <FormDescription>
+                                  Send notifications before the task due date
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {editForm.watch("notifications.enablePreNotifications") && (
+                          <div className="ml-6 space-y-4 p-4 border rounded-md">
+                            <div>
+                              <Label>Notify Days Before Due Date</Label>
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {editForm.watch("notifications.preDays")?.map((day: number) => (
+                                  <div 
+                                    key={day} 
+                                    className="flex items-center bg-secondary text-secondary-foreground px-3 py-1 rounded-md"
+                                  >
+                                    <span>{day} day{day !== 1 ? 's' : ''}</span>
+                                    <button
+                                      type="button"
+                                      className="ml-2 text-secondary-foreground/70 hover:text-secondary-foreground"
+                                      onClick={() => handleRemovePreDay(day, editForm)}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                                    </button>
+                                  </div>
+                                ))}
+                                
+                                {isAddingPreDay ? (
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      placeholder="Days"
+                                      className="w-20"
+                                      value={customPreDay}
+                                      onChange={(e) => setCustomPreDay(e.target.value)}
+                                      min="1"
+                                    />
+                                    <Button 
+                                      type="button" 
+                                      size="sm" 
+                                      variant="secondary"
+                                      onClick={() => handleAddPreDay(editForm)}
+                                    >
+                                      Add
+                                    </Button>
+                                    <Button 
+                                      type="button" 
+                                      size="sm" 
+                                      variant="ghost"
+                                      onClick={() => {
+                                        setIsAddingPreDay(false);
+                                        setCustomPreDay("");
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button 
+                                    type="button" 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => setIsAddingPreDay(true)}
+                                  >
+                                    Add Days
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Post-Submission Notifications */}
+                      <div className="space-y-2">
+                        <FormField
+                          control={editForm.control}
+                          name="notifications.enablePostNotifications"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Post-Due Date Notifications</FormLabel>
+                                <FormDescription>
+                                  Send notifications if task not submitted after due date
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        {editForm.watch("notifications.enablePostNotifications") && (
+                          <div className="ml-6 space-y-4 p-4 border rounded-md">
+                            <FormField
+                              control={editForm.control}
+                              name="notifications.postNotificationFrequency"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Reminder Frequency</FormLabel>
+                                  <Select 
+                                    value={field.value} 
+                                    onValueChange={field.onChange}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select frequency" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="daily">Daily</SelectItem>
+                                      <SelectItem value="weekly">Weekly</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormDescription>
+                                    How frequently to send reminders after the due date passes
+                                  </FormDescription>
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Email Notifications */}
+                      <FormField
+                        control={editForm.control}
+                        name="notifications.sendEmails"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center space-x-2">
+                                <Mail className="h-4 w-4" />
+                                <FormLabel>Email Notifications</FormLabel>
+                              </div>
+                              <FormDescription>
+                                Also send email notifications in addition to in-app notifications
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Recipients */}
+                      <div className="space-y-2 border p-3 rounded-lg">
+                        <div className="font-medium mb-2">Recipients</div>
+                        <FormField
+                          control={editForm.control}
+                          name="notifications.notifyMaker"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Notify Maker</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={editForm.control}
+                          name="notifications.notifyChecker1"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Notify First Checker</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={editForm.control}
+                          name="notifications.notifyChecker2"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center space-x-2">
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Notify Second Checker</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
                   <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
                     <Button type="submit">Update Task</Button>
                   </DialogFooter>
                 </form>

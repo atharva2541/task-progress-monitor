@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Task, TaskStatus, TaskPriority, TaskFrequency, TaskAttachment } from '@/types';
-import { useToast } from '@/hooks/use-toast';
+import { Task, TaskStatus, TaskPriority, TaskFrequency, TaskAttachment, TaskNotificationSettings } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Mock tasks for demonstration
@@ -21,7 +21,17 @@ const mockTasks: Task[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     comments: [],
-    attachments: [] // Initialize empty attachments array
+    attachments: [], // Initialize empty attachments array
+    notificationSettings: {
+      enablePreNotifications: true,
+      preDays: [1, 3, 7],
+      enablePostNotifications: true,
+      postNotificationFrequency: 'daily',
+      sendEmails: false,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    }
   },
   {
     id: '2',
@@ -139,7 +149,17 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       comments: [],
-      attachments: [] // Initialize empty attachments array
+      attachments: [], // Initialize empty attachments array
+      notificationSettings: task.notificationSettings || {
+        enablePreNotifications: false,
+        preDays: [1, 3, 7],
+        enablePostNotifications: false,
+        postNotificationFrequency: 'daily',
+        sendEmails: false,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true
+      }
     };
     
     setTasks([...tasks, newTask]);
