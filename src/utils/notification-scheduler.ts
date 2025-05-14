@@ -1,25 +1,10 @@
 
 import { addDays, format, parseISO, differenceInDays } from "date-fns";
-import { Task } from "@/types";
+import { Task, TaskNotificationSettings } from "@/types";
 import { sendEmail } from "./aws-ses";
 
-// Type definitions for notification settings
-export interface NotificationSettings {
-  enablePreNotifications: boolean;
-  preDays: number[];
-  enablePostNotifications: boolean;
-  postNotificationFrequency: "daily" | "weekly";
-  sendEmails: boolean;
-  notifyMaker: boolean;
-  notifyChecker1: boolean;
-  notifyChecker2: boolean;
-}
-
-interface ScheduleNotificationsProps {
-  task: Task;
-  notificationSettings: NotificationSettings;
-  getUserById: (userId: string) => any;
-}
+// Type definitions for notification settings are now imported from @/types
+// to ensure consistency across the application
 
 /**
  * Schedule notifications for a task based on notification settings
@@ -28,7 +13,11 @@ export const scheduleNotifications = async ({
   task,
   notificationSettings,
   getUserById,
-}: ScheduleNotificationsProps): Promise<void> => {
+}: {
+  task: Task;
+  notificationSettings: TaskNotificationSettings;
+  getUserById: (userId: string) => any;
+}): Promise<void> => {
   // In a real application, this would connect to a scheduling service
   // For now, we'll just log the scheduled notifications and create a structure
   // that represents when notifications would be sent
