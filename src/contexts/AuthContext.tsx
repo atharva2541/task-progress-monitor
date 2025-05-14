@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -197,14 +196,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Function for direct login (bypass OTP for testing)
   const directLogin = async (email: string): Promise<boolean> => {
     setIsLoading(true);
+    console.log(`Attempting direct login for: ${email}`);
     
     // Find user by email
     const foundUser = users.find(u => u.email === email);
     
     if (foundUser) {
+      console.log(`User found: ${foundUser.name}`);
       // Check if password has expired or if it's first login
       const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
       const isFirstTimeLogin = foundUser.isFirstLogin === true;
+      
+      console.log(`Password expired: ${passwordExpired}, First login: ${isFirstTimeLogin}`);
       
       if (!passwordExpired && !isFirstTimeLogin) {
         // If not expired and not first login, log the user in
@@ -217,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         setIsLoading(false);
+        console.log(`Login successful for ${foundUser.name}`);
         return true;
       } else if (isFirstTimeLogin) {
         // If it's first login, handle mandatory password change
@@ -242,6 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         setIsLoading(false);
+        console.log(`First login completed for ${foundUser.name}`);
         return true;
       } else {
         // For testing, reset the password expiry date
@@ -265,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         
         setIsLoading(false);
+        console.log(`Password reset completed for ${foundUser.name}`);
         return true;
       }
     }
@@ -275,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       variant: "destructive"
     });
     
+    console.log("Login failed: User not found");
     setIsLoading(false);
     return false;
   };
@@ -471,20 +478,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check for saved user on initial load and verify password expiry
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
+    console.log('Checking for saved user on load:', savedUser ? 'Found' : 'Not found');
+    
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser) as ExtendedUser;
         
         // Check if password has expired or if it's first login
-        if (new Date(parsedUser.passwordExpiryDate) < new Date()) {
+        const isExpired = new Date(parsedUser.passwordExpiryDate) < new Date();
+        console.log(`Saved user password expired: ${isExpired}, First login: ${parsedUser.isFirstLogin}`);
+        
+        if (isExpired) {
           // Password expired, remove from localStorage and don't set user
+          console.log('Password expired, removing saved user');
           localStorage.removeItem('currentUser');
           setIsPasswordExpired(true);
         } else if (parsedUser.isFirstLogin) {
           // First login, needs password change
+          console.log('First login, removing saved user');
           localStorage.removeItem('currentUser');
           setIsFirstLogin(true);
         } else {
+          console.log('Setting user from localStorage:', parsedUser.name);
           setUser(parsedUser);
         }
       } catch (error) {
