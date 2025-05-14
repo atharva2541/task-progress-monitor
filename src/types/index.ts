@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -41,6 +42,7 @@ export interface Task {
   updatedAt: string; // ISO date string
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
+  notificationSettings?: TaskNotificationSettings; // New field for notification settings
 }
 
 export interface TaskComment {
@@ -59,4 +61,16 @@ export interface Notification {
   type: 'info' | 'warning' | 'error' | 'success';
   read: boolean;
   createdAt: string; // ISO date string
+}
+
+// New type for notification settings
+export interface TaskNotificationSettings {
+  enablePreNotifications: boolean; // Send notifications before due date
+  preDays: number[]; // Days before due date to send notifications
+  enablePostNotifications: boolean; // Send notifications after due date if not submitted
+  postNotificationFrequency: 'daily' | 'weekly'; // How often to send reminders
+  sendEmails: boolean; // Whether to send email notifications
+  notifyMaker: boolean; // Whether to notify the maker
+  notifyChecker1: boolean; // Whether to notify checker1
+  notifyChecker2: boolean; // Whether to notify checker2
 }

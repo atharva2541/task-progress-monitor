@@ -21,7 +21,14 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   // Don't redirect during loading state to prevent redirect flashes
   if (isLoading) {
     console.log('ProtectedRoute - Still loading authentication state, showing loading...');
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="space-y-4 text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-xl">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

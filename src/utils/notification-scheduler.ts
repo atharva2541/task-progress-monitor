@@ -1,6 +1,6 @@
 
 import { addDays, format, parseISO, differenceInDays } from "date-fns";
-import { Task, TaskNotificationSettings } from "@/types";
+import { Task } from "@/types";
 import { sendEmail } from "./aws-ses";
 
 // Type definitions for notification settings

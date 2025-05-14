@@ -16,10 +16,18 @@ import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import CalendarPage from "@/pages/CalendarPage";
 import Login from "@/pages/Login";
+import Index from "@/pages/Index";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      retryDelay: 500,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,6 +41,7 @@ const App = () => (
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/index" element={<Index />} />
                 
                 {/* Protected routes */}
                 <Route
