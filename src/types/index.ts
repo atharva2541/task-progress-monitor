@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -23,6 +22,17 @@ export interface TaskAttachment {
   uploadedBy: string; // User ID
   uploadedAt: string; // ISO date string
   s3Key?: string; // S3 object key for AWS S3 integration
+}
+
+export interface TaskNotificationSettings {
+  enablePreNotifications: boolean;
+  preDays: number[];
+  enablePostNotifications: boolean;
+  postNotificationFrequency: 'daily' | 'weekly';
+  sendEmails: boolean;
+  notifyMaker: boolean;
+  notifyChecker1: boolean;
+  notifyChecker2: boolean;
 }
 
 export interface Task {

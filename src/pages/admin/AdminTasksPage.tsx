@@ -270,6 +270,17 @@ const AdminTasksPage = () => {
   const handleCreateTask = (data: TaskFormValues) => {
     console.log("Creating task with data:", data);
     
+    const notificationSettings: TaskNotificationSettings = {
+      enablePreNotifications: data.notifications.enablePreNotifications,
+      preDays: data.notifications.preDays,
+      enablePostNotifications: data.notifications.enablePostNotifications,
+      postNotificationFrequency: data.notifications.postNotificationFrequency,
+      sendEmails: data.notifications.sendEmails,
+      notifyMaker: data.notifications.notifyMaker,
+      notifyChecker1: data.notifications.notifyChecker1,
+      notifyChecker2: data.notifications.notifyChecker2,
+    };
+    
     const newTask = {
       name: data.name,
       description: data.description,
@@ -282,7 +293,7 @@ const AdminTasksPage = () => {
       frequency: data.frequency as TaskFrequency,
       isRecurring: data.isRecurring,
       dueDate: data.dueDate,
-      notificationSettings: data.notifications as TaskNotificationSettings
+      notificationSettings: notificationSettings
     };
     
     // Add the task
@@ -298,7 +309,7 @@ const AdminTasksPage = () => {
       // Schedule notifications
       scheduleNotifications({
         task: addedTask,
-        notificationSettings: data.notifications,
+        notificationSettings: notificationSettings,
         getUserById,
       });
     }
@@ -312,13 +323,57 @@ const AdminTasksPage = () => {
     });
   };
 
+  // Open edit dialog and populate form
+  const handleEditDialogOpen = (task: Task) => {
+    setSelectedTask(task);
+    
+    // Initialize form with task data, including notification settings
+    const formData = {
+      name: task.name,
+      description: task.description,
+      category: task.category,
+      assignedTo: task.assignedTo,
+      checker1: task.checker1,
+      checker2: task.checker2,
+      priority: task.priority,
+      frequency: task.frequency,
+      isRecurring: task.isRecurring || false,
+      dueDate: new Date(task.dueDate).toISOString().split('T')[0],
+      notifications: task.notificationSettings || {
+        enablePreNotifications: false,
+        preDays: [1, 3, 7],
+        enablePostNotifications: false,
+        postNotificationFrequency: "daily" as "daily" | "weekly",
+        sendEmails: false,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true,
+      }
+    };
+    
+    console.log("Setting edit form data:", formData);
+    editForm.reset(formData);
+    setIsEditDialogOpen(true);
+  };
+
   // Handle task update with notification rescheduling
   const handleUpdateTask = (data: TaskFormValues) => {
     if (selectedTask) {
+      const notificationSettings: TaskNotificationSettings = {
+        enablePreNotifications: data.notifications.enablePreNotifications,
+        preDays: data.notifications.preDays,
+        enablePostNotifications: data.notifications.enablePostNotifications,
+        postNotificationFrequency: data.notifications.postNotificationFrequency,
+        sendEmails: data.notifications.sendEmails,
+        notifyMaker: data.notifications.notifyMaker,
+        notifyChecker1: data.notifications.notifyChecker1,
+        notifyChecker2: data.notifications.notifyChecker2,
+      };
+      
       const updatedTask = {
         ...data,
         frequency: data.frequency as TaskFrequency,
-        notificationSettings: data.notifications as TaskNotificationSettings
+        notificationSettings: notificationSettings
       };
       
       updateTask(selectedTask.id, updatedTask);
@@ -328,7 +383,7 @@ const AdminTasksPage = () => {
         const task = { ...selectedTask, ...updatedTask };
         scheduleNotifications({
           task,
-          notificationSettings: data.notifications,
+          notificationSettings,
           getUserById,
         });
       }
