@@ -26,7 +26,7 @@ const AdminTasksPage = () => {
     setIsCreateDialogOpen(false);
     toast({
       title: "Task Created",
-      description: `The task "${data.name}" has been created successfully with automatic notifications`
+      description: `The task "${data.name}" has been created successfully with mandatory notifications enabled`
     });
   };
 
@@ -41,7 +41,7 @@ const AdminTasksPage = () => {
       setSelectedTask(null);
       toast({
         title: "Task Updated",
-        description: `The task "${data.name}" has been updated successfully with automatic notifications`
+        description: `The task "${data.name}" has been updated successfully with mandatory notifications enabled`
       });
     }
   };

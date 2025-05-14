@@ -53,10 +53,15 @@ export const TaskNotificationSection: React.FC<TaskNotificationSectionProps> = (
           )}
         </div>
         <div className="p-4 space-y-2 rounded-lg border bg-secondary/10">
-          <p className="font-medium">Automatic Notifications</p>
+          <p className="font-medium">Mandatory Notification Settings</p>
           <p className="text-sm text-muted-foreground">
-            Post-due date notifications, email notifications, and notifications to all assigned users (Maker, First Checker, and Second Checker) are enabled by default.
+            The following notification settings are mandatory and always enabled:
           </p>
+          <ul className="text-sm text-muted-foreground list-disc pl-5 mt-2">
+            <li>Post-due date notifications will be sent if tasks are not completed on time</li>
+            <li>Email notifications will be sent for all task status changes</li>
+            <li>All assigned users (Maker, First Checker, and Second Checker) will receive notifications</li>
+          </ul>
         </div>
       </div>
     </div>

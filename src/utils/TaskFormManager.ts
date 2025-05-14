@@ -17,6 +17,8 @@ export const taskFormSchema = z.object({
   notifications: z.object({
     enablePreNotifications: z.boolean().default(false),
     preDays: z.array(z.number()).default([1, 3, 7]),
+    // We no longer need these in the form schema as they are mandatory
+    // but kept for type compatibility
     postNotificationFrequency: z.enum(["daily", "weekly"]).default("daily"),
   }).default({
     enablePreNotifications: false,
@@ -49,15 +51,16 @@ export class TaskFormManager {
   }
 
   static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Task {
+    // Always set the mandatory notification settings regardless of form input
     const notificationSettings: TaskNotificationSettings = {
       enablePreNotifications: data.notifications.enablePreNotifications,
       preDays: data.notifications.preDays,
-      enablePostNotifications: true, // Mandatory
-      postNotificationFrequency: data.notifications.postNotificationFrequency,
-      sendEmails: true, // Mandatory
-      notifyMaker: true, // Mandatory
-      notifyChecker1: true, // Mandatory
-      notifyChecker2: true, // Mandatory
+      enablePostNotifications: true, // Always mandatory
+      postNotificationFrequency: "daily", // Default to daily
+      sendEmails: true, // Always mandatory
+      notifyMaker: true, // Always mandatory
+      notifyChecker1: true, // Always mandatory
+      notifyChecker2: true, // Always mandatory
     };
     
     return {
