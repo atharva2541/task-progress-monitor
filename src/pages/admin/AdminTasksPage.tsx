@@ -58,7 +58,7 @@ import {
 import { Task, TaskStatus, TaskFrequency, TaskPriority, TaskNotificationSettings } from '@/types';
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Switch } from "@/components/ui/switch";
 import {
   Form,
@@ -167,7 +167,7 @@ const AdminTasksPage = () => {
     },
   });
 
-  // Edit task form
+  // Edit task form with same defaults
   const editForm = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
@@ -193,7 +193,7 @@ const AdminTasksPage = () => {
       }
     },
   });
-
+  
   // Reassign task form
   const [newAssignee, setNewAssignee] = useState("");
   
@@ -231,12 +231,6 @@ const AdminTasksPage = () => {
   const indexOfFirstTask = indexOfLastTask - tasksPerPage;
   const currentTasks = filteredTasks.slice(indexOfFirstTask, indexOfLastTask);
   const totalPages = Math.ceil(filteredTasks.length / tasksPerPage);
-
-  // State for custom days input
-  const [customPreDay, setCustomPreDay] = useState<string>("");
-  const [isAddingPreDay, setIsAddingPreDay] = useState<boolean>(false);
-  
-  console.log("Create form state:", createForm.getValues());
 
   // Handle new task creation with notification scheduling
   const handleCreateTask = (data: TaskFormValues) => {
@@ -284,39 +278,6 @@ const AdminTasksPage = () => {
     });
   };
 
-  // Open edit dialog and populate form
-  const handleEditDialogOpen = (task: Task) => {
-    setSelectedTask(task);
-    
-    // Initialize form with task data, including notification settings
-    const formData = {
-      name: task.name,
-      description: task.description,
-      category: task.category,
-      assignedTo: task.assignedTo,
-      checker1: task.checker1,
-      checker2: task.checker2,
-      priority: task.priority,
-      frequency: task.frequency,
-      isRecurring: task.isRecurring || false,
-      dueDate: new Date(task.dueDate).toISOString().split('T')[0],
-      notifications: task.notificationSettings || {
-        enablePreNotifications: false,
-        preDays: [1, 3, 7],
-        enablePostNotifications: false,
-        postNotificationFrequency: "daily",
-        sendEmails: false,
-        notifyMaker: true,
-        notifyChecker1: true,
-        notifyChecker2: true,
-      }
-    };
-    
-    console.log("Setting edit form data:", formData);
-    editForm.reset(formData);
-    setIsEditDialogOpen(true);
-  };
-
   // Handle task update with notification rescheduling
   const handleUpdateTask = (data: TaskFormValues) => {
     if (selectedTask) {
@@ -347,6 +308,13 @@ const AdminTasksPage = () => {
       });
     }
   };
+
+  // State for custom days input
+  const [customPreDay, setCustomPreDay] = useState<string>("");
+  const [isAddingPreDay, setIsAddingPreDay] = useState<boolean>(false);
+  
+  // State to track if notification section is expanded
+  const [isNotificationExpanded, setIsNotificationExpanded] = useState<boolean>(true);
 
   // Add a custom pre-notification day
   const handleAddPreDay = (form: any) => {
@@ -421,6 +389,8 @@ const AdminTasksPage = () => {
     setCategoryFilter('all');
     setAssigneeFilter('all');
   };
+
+  console.log("Create form state:", createForm.getValues());
 
   return (
     <div className="space-y-6">
@@ -600,7 +570,7 @@ const AdminTasksPage = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })
                 ) : (
                   <TableRow>
@@ -902,7 +872,7 @@ const AdminTasksPage = () => {
                 />
               </div>
               
-              {/* Notification Settings Section */}
+              {/* Notification Settings Section - Using a simple div instead of Accordion for visibility */}
               <div className="border rounded-lg shadow-sm">
                 <div className="flex items-center space-x-2 p-4 border-b">
                   <Bell className="h-5 w-5 text-muted-foreground" />
@@ -1004,3 +974,28 @@ const AdminTasksPage = () => {
                   <div className="space-y-2">
                     <FormField
                       control={createForm.control}
+                      name="notifications.enablePostNotifications"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Post-Due Date Notifications</FormLabel>
+                            <FormDescription>
+                              Send notifications if task not submitted after due date
+                            </FormDescription>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    
+                    {createForm.watch("notifications.enablePostNotifications") && (
+                      <div className="ml-6 space-y-4 p-4 border rounded-md">
+                        <FormField
+                          control={createForm.control}
+                          name="notifications.postNotificationFrequency"
+                          render={({ field }) => (
