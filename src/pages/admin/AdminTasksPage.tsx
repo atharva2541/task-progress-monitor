@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -321,39 +320,6 @@ const AdminTasksPage = () => {
       title: "Task Created",
       description: `The task "${data.name}" has been created successfully${data.notifications.enablePreNotifications || data.notifications.enablePostNotifications ? ' with notifications' : ''}`
     });
-  };
-
-  // Open edit dialog and populate form
-  const handleEditDialogOpen = (task: Task) => {
-    setSelectedTask(task);
-    
-    // Initialize form with task data, including notification settings
-    const formData = {
-      name: task.name,
-      description: task.description,
-      category: task.category,
-      assignedTo: task.assignedTo,
-      checker1: task.checker1,
-      checker2: task.checker2,
-      priority: task.priority,
-      frequency: task.frequency,
-      isRecurring: task.isRecurring || false,
-      dueDate: new Date(task.dueDate).toISOString().split('T')[0],
-      notifications: task.notificationSettings || {
-        enablePreNotifications: false,
-        preDays: [1, 3, 7],
-        enablePostNotifications: false,
-        postNotificationFrequency: "daily" as "daily" | "weekly",
-        sendEmails: false,
-        notifyMaker: true,
-        notifyChecker1: true,
-        notifyChecker2: true,
-      }
-    };
-    
-    console.log("Setting edit form data:", formData);
-    editForm.reset(formData);
-    setIsEditDialogOpen(true);
   };
 
   // Handle task update with notification rescheduling
