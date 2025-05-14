@@ -119,9 +119,19 @@ const AdminTasksPage = () => {
       notifyChecker2: true,
     };
     
+    // Explicitly create a new Task object with all required properties
     const newTask: Task = {
-      ...data,
-      status: 'pending', // Add the missing status property
+      name: data.name,
+      description: data.description,
+      category: data.category,
+      assignedTo: data.assignedTo,
+      checker1: data.checker1,
+      checker2: data.checker2,
+      priority: data.priority,
+      frequency: data.frequency,
+      isRecurring: data.isRecurring,
+      dueDate: data.dueDate,
+      status: 'pending',
       notificationSettings,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
