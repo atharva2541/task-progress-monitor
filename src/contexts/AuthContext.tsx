@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -81,7 +82,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading until we check localStorage
   const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
   const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
   const { toast } = useToast();
@@ -507,6 +508,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('currentUser');
       }
     }
+    
+    // End loading state after we've checked localStorage
+    setIsLoading(false);
   }, []);
 
   // Save users to localStorage

@@ -41,20 +41,17 @@ const App = () => (
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
-                <Route path="/index" element={<Index />} />
+                
+                {/* Root route that redirects based on auth status */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Dashboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                } />
                 
                 {/* Protected routes */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <Dashboard />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
                 <Route
                   path="/tasks"
                   element={
@@ -110,6 +107,7 @@ const App = () => (
                   }
                 />
                 
+                {/* Catch-all route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

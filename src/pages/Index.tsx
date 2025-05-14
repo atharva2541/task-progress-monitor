@@ -8,7 +8,7 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("Index: Checking user authentication state:", user ? "Authenticated" : "Not authenticated");
+    console.log("Index: Checking user authentication state:", user ? "Authenticated" : "Not authenticated", "isLoading:", isLoading);
     
     // Wait for authentication state to be fully loaded before redirecting
     if (!isLoading) {
