@@ -10,10 +10,7 @@ import {
   BarChart4, 
   CheckCircle, 
   Clock, 
-  Users, 
-  UserPlus,
-  Pencil,
-  Trash2
+  Users
 } from 'lucide-react';
 import {
   PieChart,
@@ -28,54 +25,12 @@ import {
   Tooltip,
   Legend
 } from 'recharts';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { UserRole } from '@/types';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from '@/components/ui/label';
 
 export function AdminDashboard() {
   const { tasks } = useTask();
-  const { users, addUser, updateUser, deleteUser } = useAuth();
+  const { users } = useAuth();
   
   const [selectedTab, setSelectedTab] = useState('overview');
-  const [newUserData, setNewUserData] = useState({
-    name: '',
-    email: '',
-    role: 'maker' as UserRole,
-    roles: [] as UserRole[]
-  });
-  const [editingUser, setEditingUser] = useState<null | {
-    id: string;
-    name: string;
-    email: string;
-    role: UserRole;
-    roles: UserRole[];
-  }>(null);
   
   // Calculate task statistics
   const totalTasks = tasks.length;
@@ -112,62 +67,6 @@ export function AdminDashboard() {
     { name: 'Team C', completed: 12, inProgress: 4, rejected: 3 },
     { name: 'Team D', completed: 18, inProgress: 6, rejected: 0 }
   ];
-
-  const handleCreateUser = () => {
-    addUser({
-      name: newUserData.name,
-      email: newUserData.email,
-      role: newUserData.role,
-      roles: newUserData.roles.length > 0 ? 
-        [...new Set([newUserData.role, ...newUserData.roles])] : 
-        [newUserData.role]
-    });
-    
-    setNewUserData({
-      name: '',
-      email: '',
-      role: 'maker',
-      roles: []
-    });
-  };
-
-  const handleUpdateUser = () => {
-    if (!editingUser) return;
-    
-    updateUser(editingUser.id, {
-      name: editingUser.name,
-      email: editingUser.email,
-      role: editingUser.role,
-      roles: editingUser.roles.length > 0 ? 
-        [...new Set([editingUser.role, ...editingUser.roles])] : 
-        [editingUser.role]
-    });
-    
-    setEditingUser(null);
-  };
-
-  const handleDeleteUser = (userId: string) => {
-    if (users.length <= 1) {
-      alert("Cannot delete the last user");
-      return;
-    }
-    
-    if (confirm("Are you sure you want to delete this user?")) {
-      deleteUser(userId);
-    }
-  };
-
-  const formatRoles = (roles: UserRole[]) => {
-    return roles.map(role => {
-      switch(role) {
-        case 'admin': return 'Admin';
-        case 'maker': return 'Maker';
-        case 'checker1': return 'Checker 1';
-        case 'checker2': return 'Checker 2';
-        default: return role;
-      }
-    }).join(', ');
-  };
 
   return (
     <div className="space-y-6">
@@ -235,9 +134,8 @@ export function AdminDashboard() {
         value={selectedTab} 
         onValueChange={setSelectedTab}
       >
-        <TabsList className="grid w-full grid-cols-3 md:w-auto">
+        <TabsList className="grid w-full grid-cols-2 md:w-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">User Management</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
         
@@ -353,253 +251,6 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="users" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold">User Management</h2>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Add New User
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
-                  <DialogDescription>
-                    Add a new user to the system. Users can have multiple roles.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      value={newUserData.name}
-                      onChange={(e) => setNewUserData({...newUserData, name: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="email" className="text-right">
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newUserData.email}
-                      onChange={(e) => setNewUserData({...newUserData, email: e.target.value})}
-                      className="col-span-3"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="primary-role" className="text-right">
-                      Primary Role
-                    </Label>
-                    <Select 
-                      value={newUserData.role}
-                      onValueChange={(value: UserRole) => setNewUserData({...newUserData, role: value})}
-                    >
-                      <SelectTrigger className="col-span-3">
-                        <SelectValue placeholder="Select primary role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="maker">Maker</SelectItem>
-                        <SelectItem value="checker1">Checker 1</SelectItem>
-                        <SelectItem value="checker2">Checker 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">
-                      Additional Roles
-                    </Label>
-                    <div className="col-span-3 flex flex-wrap gap-2">
-                      {(['admin', 'maker', 'checker1', 'checker2'] as UserRole[]).map((role) => (
-                        <label key={role} className="flex items-center gap-1.5 cursor-pointer">
-                          <input 
-                            type="checkbox"
-                            checked={newUserData.roles.includes(role)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setNewUserData({
-                                  ...newUserData, 
-                                  roles: [...newUserData.roles, role]
-                                });
-                              } else {
-                                setNewUserData({
-                                  ...newUserData, 
-                                  roles: newUserData.roles.filter(r => r !== role)
-                                });
-                              }
-                            }}
-                          />
-                          {role === 'admin' ? 'Admin' : 
-                           role === 'maker' ? 'Maker' : 
-                           role === 'checker1' ? 'Checker 1' : 'Checker 2'}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline">Cancel</Button>
-                  </DialogClose>
-                  <Button onClick={handleCreateUser}>Create User</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Primary Role</TableHead>
-                    <TableHead>All Roles</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>{user.role === 'admin' ? 'Admin' : 
-                                user.role === 'maker' ? 'Maker' : 
-                                user.role === 'checker1' ? 'Checker 1' : 'Checker 2'}</TableCell>
-                      <TableCell>{formatRoles(user.roles || [])}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => setEditingUser({
-                                id: user.id,
-                                name: user.name,
-                                email: user.email,
-                                role: user.role,
-                                roles: user.roles || []
-                              })}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Edit User</DialogTitle>
-                                <DialogDescription>
-                                  Update user information and roles.
-                                </DialogDescription>
-                              </DialogHeader>
-                              {editingUser && (
-                                <div className="grid gap-4 py-4">
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="edit-name" className="text-right">
-                                      Name
-                                    </Label>
-                                    <Input
-                                      id="edit-name"
-                                      value={editingUser.name}
-                                      onChange={(e) => setEditingUser({...editingUser, name: e.target.value})}
-                                      className="col-span-3"
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="edit-email" className="text-right">
-                                      Email
-                                    </Label>
-                                    <Input
-                                      id="edit-email"
-                                      type="email"
-                                      value={editingUser.email}
-                                      onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
-                                      className="col-span-3"
-                                    />
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="edit-primary-role" className="text-right">
-                                      Primary Role
-                                    </Label>
-                                    <Select 
-                                      value={editingUser.role}
-                                      onValueChange={(value: UserRole) => setEditingUser({...editingUser, role: value})}
-                                    >
-                                      <SelectTrigger className="col-span-3">
-                                        <SelectValue placeholder="Select primary role" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="admin">Admin</SelectItem>
-                                        <SelectItem value="maker">Maker</SelectItem>
-                                        <SelectItem value="checker1">Checker 1</SelectItem>
-                                        <SelectItem value="checker2">Checker 2</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label className="text-right">
-                                      Additional Roles
-                                    </Label>
-                                    <div className="col-span-3 flex flex-wrap gap-2">
-                                      {(['admin', 'maker', 'checker1', 'checker2'] as UserRole[]).map((role) => (
-                                        <label key={role} className="flex items-center gap-1.5 cursor-pointer">
-                                          <input 
-                                            type="checkbox"
-                                            checked={editingUser.roles.includes(role)}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                setEditingUser({
-                                                  ...editingUser, 
-                                                  roles: [...editingUser.roles, role]
-                                                });
-                                              } else {
-                                                setEditingUser({
-                                                  ...editingUser, 
-                                                  roles: editingUser.roles.filter(r => r !== role)
-                                                });
-                                              }
-                                            }}
-                                          />
-                                          {role === 'admin' ? 'Admin' : 
-                                           role === 'maker' ? 'Maker' : 
-                                           role === 'checker1' ? 'Checker 1' : 'Checker 2'}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              <DialogFooter>
-                                <DialogClose asChild>
-                                  <Button variant="outline">Cancel</Button>
-                                </DialogClose>
-                                <Button onClick={handleUpdateUser}>Update User</Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
         </TabsContent>
         
         <TabsContent value="analytics" className="space-y-4">

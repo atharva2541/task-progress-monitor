@@ -61,10 +61,10 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="flex items-center justify-center h-16 border-b">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <CheckSquare className="h-6 w-6 text-audit-purple-600" />
           <span className="font-bold text-lg">Audit Tracker</span>
-        </div>
+        </Link>
       </SidebarHeader>
       
       <SidebarContent>
