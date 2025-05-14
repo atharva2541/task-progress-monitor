@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +8,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Mail } from "lucide-react";
+import { Bell } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 const taskFormSchema = z.object({
@@ -320,33 +319,11 @@ const AdminTasksPage = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/30">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-2">
-                          <Bell className="h-4 w-4" />
-                          <p className="font-medium">Post-Due Date Notifications</p>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Daily notifications will be sent if task is not submitted after due date
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/30">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4" />
-                        <p className="font-medium">Email Notifications</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Email notifications will be sent in addition to in-app notifications
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 border p-3 rounded-lg bg-secondary/30">
-                    <div className="font-medium mb-2">Recipients</div>
-                    <p className="text-sm text-muted-foreground">All assigned users (Maker, First Checker, and Second Checker) will receive notifications</p>
+                  <div className="p-4 space-y-2 rounded-lg border bg-secondary/10">
+                    <p className="font-medium">Automatic Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Post-due date notifications, email notifications, and notifications to all assigned users (Maker, First Checker, and Second Checker) are enabled by default.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -495,33 +472,11 @@ const AdminTasksPage = () => {
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/30">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center space-x-2">
-                          <Bell className="h-4 w-4" />
-                          <p className="font-medium">Post-Due Date Notifications</p>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Daily notifications will be sent if task is not submitted after due date
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-secondary/30">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center space-x-2">
-                        <Mail className="h-4 w-4" />
-                        <p className="font-medium">Email Notifications</p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Email notifications will be sent in addition to in-app notifications
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-2 border p-3 rounded-lg bg-secondary/30">
-                    <div className="font-medium mb-2">Recipients</div>
-                    <p className="text-sm text-muted-foreground">All assigned users (Maker, First Checker, and Second Checker) will receive notifications</p>
+                  <div className="p-4 space-y-2 rounded-lg border bg-secondary/10">
+                    <p className="font-medium">Automatic Notifications</p>
+                    <p className="text-sm text-muted-foreground">
+                      Post-due date notifications, email notifications, and notifications to all assigned users (Maker, First Checker, and Second Checker) are enabled by default.
+                    </p>
                   </div>
                 </div>
               </div>
