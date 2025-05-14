@@ -109,7 +109,8 @@ export function useTaskService() {
       'pending': 'Task marked as pending',
       'in-progress': 'Task started',
       'submitted': 'Task submitted for review',
-      'approved': 'Task approved',
+      'checker1-approved': 'Task approved by Checker 1',
+      'approved': 'Task fully approved',
       'rejected': 'Task rejected'
     };
     

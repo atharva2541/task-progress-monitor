@@ -15,8 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { TaskAttachments } from '@/components/tasks/TaskAttachments'; // Import the new component
+import { TaskAttachments } from '@/components/tasks/TaskAttachments';
 import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { toast } from "@/components/ui/use-toast";
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -87,11 +88,11 @@ const TaskDetail = () => {
   // Determine if current user can submit this task
   const canSubmit = isMaker && (task.status === 'pending' || task.status === 'in-progress' || task.status === 'rejected');
   
-  // Determine if checker1 can approve or reject
+  // Determine if checker1 can approve or reject - only if status is submitted
   const canChecker1Action = isChecker1 && task.status === 'submitted';
   
-  // Determine if checker2 can approve or reject
-  const canChecker2Action = isChecker2 && task.status === 'approved' && isChecker1;
+  // Determine if checker2 can approve or reject - only if checker1 has approved
+  const canChecker2Action = isChecker2 && task.status === 'checker1-approved';
 
   // Can upload attachments (maker)
   const canUploadAttachments = isMaker && ['pending', 'in-progress', 'rejected'].includes(task.status);
@@ -99,8 +100,17 @@ const TaskDetail = () => {
   // Can delete attachments (maker or admin)
   const canDeleteAttachments = isMaker || isAdmin;
 
-  const handleTaskAction = (newStatus: 'in-progress' | 'submitted' | 'approved' | 'rejected') => {
-    updateTaskStatus(task.id, newStatus, comment);
+  const handleTaskAction = (newStatus: 'in-progress' | 'submitted' | 'checker1-approved' | 'approved' | 'rejected') => {
+    // If checker1 is approving, change status to 'checker1-approved'
+    if (isChecker1 && newStatus === 'approved') {
+      updateTaskStatus(task.id, 'checker1-approved', comment);
+      toast({
+        title: "Task approved by Checker 1",
+        description: "The task has been approved and forwarded to Checker 2 for final approval."
+      });
+    } else {
+      updateTaskStatus(task.id, newStatus, comment);
+    }
     setComment('');
   };
 
@@ -137,7 +147,14 @@ const TaskDetail = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Status</h3>
-                  <div className="mt-1">{getStatusBadge(task.status)}</div>
+                  <div className="mt-1">
+                    {task.status === 'checker1-approved' ? 
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+                        Awaiting Final Approval
+                      </Badge> : 
+                      getStatusBadge(task.status)
+                    }
+                  </div>
                 </div>
                 
                 <div>
@@ -237,7 +254,7 @@ const TaskDetail = () => {
               </div>
               <Separator />
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Second Checker</h3>
+                <h3 className="text-sm font-medium text-gray-500">Final Approver</h3>
                 <p className="mt-1">{checker2?.name || 'Unknown'}</p>
               </div>
             </CardContent>
@@ -292,7 +309,7 @@ const TaskDetail = () => {
                           className="bg-green-50 text-green-700 hover:bg-green-100"
                         >
                           <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Approve
+                          Approve & Forward to Checker 2
                         </Button>
                         
                         <Button 

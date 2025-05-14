@@ -11,7 +11,11 @@ const Checker2CalendarPage = () => {
   if (!user) return null;
   
   // Get tasks assigned to this checker2
-  const checker2Tasks = tasks.filter(task => task.checker2 === user.id);
+  // Include tasks that are in checker1-approved status as these need final approval
+  const checker2Tasks = tasks.filter(task => 
+    task.checker2 === user.id && 
+    (task.status === 'checker1-approved' || task.status === 'approved' || task.status === 'rejected')
+  );
   
   return (
     <TaskCalendar
