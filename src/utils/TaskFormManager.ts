@@ -15,12 +15,14 @@ export const taskFormSchema = z.object({
   isRecurring: z.boolean().default(false),
   dueDate: z.string().min(1, "Due date is required"),
   notifications: z.object({
-    enablePreNotifications: z.boolean().default(false),
+    enablePreNotifications: z.boolean().default(true),
     preDays: z.array(z.number()).default([1, 3, 7]),
+    customDays: z.array(z.number()).optional(),
     // We no longer need these in the form schema as they are mandatory
   }).default({
-    enablePreNotifications: false,
+    enablePreNotifications: true,
     preDays: [1, 3, 7],
+    customDays: [],
   }),
 });
 
@@ -40,8 +42,9 @@ export class TaskFormManager {
       isRecurring: false,
       dueDate: new Date().toISOString().split('T')[0],
       notifications: {
-        enablePreNotifications: false,
+        enablePreNotifications: true,
         preDays: [1, 3, 7],
+        customDays: [],
       }
     };
   }
@@ -49,8 +52,8 @@ export class TaskFormManager {
   static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Task {
     // Always set the mandatory notification settings regardless of form input
     const notificationSettings: TaskNotificationSettings = {
-      enablePreNotifications: data.notifications.enablePreNotifications,
-      preDays: data.notifications.preDays,
+      enablePreNotifications: true, // Always mandatory now
+      preDays: [...data.notifications.preDays, ...(data.notifications.customDays || [])], // Combine mandatory and custom days
       enablePostNotifications: true, // Always mandatory
       postNotificationFrequency: "daily", // Always daily
       sendEmails: true, // Always mandatory
@@ -93,8 +96,9 @@ export class TaskFormManager {
       isRecurring: task.isRecurring || false,
       dueDate: new Date(task.dueDate).toISOString().split('T')[0],
       notifications: {
-        enablePreNotifications: task.notificationSettings?.enablePreNotifications || false,
-        preDays: task.notificationSettings?.preDays || [1, 3, 7],
+        enablePreNotifications: true,
+        preDays: [1, 3, 7],
+        customDays: task.notificationSettings?.preDays?.filter(day => ![1, 3, 7].includes(day)) || [],
       }
     };
     form.reset(formData);
