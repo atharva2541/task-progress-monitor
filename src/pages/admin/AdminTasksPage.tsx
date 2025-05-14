@@ -1,10 +1,12 @@
+
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Task, TaskNotificationSettings } from "@/types";
 import { useTask } from "@/contexts/TaskContext";
-import { Button, Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { Bell, Mail } from "lucide-react";
@@ -119,6 +121,7 @@ const AdminTasksPage = () => {
     
     const newTask: Task = {
       ...data,
+      status: 'pending', // Add the missing status property
       notificationSettings,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
