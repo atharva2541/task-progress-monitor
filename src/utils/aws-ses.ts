@@ -73,3 +73,57 @@ export const sendOtpEmail = async (to: string, otp: string, name: string): Promi
 
   return sendEmail(to, subject, htmlBody);
 };
+
+/**
+ * Send a task notification email
+ * @param to Recipient email
+ * @param taskName Name of the task
+ * @param message Notification message
+ * @param dueDate Due date of the task (ISO string)
+ * @returns Promise resolving to the SendEmailCommand result
+ */
+export const sendTaskNotificationEmail = async (
+  to: string, 
+  taskName: string, 
+  message: string, 
+  dueDate: string
+): Promise<any> => {
+  const subject = `Task Notification: ${taskName}`;
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+      <h2 style="color: #5a3FFF;">Audit Tracker - Task Notification</h2>
+      <p>${message}</p>
+      <div style="background-color: #f7f7f7; padding: 15px; margin: 15px 0; border-radius: 5px;">
+        <p><strong>Task:</strong> ${taskName}</p>
+        <p><strong>Due Date:</strong> ${new Date(dueDate).toLocaleDateString()}</p>
+      </div>
+      <p>Please login to the Audit Tracker system to view and manage this task.</p>
+      <p>Thank you,<br/>Audit Tracker Team</p>
+    </div>
+  `;
+
+  return sendEmail(to, subject, htmlBody);
+};
+
+/**
+ * Send a general notification email
+ * @param to Recipient email
+ * @param subject Email subject
+ * @param message Notification message
+ * @returns Promise resolving to the SendEmailCommand result
+ */
+export const sendNotificationEmail = async (
+  to: string,
+  subject: string,
+  message: string
+): Promise<any> => {
+  const htmlBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+      <h2 style="color: #5a3FFF;">Audit Tracker - Notification</h2>
+      <p>${message}</p>
+      <p>Thank you,<br/>Audit Tracker Team</p>
+    </div>
+  `;
+
+  return sendEmail(to, subject, htmlBody);
+};
