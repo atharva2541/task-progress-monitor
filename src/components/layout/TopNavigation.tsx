@@ -23,6 +23,9 @@ export function TopNavigation() {
     markAllAsRead
   } = useNotification();
 
+  // Check if user is admin
+  const isAdmin = user?.role === 'admin';
+
   const getInitials = (name?: string): string => {
     if (!name) return 'U';
     return name.split(' ').map(part => part[0]).join('').toUpperCase();
@@ -129,10 +132,12 @@ export function TopNavigation() {
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer" onClick={handleSettingsClick}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-            </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem className="cursor-pointer" onClick={handleSettingsClick}>
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer" onClick={() => logout()}>
               <LogOut className="mr-2 h-4 w-4" />
