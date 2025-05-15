@@ -1,23 +1,41 @@
 
 import React from "react";
 import { UseFormReturn } from "react-hook-form";
-import { FormField, FormItem, FormLabel, FormControl, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { TaskFormValues } from "@/utils/TaskFormManager";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TaskFormFieldsProps {
   form: UseFormReturn<TaskFormValues>;
 }
 
 export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
+  // Mock user data - in a real app, this would come from a context or API
+  const users = [
+    { id: "user1", name: "John Doe" },
+    { id: "user2", name: "Jane Smith" },
+    { id: "user3", name: "Alex Brown" },
+    { id: "user4", name: "Sarah Wilson" },
+  ];
+
   return (
     <>
       <FormField control={form.control} name="name" render={({ field }) => (
         <FormItem>
           <FormLabel>Task Name</FormLabel>
           <FormControl>
-            <input {...field} />
+            <Input {...field} />
           </FormControl>
           <FormDescription>Enter the name of the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -25,9 +43,10 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Description</FormLabel>
           <FormControl>
-            <textarea {...field} />
+            <Textarea {...field} />
           </FormControl>
           <FormDescription>Provide a detailed description of the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -35,9 +54,10 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Category</FormLabel>
           <FormControl>
-            <input {...field} />
+            <Input {...field} />
           </FormControl>
           <FormDescription>Select a category for the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -45,9 +65,19 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Assigned To</FormLabel>
           <FormControl>
-            <input {...field} />
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select maker" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormControl>
           <FormDescription>Select the maker for the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -55,9 +85,19 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Checker 1</FormLabel>
           <FormControl>
-            <input {...field} />
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select first checker" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormControl>
           <FormDescription>Select the first checker for the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -65,9 +105,19 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Checker 2</FormLabel>
           <FormControl>
-            <input {...field} />
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select second checker" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map(user => (
+                  <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormControl>
           <FormDescription>Select the second checker for the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -75,13 +125,19 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Priority</FormLabel>
           <FormControl>
-            <select {...field}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
           </FormControl>
           <FormDescription>Select the priority of the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -89,17 +145,23 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Frequency</FormLabel>
           <FormControl>
-            <select {...field}>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="fortnightly">Fortnightly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="annually">Annually</option>
-              <option value="one-time">One-time</option>
-            </select>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="fortnightly">Fortnightly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="annually">Annually</SelectItem>
+                <SelectItem value="one-time">One-time</SelectItem>
+              </SelectContent>
+            </Select>
           </FormControl>
           <FormDescription>Select how often the task should repeat.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
       
@@ -107,9 +169,10 @@ export const TaskFormFields: React.FC<TaskFormFieldsProps> = ({ form }) => {
         <FormItem>
           <FormLabel>Due Date</FormLabel>
           <FormControl>
-            <input type="date" {...field} />
+            <Input type="date" {...field} />
           </FormControl>
           <FormDescription>Select the due date for the task.</FormDescription>
+          <FormMessage />
         </FormItem>
       )} />
     </>
