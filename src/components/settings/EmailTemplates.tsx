@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,10 @@ import { toast } from "@/components/ui/use-toast";
 
 export function EmailTemplates() {
   const [activeTemplate, setActiveTemplate] = useState("welcome");
+  
+  // Refs to access input values
+  const subjectRefs = useRef({});
+  const bodyRefs = useRef({});
   
   // Mock template data
   const [templates, setTemplates] = useState({
@@ -80,12 +84,19 @@ export function EmailTemplates() {
   });
   
   const updateTemplate = (templateKey) => {
+    // Use refs to safely access input values
+    const subjectRef = subjectRefs.current[templateKey] as HTMLInputElement;
+    const bodyRef = bodyRefs.current[templateKey] as HTMLTextAreaElement;
+    
+    if (!subjectRef || !bodyRef) return;
+    
     const updatedTemplates = { ...templates };
     updatedTemplates[templateKey] = {
       ...updatedTemplates[templateKey],
-      subject: document.getElementById(`subject-${templateKey}`).value,
-      body: document.getElementById(`body-${templateKey}`).value
+      subject: subjectRef.value,
+      body: bodyRef.value
     };
+    
     setTemplates(updatedTemplates);
     toast({
       title: "Template updated",
@@ -113,6 +124,26 @@ export function EmailTemplates() {
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, (str) => str.toUpperCase());
   };
+  
+  // Available placeholders for each template type
+  const availablePlaceholders = {
+    welcome: ["{{name}}", "{{email}}", "{{password}}"],
+    taskAssignment: ["{{name}}", "{{taskName}}", "{{dueDate}}", "{{priority}}"],
+    taskReminder: ["{{name}}", "{{taskName}}", "{{dueDate}}", "{{daysRemaining}}"],
+    taskOverdue: ["{{name}}", "{{taskName}}", "{{dueDate}}", "{{daysOverdue}}"],
+  };
+  
+  // Custom component for displaying placeholders
+  const PlaceholderList = ({ placeholders }) => (
+    <div className="mt-2 text-xs text-muted-foreground">
+      <p>Available placeholders:</p>
+      <div className="flex flex-wrap gap-1 mt-1">
+        {placeholders.map(placeholder => (
+          <span key={placeholder} className="bg-muted px-2 py-1 rounded-md">{placeholder}</span>
+        ))}
+      </div>
+    </div>
+  );
   
   return (
     <div className="space-y-6">
@@ -156,10 +187,9 @@ export function EmailTemplates() {
                       id={`subject-${key}`}
                       defaultValue={template.subject}
                       className="mt-1"
+                      ref={el => subjectRefs.current[key] = el}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use {{placeholders}} for dynamic content.
-                    </p>
+                    <PlaceholderList placeholders={availablePlaceholders[key]} />
                   </div>
                   
                   <div>
@@ -168,10 +198,9 @@ export function EmailTemplates() {
                       id={`body-${key}`}
                       defaultValue={template.body}
                       className="min-h-[300px] font-mono text-sm mt-1"
+                      ref={el => bodyRefs.current[key] = el}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Use {{placeholders}} for dynamic content. HTML formatting is supported.
-                    </p>
+                    <PlaceholderList placeholders={availablePlaceholders[key]} />
                   </div>
                 </div>
                 
