@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -47,7 +46,12 @@ export function TopNavigation() {
   };
 
   const handleSettingsClick = () => {
-    navigate('/settings');
+    // Redirect to appropriate settings page based on user role
+    if (isAdmin) {
+      navigate('/settings');
+    } else {
+      navigate('/user-settings');
+    }
   };
 
   const userNotifications = user ? notifications.filter(n => n.userId === user.id) : [];
@@ -132,12 +136,10 @@ export function TopNavigation() {
               </div>
             </div>
             <DropdownMenuSeparator />
-            {isAdmin && (
-              <DropdownMenuItem className="cursor-pointer" onClick={handleSettingsClick}>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem className="cursor-pointer" onClick={handleSettingsClick}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="cursor-pointer" onClick={() => logout()}>
               <LogOut className="mr-2 h-4 w-4" />

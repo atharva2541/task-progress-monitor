@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,8 @@ import Login from "@/pages/Login";
 import Index from "@/pages/Index";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { ThemeProvider } from './contexts/ThemeContext';
+import UserSettingsPage from './pages/UserSettingsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,116 +32,123 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <TaskProvider>
-          <NotificationProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                
-                {/* Root route that redirects based on auth status */}
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <AppLayout>
-                      <Dashboard />
-                    </AppLayout>
-                  </ProtectedRoute>
-                } />
-                
-                {/* Protected routes */}
-                <Route
-                  path="/tasks"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <TaskList />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="/tasks/:taskId"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <TaskDetail />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="/admin/tasks"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <AdminTasksPage />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="/admin/users"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <UserManagementPage />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="/calendar"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <CalendarPage />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
+function App() {
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+            <TaskProvider>
+              <NotificationProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
+                    
+                    {/* Root route that redirects based on auth status */}
+                    <Route path="/" element={
+                      <ProtectedRoute>
+                        <AppLayout>
+                          <Dashboard />
+                        </AppLayout>
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Protected routes */}
+                    <Route
+                      path="/tasks"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <TaskList />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/tasks/:taskId"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <TaskDetail />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/admin/tasks"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <AdminTasksPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/admin/users"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <UserManagementPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/calendar"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <CalendarPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
 
-                {/* Settings routes */}
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <SettingsPage />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
+                    {/* Settings routes */}
+                    <Route
+                      path="/settings"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <SettingsPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
 
-                <Route
-                  path="/system-settings"
-                  element={
-                    <ProtectedRoute>
-                      <AppLayout>
-                        <SystemSettingsPage />
-                      </AppLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </NotificationProvider>
-        </TaskProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+                    <Route
+                      path="/system-settings"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <SystemSettingsPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* Catch-all route */}
+                    <Route path="*" element={<NotFound />} />
+                    
+                    {/* User settings route */}
+                    <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
+                  </Routes>
+                </BrowserRouter>
+              </NotificationProvider>
+            </TaskProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
+}
 
 export default App;
