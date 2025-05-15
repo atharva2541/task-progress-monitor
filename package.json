@@ -14,7 +14,7 @@
     "@aws-sdk/client-s3": "^3.427.0",
     "@aws-sdk/client-ses": "^3.808.0",
     "@aws-sdk/s3-request-presigner": "^3.808.0",
-    "@hookform/resolvers": "^3.9.0",
+    "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

@@ -14,6 +14,8 @@ import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
+import SettingsPage from "@/pages/admin/SettingsPage";
+import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import Login from "@/pages/Login";
 import Index from "@/pages/Index";
@@ -102,6 +104,29 @@ const App = () => (
                     <ProtectedRoute>
                       <AppLayout>
                         <CalendarPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Settings routes */}
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <SettingsPage />
+                      </AppLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/system-settings"
+                  element={
+                    <ProtectedRoute>
+                      <AppLayout>
+                        <SystemSettingsPage />
                       </AppLayout>
                     </ProtectedRoute>
                   }
