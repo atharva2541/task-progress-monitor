@@ -5,9 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserRoleTasks } from "@/components/tasks/UserRoleTasks";
 
 const TaskList = () => {
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
 
-  if (!currentUser) {
+  if (!user) {
     return <div>Loading...</div>;
   }
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,18 +31,18 @@ import { Task } from '@/types';
 
 export function UserRoleTasks() {
   const { tasks } = useTask();
-  const { currentUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'maker' | 'reviewer'>('maker');
   
-  if (!currentUser) return null;
+  if (!user) return null;
 
   // Get tasks where user is the maker (assignee)
-  const makerTasks = tasks.filter(task => task.assignedTo === currentUser.id);
+  const makerTasks = tasks.filter(task => task.assignedTo === user.id);
   
   // Get tasks where user is checker1 or checker2
   const reviewerTasks = tasks.filter(task => 
-    task.checker1 === currentUser.id || task.checker2 === currentUser.id
+    task.checker1 === user.id || task.checker2 === user.id
   );
   
   // Only show the tabs if user has multiple roles
