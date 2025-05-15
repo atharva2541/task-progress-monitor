@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
@@ -19,7 +18,6 @@ import {
   Users, 
   Calendar, 
   Settings, 
-  FileText, 
   BarChart4 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -38,7 +36,6 @@ export function AppSidebar() {
     const roleSpecificItems = {
       admin: [
         { title: 'User Management', icon: Users, path: '/admin/users' },
-        { title: 'Reports', icon: FileText, path: '/reports' },
         { title: 'Settings', icon: Settings, path: '/settings' },
       ],
       maker: [],
