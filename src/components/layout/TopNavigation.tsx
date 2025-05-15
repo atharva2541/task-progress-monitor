@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { Link } from 'react-router-dom';
-import { Bell, Search, User, LogOut, Settings, Info, AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Bell, Search, LogOut, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -11,21 +12,22 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose, SheetFooter } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+
 export function TopNavigation() {
-  const {
-    user,
-    logout
-  } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const {
     notifications,
     unreadCount,
     markAsRead,
     markAllAsRead
   } = useNotification();
+
   const getInitials = (name?: string): string => {
     if (!name) return 'U';
     return name.split(' ').map(part => part[0]).join('').toUpperCase();
   };
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'info':
@@ -40,8 +42,14 @@ export function TopNavigation() {
         return <Bell className="w-5 h-5 text-gray-500" />;
     }
   };
+
+  const handleSettingsClick = () => {
+    navigate('/settings');
+  };
+
   const userNotifications = user ? notifications.filter(n => n.userId === user.id) : [];
   const userUnreadCount = userNotifications.filter(n => !n.read).length;
+  
   return <nav className="bg-white border-b px-4 py-2 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
@@ -121,11 +129,7 @@ export function TopNavigation() {
               </div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer">
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer">
+            <DropdownMenuItem className="cursor-pointer" onClick={handleSettingsClick}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
