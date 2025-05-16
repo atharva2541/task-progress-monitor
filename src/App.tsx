@@ -25,6 +25,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import UserSettingsPage from './pages/UserSettingsPage';
 import MyTasksPage from './pages/tasks/MyTasksPage';
 import TasksToReviewPage from './pages/tasks/TasksToReviewPage';
+import TeamDashboardPage from './pages/dashboard/TeamDashboardPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,6 +100,17 @@ function App() {
                         <ProtectedRoute>
                           <AppLayout>
                             <TasksToReviewPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/team-dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <TeamDashboardPage />
                           </AppLayout>
                         </ProtectedRoute>
                       }
