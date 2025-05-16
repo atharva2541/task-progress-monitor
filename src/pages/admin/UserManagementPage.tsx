@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -79,6 +78,16 @@ const userSchema = z.object({
     .refine(roles => roles.length > 0, {
       message: "User must have at least one role"
     })
+    .refine(roles => {
+      // Ensure that if 'admin' is in the roles, it's the only role
+      if (roles.includes('admin')) {
+        return roles.length === 1;
+      }
+      // Otherwise, ensure 'admin' is not in the roles
+      return !roles.includes('admin');
+    }, {
+      message: "Admin role cannot be combined with other roles"
+    })
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -102,8 +111,71 @@ const UserManagementPage = () => {
     },
   });
 
+  // Handle role selection changes
+  const handleRoleChange = (role: string) => {
+    const currentRole = role as UserRole;
+    
+    if (currentRole === 'admin') {
+      // If admin is selected, clear all other roles
+      form.setValue('roles', ['admin']);
+    } else {
+      // If any other role is selected, remove admin role if present
+      const currentRoles = form.getValues('roles');
+      const filteredRoles = currentRoles.filter(r => r !== 'admin');
+      
+      // Update the roles field
+      form.setValue('roles', filteredRoles);
+    }
+    
+    // Update the primary role
+    form.setValue('role', currentRole);
+  };
+  
+  // Handle role checkbox changes
+  const handleRoleCheckboxChange = (checked: boolean, role: UserRole) => {
+    const currentRoles = [...form.getValues('roles')];
+    
+    if (role === 'admin' && checked) {
+      // If admin is checked, clear all other roles
+      form.setValue('roles', ['admin']);
+      form.setValue('role', 'admin');
+      return;
+    }
+    
+    if (currentRoles.includes('admin') && role !== 'admin') {
+      // If trying to add a non-admin role when admin is present, remove admin
+      const filteredRoles = currentRoles.filter(r => r !== 'admin');
+      
+      if (checked) {
+        // Add the new role
+        form.setValue('roles', [...filteredRoles, role]);
+      } else {
+        form.setValue('roles', filteredRoles);
+      }
+      
+      // Ensure primary role is not admin
+      if (form.getValues('role') === 'admin') {
+        form.setValue('role', role);
+      }
+      return;
+    }
+    
+    // Standard role handling
+    if (checked && !currentRoles.includes(role)) {
+      form.setValue('roles', [...currentRoles, role]);
+    } else if (!checked && currentRoles.includes(role)) {
+      const filteredRoles = currentRoles.filter(r => r !== role);
+      form.setValue('roles', filteredRoles);
+      
+      // If primary role is being unchecked, set a new primary role
+      if (form.getValues('role') === role && filteredRoles.length > 0) {
+        form.setValue('role', filteredRoles[0]);
+      }
+    }
+  };
+
   // Reset form when userToEdit changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (userToEdit) {
       form.reset({
         name: userToEdit.name,
@@ -124,12 +196,25 @@ const UserManagementPage = () => {
 
   // Handle form submission
   const onSubmit = (data: UserFormValues) => {
+    // Ensure that if admin role is selected, it's the only role
+    let finalRoles = [...data.roles];
+    let finalRole = data.role;
+    
+    if (data.roles.includes('admin')) {
+      finalRoles = ['admin'];
+      finalRole = 'admin';
+    } else if (data.role === 'admin') {
+      // If primary role is admin but not in roles
+      finalRoles = ['admin'];
+    }
+    
     if (userToEdit) {
       // Update existing user
       updateUser(userToEdit.id, {
-        ...data,
-        // Ensure primary role is included in roles array
-        roles: data.roles.includes(data.role) ? data.roles : [data.role, ...data.roles]
+        name: data.name,
+        email: data.email,
+        role: finalRole,
+        roles: finalRoles
       });
       toast({
         title: 'User Updated',
@@ -137,13 +222,15 @@ const UserManagementPage = () => {
       });
       setUserToEdit(null);
     } else {
-      // Create new user - pass all required fields to match the Omit<User, "id"> type
-      addUser({
+      // Create new user
+      const newUser: Omit<User, 'id'> = {
         name: data.name,
         email: data.email,
-        role: data.role,
-        roles: data.roles.includes(data.role) ? data.roles : [data.role, ...data.roles]
-      });
+        role: finalRole,
+        roles: finalRoles
+      };
+      
+      addUser(newUser);
       toast({
         title: 'User Created',
         description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
@@ -158,13 +245,19 @@ const UserManagementPage = () => {
     return selectedRoles.includes(role);
   };
 
-  // Function to toggle role in the roles array
-  const toggleRole = (role: UserRole, selectedRoles: UserRole[]) => {
-    if (selectedRoles.includes(role)) {
-      return selectedRoles.filter(r => r !== role);
-    } else {
-      return [...selectedRoles, role];
+  // Function to check if a role should be disabled
+  const isRoleDisabled = (role: UserRole, selectedRoles: UserRole[]) => {
+    // If admin is selected, disable all other roles
+    if (selectedRoles.includes('admin') && role !== 'admin') {
+      return true;
     }
+    
+    // If any other role is selected, disable admin
+    if (role === 'admin' && selectedRoles.some(r => r !== 'admin')) {
+      return true;
+    }
+    
+    return false;
   };
 
   return (
@@ -321,7 +414,10 @@ const UserManagementPage = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Primary Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      onValueChange={(value) => handleRoleChange(value)} 
+                      value={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select primary role" />
@@ -337,6 +433,11 @@ const UserManagementPage = () => {
                     </Select>
                     <FormDescription>
                       This is the user's primary role in the system
+                      {field.value === 'admin' && (
+                        <span className="text-amber-600 block mt-1">
+                          Note: Admin users cannot have additional roles
+                        </span>
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -352,21 +453,30 @@ const UserManagementPage = () => {
                       <FormLabel>Assigned Roles</FormLabel>
                       <FormDescription>
                         Select all roles this user can have in the system
+                        {field.value.includes('admin') && (
+                          <span className="text-amber-600 block mt-1">
+                            Note: Admin role cannot be combined with other roles
+                          </span>
+                        )}
                       </FormDescription>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {userRoles.map((role) => (
                         <FormItem
                           key={role.value}
-                          className="flex flex-row items-start space-x-3 space-y-0 p-4 rounded-md border"
+                          className={`flex flex-row items-start space-x-3 space-y-0 p-4 rounded-md border ${
+                            isRoleDisabled(role.value, field.value) 
+                              ? 'opacity-50' 
+                              : ''
+                          }`}
                         >
                           <FormControl>
                             <Checkbox
                               checked={isRoleSelected(role.value, field.value)}
-                              onCheckedChange={() => {
-                                const updatedRoles = toggleRole(role.value, field.value);
-                                field.onChange(updatedRoles);
+                              onCheckedChange={(checked) => {
+                                handleRoleCheckboxChange(!!checked, role.value);
                               }}
+                              disabled={isRoleDisabled(role.value, field.value)}
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
