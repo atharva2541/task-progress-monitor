@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -95,7 +96,10 @@ const AdminTasksPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Task Management</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
+        <Button onClick={() => setIsCreateDialogOpen(true)} className="flex items-center gap-2">
+          <Plus size={16} />
+          New Task
+        </Button>
       </div>
       
       <div className="rounded-md border">
