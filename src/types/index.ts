@@ -51,6 +51,7 @@ export interface Task {
   dueDate: string; // ISO date string
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  submittedAt?: string; // ISO date string for when the task was submitted for review
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
   notificationSettings?: TaskNotificationSettings; // New field for notification settings

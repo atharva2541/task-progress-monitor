@@ -3,7 +3,7 @@ import { Task, TaskStatus } from '@/types';
 
 export type TaskServiceProps = {
   tasks: Task[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'submittedAt'>) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus, comment?: string) => void;

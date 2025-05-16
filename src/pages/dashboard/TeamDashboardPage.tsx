@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTask } from '@/contexts/TaskContext';
@@ -85,7 +84,9 @@ const TeamDashboardPage = () => {
   const reviewTimes = teamTasks
     .filter(task => task.status === 'approved' || task.status === 'rejected')
     .map(task => {
-      const submittedDate = task.submittedAt ? new Date(task.submittedAt) : new Date();
+      // Use status change to 'submitted' date or fallback to createdAt or updatedAt
+      const submittedDate = task.submittedAt ? new Date(task.submittedAt) : 
+                           (task.status === 'submitted' ? new Date(task.updatedAt) : new Date(task.createdAt));
       const reviewedDate = task.updatedAt ? new Date(task.updatedAt) : new Date();
       return differenceInDays(reviewedDate, submittedDate);
     });
