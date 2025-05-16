@@ -10,7 +10,7 @@ const MakerCalendarPage = () => {
   
   if (!user) return null;
   
-  // Get tasks assigned to this maker
+  // Get tasks assigned to this maker - ensuring we only get tasks where the user is the maker
   const makerTasks = tasks.filter(task => task.assignedTo === user.id);
   
   return (
