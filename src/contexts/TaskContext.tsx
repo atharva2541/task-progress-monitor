@@ -1,12 +1,32 @@
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useEffect } from 'react';
 import { TaskServiceProps } from '@/models/TaskModel';
 import { useTaskService } from '@/services/TaskService';
+import { useNotification } from './NotificationContext';
+import { useAuth } from './AuthContext';
+import { checkTasksForNotifications } from '@/utils/notification-scheduler';
 
 const TaskContext = createContext<TaskServiceProps | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const taskService = useTaskService();
+  const { addNotification } = useNotification();
+  const { user } = useAuth();
+  
+  // Check for task notifications periodically
+  useEffect(() => {
+    if (!user || !taskService.tasks || taskService.tasks.length === 0) return;
+    
+    // Initial check
+    checkTasksForNotifications(taskService.tasks, taskService.getUserById);
+    
+    // Set up periodic checks
+    const interval = setInterval(() => {
+      checkTasksForNotifications(taskService.tasks, taskService.getUserById);
+    }, 3600000); // Check every hour
+    
+    return () => clearInterval(interval);
+  }, [taskService.tasks, user]);
   
   return (
     <TaskContext.Provider value={taskService}>

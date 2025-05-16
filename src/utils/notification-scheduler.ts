@@ -1,10 +1,7 @@
 
-import { addDays, format, parseISO, differenceInDays } from "date-fns";
+import { addDays, format, parseISO, differenceInDays, differenceInHours, isAfter } from "date-fns";
 import { Task, TaskNotificationSettings } from "@/types";
-import { sendEmail } from "./aws-ses";
-
-// Type definitions for notification settings are now imported from @/types
-// to ensure consistency across the application
+import { sendEmail, sendTaskNotificationEmail } from "./aws-ses";
 
 /**
  * Schedule notifications for a task based on notification settings
@@ -40,20 +37,20 @@ export const scheduleNotifications = async ({
     
     if (notificationSettings.notifyMaker && task.assignedTo) {
       const maker = getUserById(task.assignedTo);
-      if (maker) recipients.push(maker);
+      if (maker) recipients.push({ ...maker, role: 'maker' });
     }
     
     if (notificationSettings.notifyChecker1 && task.checker1) {
       const checker1 = getUserById(task.checker1);
-      if (checker1) recipients.push(checker1);
+      if (checker1) recipients.push({ ...checker1, role: 'checker1' });
     }
     
     if (notificationSettings.notifyChecker2 && task.checker2) {
       const checker2 = getUserById(task.checker2);
-      if (checker2) recipients.push(checker2);
+      if (checker2) recipients.push({ ...checker2, role: 'checker2' });
     }
     
-    console.log(`[Notification Scheduler] Recipients: ${recipients.map(r => r.name).join(', ')}`);
+    console.log(`[Notification Scheduler] Recipients: ${recipients.map(r => `${r.name} (${r.role})`).join(', ')}`);
     
     // Schedule pre-submission notifications
     if (notificationSettings.enablePreNotifications) {
@@ -67,14 +64,25 @@ export const scheduleNotifications = async ({
           
           // Schedule the notification for each recipient
           for (const recipient of recipients) {
-            scheduleNotificationForDate({
-              date: notificationDate,
-              task,
-              recipient,
-              message: `Task "${task.name}" is due in ${daysBeforeDue} day${daysBeforeDue !== 1 ? 's' : ''}`,
-              type: 'warning',
-              sendEmail: notificationSettings.sendEmails,
-            });
+            // Different messaging for different roles
+            let message = "";
+            if (recipient.role === 'maker') {
+              message = `Task "${task.name}" is due in ${daysBeforeDue} day${daysBeforeDue !== 1 ? 's' : ''}`;
+            } else if (recipient.role === 'checker1' || recipient.role === 'checker2') {
+              // Checker1 gets notifications about upcoming task due dates
+              message = `Task "${task.name}" assigned to ${getUserById(task.assignedTo)?.name || 'a maker'} is due in ${daysBeforeDue} day${daysBeforeDue !== 1 ? 's' : ''} and will need your review`;
+            }
+            
+            if (message) {
+              scheduleNotificationForDate({
+                date: notificationDate,
+                task,
+                recipient,
+                message,
+                type: 'warning',
+                sendEmail: notificationSettings.sendEmails,
+              });
+            }
           }
         }
       }
@@ -83,25 +91,48 @@ export const scheduleNotifications = async ({
     // Schedule post-due date notifications if enabled
     if (notificationSettings.enablePostNotifications) {
       console.log(`[Notification Scheduler] Post-due date notifications enabled`);
-      console.log(`[Notification Scheduler] Frequency: ${notificationSettings.postNotificationFrequency}`);
       
-      // For simulation, we'll schedule the first 10 post-due notifications
-      const frequency = notificationSettings.postNotificationFrequency === 'daily' ? 1 : 7; // Days between notifications
-      
-      for (let i = 1; i <= 10; i++) {
-        const notificationDate = addDays(dueDate, i * frequency);
-        console.log(`[Notification Scheduler] Scheduling post-due notification for ${format(notificationDate, 'PPP')} (${i * frequency} days after due)`);
-        
-        // Schedule the notification for each recipient
-        for (const recipient of recipients) {
+      // Check if task is due and not submitted
+      if (daysToDueDate <= 0 && task.status !== 'submitted' && task.status !== 'approved') {
+        // Notification on due date for checker1 if task is not submitted
+        const checker1 = recipients.find(r => r.role === 'checker1');
+        if (checker1) {
+          const makerName = getUserById(task.assignedTo)?.name || 'The assigned maker';
+          
+          // Send notification right after due date
           scheduleNotificationForDate({
-            date: notificationDate,
+            date: dueDate,
             task,
-            recipient,
-            message: `Task "${task.name}" is overdue by ${i * frequency} day${i * frequency !== 1 ? 's' : ''} and needs attention`,
+            recipient: checker1,
+            message: `Task "${task.name}" is now due and has not been submitted by ${makerName}`,
             type: 'error',
             sendEmail: notificationSettings.sendEmails,
           });
+          
+          // Daily notifications starting from 1 day after due date - for both checkers
+          const frequency = 1; // Daily notifications
+          
+          for (let i = 1; i <= 30; i++) { // Schedule for 30 days
+            const notificationDate = addDays(dueDate, i);
+            
+            // After first day, notify both checker1 and checker2
+            const notifyRecipients = i === 1 ? 
+              recipients.filter(r => r.role === 'checker1') : 
+              recipients.filter(r => r.role === 'checker1' || r.role === 'checker2');
+            
+            if (notifyRecipients.length === 0) continue;
+            
+            for (const recipient of notifyRecipients) {
+              scheduleNotificationForDate({
+                date: notificationDate,
+                task,
+                recipient,
+                message: `URGENT: Task "${task.name}" is overdue by ${i} day${i !== 1 ? 's' : ''} and still not submitted by ${makerName}`,
+                type: 'error',
+                sendEmail: notificationSettings.sendEmails,
+              });
+            }
+          }
         }
       }
     }
@@ -132,7 +163,7 @@ const scheduleNotificationForDate = ({
   type,
   sendEmail,
 }: ScheduleNotificationForDateProps): void => {
-  console.log(`[Notification Scheduler] - For ${recipient.name} (${recipient.email}): "${message}" on ${format(date, 'PPP')}`);
+  console.log(`[Notification Scheduler] - For ${recipient.name} (${recipient.role}): "${message}" on ${format(date, 'PPP')}`);
   
   // For demonstration, we'll show how emails would be sent
   // In a production environment, this would be handled by a scheduled job
@@ -148,6 +179,7 @@ const scheduleNotificationForDate = ({
           <p>Name: ${task.name}</p>
           <p>Due Date: ${format(parseISO(task.dueDate), 'PPP')}</p>
           <p>Priority: ${task.priority}</p>
+          ${recipient.role !== 'maker' ? `<p>Assigned To: ${getUserById(task.assignedTo)?.name || 'Unknown'}</p>` : ''}
         </div>
         <p>Please login to the Audit Tracker system to view and manage this task.</p>
         <p>Thank you,<br/>Audit Tracker Team</p>
@@ -165,14 +197,76 @@ const scheduleNotificationForDate = ({
  * Create a notification handler for integration with the task lifecycle
  * This would be used to check if tasks are overdue and send notifications accordingly
  */
-export const checkTasksForNotifications = (): void => {
-  // This would be called by a scheduled job to check tasks and send notifications
+export const checkTasksForNotifications = (
+  tasks: Task[], 
+  getUserById: (userId: string) => any
+): void => {
   console.log("[Notification Scheduler] Checking tasks for notifications...");
   
-  // Implementation would:
-  // 1. Get all active tasks
-  // 2. Check due dates against current date
-  // 3. Send notifications for approaching due dates and overdue tasks
+  const now = new Date();
   
-  // For now, this is just a placeholder for the actual implementation
+  tasks.forEach(task => {
+    try {
+      if (!task.dueDate) return;
+      
+      const dueDate = parseISO(task.dueDate);
+      
+      // Skip tasks that are already completed or approved
+      if (task.status === 'approved') return;
+      
+      // Check if task is overdue and not submitted
+      if (isAfter(now, dueDate) && task.status !== 'submitted') {
+        const daysPastDue = differenceInDays(now, dueDate);
+        
+        // Notify checker1 immediately after due date
+        if (daysPastDue === 0 && task.checker1) {
+          sendOverdueNotification(task, 'checker1', getUserById);
+        }
+        
+        // After 1 day, notify both checker1 and checker2
+        if (daysPastDue >= 1 && (task.checker1 || task.checker2)) {
+          if (task.checker1) sendOverdueNotification(task, 'checker1', getUserById);
+          if (task.checker2) sendOverdueNotification(task, 'checker2', getUserById);
+        }
+      }
+    } catch (error) {
+      console.error(`[Notification Scheduler] Error processing task ${task.id}:`, error);
+    }
+  });
+};
+
+/**
+ * Send an overdue notification to the specified checker
+ */
+const sendOverdueNotification = (
+  task: Task,
+  checkerRole: 'checker1' | 'checker2',
+  getUserById: (userId: string) => any
+): void => {
+  const checkerId = checkerRole === 'checker1' ? task.checker1 : task.checker2;
+  if (!checkerId) return;
+  
+  const checker = getUserById(checkerId);
+  if (!checker) return;
+  
+  const maker = getUserById(task.assignedTo);
+  const makerName = maker ? maker.name : 'The assigned maker';
+  
+  const dueDate = parseISO(task.dueDate);
+  const daysPastDue = differenceInDays(new Date(), dueDate);
+  
+  const message = `Task "${task.name}" is overdue by ${daysPastDue} day${daysPastDue !== 1 ? 's' : ''} and has not been submitted by ${makerName}`;
+  
+  console.log(`[Notification Scheduler] Sending overdue notification to ${checker.name} (${checkerRole}): ${message}`);
+  
+  // In a real app, this would create an in-app notification
+  // and potentially send an email
+  
+  // Example email call:
+  // await sendTaskNotificationEmail(
+  //   checker.email,
+  //   task.name,
+  //   message,
+  //   task.dueDate
+  // );
 };

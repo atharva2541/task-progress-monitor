@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotification } from '@/contexts/NotificationContext';
 import { 
   Card,
   CardContent, 
@@ -24,15 +25,78 @@ import { FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const MyTasksPage = () => {
-  const { tasks } = useTask();
+  const { tasks, getUserById } = useTask();
   const { user } = useAuth();
+  const { addNotification } = useNotification();
   const navigate = useNavigate();
   
   if (!user) return null;
   
   // Get tasks assigned to this user as a maker
   // Consider primary role and any additional roles the user might have
+  const userRoles = user.roles || [user.role];
   const myTasks = tasks.filter(task => task.assignedTo === user.id);
+  
+  // Process due date notifications for tasks
+  useEffect(() => {
+    const today = new Date();
+    
+    myTasks.forEach(task => {
+      if (!task.dueDate) return;
+      
+      const dueDate = new Date(task.dueDate);
+      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // For tasks due in 1, 3, or 7 days
+      if (daysUntilDue === 1 || daysUntilDue === 3 || daysUntilDue === 7) {
+        // Add in-app notification
+        addNotification({
+          userId: user.id,
+          title: `Task Due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}`,
+          message: `Your task "${task.name}" is due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}.`,
+          type: 'warning',
+          read: false
+        });
+        
+        // In a real app, we would also send an email here
+        console.log(`[MyTasksPage] Would send email reminder for task due in ${daysUntilDue} days`);
+      }
+      
+      // For overdue tasks
+      if (daysUntilDue < 0 && task.status !== 'submitted' && task.status !== 'approved') {
+        // Add in-app notification
+        addNotification({
+          userId: user.id,
+          title: 'Task Overdue',
+          message: `Your task "${task.name}" is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
+          type: 'error',
+          read: false
+        });
+        
+        // Notify checkers about overdue tasks
+        if (task.checker1) {
+          addNotification({
+            userId: task.checker1,
+            title: 'Task Overdue',
+            message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
+            type: 'error',
+            read: false
+          });
+          
+          // After one day overdue, also notify checker2
+          if (Math.abs(daysUntilDue) >= 1 && task.checker2) {
+            addNotification({
+              userId: task.checker2,
+              title: 'Task Overdue',
+              message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
+              type: 'error',
+              read: false
+            });
+          }
+        }
+      }
+    });
+  }, [myTasks, addNotification, user]);
   
   const getStatusBadge = (status: string) => {
     switch (status) {
