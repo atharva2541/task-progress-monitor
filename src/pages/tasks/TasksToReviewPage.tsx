@@ -24,19 +24,6 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { calculateDaysOverdue } from '@/utils/date-utils';
 
-// Helper function to calculate days overdue
-const calculateDaysOverdue = (dueDate: string): number => {
-  const today = new Date();
-  const due = new Date(dueDate);
-  today.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
-  
-  const diffTime = today.getTime() - due.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays > 0 ? diffDays : 0;
-};
-
 const TasksToReviewPage = () => {
   const { tasks } = useTask();
   const { user } = useAuth();
