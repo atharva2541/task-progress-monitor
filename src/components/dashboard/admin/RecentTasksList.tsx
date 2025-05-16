@@ -3,6 +3,7 @@ import { ArrowUpRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Task } from '@/types';
+import { calculateDaysOverdue } from '@/utils/date-utils';
 
 interface RecentTasksListProps {
   tasks: Task[];
@@ -26,7 +27,11 @@ export function RecentTasksList({ tasks }: RecentTasksListProps) {
             <div key={task.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
               <div>
                 <p className="font-medium">{task.name}</p>
-                <p className="text-sm text-muted-foreground">Due: {new Date(task.dueDate).toLocaleDateString()}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                  <span>•</span>
+                  <span>Days Overdue: {calculateDaysOverdue(task.dueDate)}</span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span 

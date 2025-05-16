@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { calculateDaysOverdue } from '@/utils/date-utils';
 
 const MyTasksPage = () => {
   const { tasks, getUserById } = useTask();
@@ -153,6 +153,7 @@ const MyTasksPage = () => {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Due Date</TableHead>
+                  <TableHead>Days Overdue</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -165,6 +166,9 @@ const MyTasksPage = () => {
                       <TableCell>{getStatusBadge(task.status)}</TableCell>
                       <TableCell>
                         {new Date(task.dueDate).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {calculateDaysOverdue(task.dueDate)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button 
@@ -180,7 +184,7 @@ const MyTasksPage = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No tasks found.
                     </TableCell>
                   </TableRow>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +22,20 @@ import { Button } from '@/components/ui/button';
 import { FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { calculateDaysOverdue } from '@/utils/date-utils';
+
+// Helper function to calculate days overdue
+const calculateDaysOverdue = (dueDate: string): number => {
+  const today = new Date();
+  const due = new Date(dueDate);
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+  
+  const diffTime = today.getTime() - due.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays > 0 ? diffDays : 0;
+};
 
 const TasksToReviewPage = () => {
   const { tasks } = useTask();
@@ -90,6 +103,7 @@ const TasksToReviewPage = () => {
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Due Date</TableHead>
+            <TableHead>Days Overdue</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -102,6 +116,9 @@ const TasksToReviewPage = () => {
                 <TableCell>{getStatusBadge(task.status)}</TableCell>
                 <TableCell>
                   {new Date(task.dueDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  {calculateDaysOverdue(task.dueDate)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Button 
@@ -117,7 +134,7 @@ const TasksToReviewPage = () => {
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
+              <TableCell colSpan={6} className="h-24 text-center">
                 No tasks found.
               </TableCell>
             </TableRow>
