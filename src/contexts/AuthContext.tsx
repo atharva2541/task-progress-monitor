@@ -391,10 +391,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const tempPassword = generateStrongPassword();
     
+    // Ensure roles array is properly set
+    const userRoles = newUser.roles || [newUser.role];
+    
     const createdUser: ExtendedUser = {
       ...newUser,
       id,
-      roles: [newUser.role],
+      roles: userRoles, // Use the roles provided or fallback to array with primary role
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newUser.name)}&background=8b5cf6&color=fff`,
       passwordExpiryDate: newExpiryDate.toISOString(),
       isFirstLogin: true, // Mark as first login to force password change
