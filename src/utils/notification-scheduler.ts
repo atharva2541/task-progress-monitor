@@ -1,4 +1,3 @@
-
 import { addDays, format, parseISO, differenceInDays, differenceInHours, isAfter } from "date-fns";
 import { Task, TaskNotificationSettings } from "@/types";
 import { sendEmail, sendTaskNotificationEmail } from "./aws-ses";
@@ -81,6 +80,7 @@ export const scheduleNotifications = async ({
                 message,
                 type: 'warning',
                 sendEmail: notificationSettings.sendEmails,
+                getUserById
               });
             }
           }
@@ -107,6 +107,7 @@ export const scheduleNotifications = async ({
             message: `Task "${task.name}" is now due and has not been submitted by ${makerName}`,
             type: 'error',
             sendEmail: notificationSettings.sendEmails,
+            getUserById
           });
           
           // Daily notifications starting from 1 day after due date - for both checkers
@@ -130,6 +131,7 @@ export const scheduleNotifications = async ({
                 message: `URGENT: Task "${task.name}" is overdue by ${i} day${i !== 1 ? 's' : ''} and still not submitted by ${makerName}`,
                 type: 'error',
                 sendEmail: notificationSettings.sendEmails,
+                getUserById
               });
             }
           }
@@ -148,6 +150,7 @@ interface ScheduleNotificationForDateProps {
   message: string;
   type: 'info' | 'warning' | 'error' | 'success';
   sendEmail: boolean;
+  getUserById: (userId: string) => any;
 }
 
 /**
@@ -162,6 +165,7 @@ const scheduleNotificationForDate = ({
   message,
   type,
   sendEmail,
+  getUserById,
 }: ScheduleNotificationForDateProps): void => {
   console.log(`[Notification Scheduler] - For ${recipient.name} (${recipient.role}): "${message}" on ${format(date, 'PPP')}`);
   
