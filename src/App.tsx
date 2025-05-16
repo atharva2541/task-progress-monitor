@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +23,8 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { ThemeProvider } from './contexts/ThemeContext';
 import UserSettingsPage from './pages/UserSettingsPage';
+import MyTasksPage from './pages/tasks/MyTasksPage';
+import TasksToReviewPage from './pages/tasks/TasksToReviewPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +77,28 @@ function App() {
                         <ProtectedRoute>
                           <AppLayout>
                             <TaskDetail />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/my-tasks"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <MyTasksPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/tasks-to-review"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <TasksToReviewPage />
                           </AppLayout>
                         </ProtectedRoute>
                       }

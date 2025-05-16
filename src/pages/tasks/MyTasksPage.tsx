@@ -31,6 +31,7 @@ const MyTasksPage = () => {
   if (!user) return null;
   
   // Get tasks assigned to this user as a maker
+  // Consider primary role and any additional roles the user might have
   const myTasks = tasks.filter(task => task.assignedTo === user.id);
   
   const getStatusBadge = (status: string) => {

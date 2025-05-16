@@ -32,14 +32,21 @@ const TasksToReviewPage = () => {
   
   if (!user) return null;
   
+  // Check if user has checker roles (primary or additional roles)
+  const userRoles = user.roles || [user.role];
+  const hasChecker1Role = userRoles.includes('checker1');
+  const hasChecker2Role = userRoles.includes('checker2');
+  
   // Get tasks where user is checker1
-  const checker1Tasks = tasks.filter(task => task.checker1 === user.id);
+  const checker1Tasks = hasChecker1Role ? 
+    tasks.filter(task => task.checker1 === user.id) : [];
   
   // Get tasks where user is checker2
-  const checker2Tasks = tasks.filter(task => 
-    task.checker2 === user.id && 
-    (task.status === 'checker1-approved' || task.status === 'approved' || task.status === 'rejected')
-  );
+  const checker2Tasks = hasChecker2Role ? 
+    tasks.filter(task => 
+      task.checker2 === user.id && 
+      (task.status === 'checker1-approved' || task.status === 'approved' || task.status === 'rejected')
+    ) : [];
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -125,6 +132,24 @@ const TasksToReviewPage = () => {
     </div>
   );
   
+  // If user doesn't have any checker roles, show a message
+  if (!hasChecker1Role && !hasChecker2Role) {
+    return (
+      <div className="container mx-auto py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Tasks to Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center py-8">
+              You don't have any checker roles assigned. Contact an administrator if you believe this is an error.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
@@ -134,39 +159,43 @@ const TasksToReviewPage = () => {
         </p>
       </div>
       
-      <Tabs defaultValue="checker1" className="w-full" onValueChange={(val) => setActiveTab(val as 'checker1' | 'checker2')}>
+      <Tabs defaultValue={hasChecker1Role ? "checker1" : "checker2"} className="w-full" onValueChange={(val) => setActiveTab(val as 'checker1' | 'checker2')}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="checker1">Checker 1 Tasks</TabsTrigger>
-          <TabsTrigger value="checker2">Checker 2 Tasks</TabsTrigger>
+          <TabsTrigger value="checker1" disabled={!hasChecker1Role}>Checker 1 Tasks</TabsTrigger>
+          <TabsTrigger value="checker2" disabled={!hasChecker2Role}>Checker 2 Tasks</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="checker1">
-          <Card>
-            <CardHeader>
-              <CardTitle>Checker 1 Tasks</CardTitle>
-              <CardDescription>
-                Tasks requiring your first-level review
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderTaskTable(checker1Tasks)}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {hasChecker1Role && (
+          <TabsContent value="checker1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Checker 1 Tasks</CardTitle>
+                <CardDescription>
+                  Tasks requiring your first-level review
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {renderTaskTable(checker1Tasks)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
         
-        <TabsContent value="checker2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Checker 2 Tasks</CardTitle>
-              <CardDescription>
-                Tasks requiring your final approval
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderTaskTable(checker2Tasks)}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {hasChecker2Role && (
+          <TabsContent value="checker2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Checker 2 Tasks</CardTitle>
+                <CardDescription>
+                  Tasks requiring your final approval
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {renderTaskTable(checker2Tasks)}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
