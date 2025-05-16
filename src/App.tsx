@@ -26,6 +26,7 @@ import UserSettingsPage from './pages/UserSettingsPage';
 import MyTasksPage from './pages/tasks/MyTasksPage';
 import TasksToReviewPage from './pages/tasks/TasksToReviewPage';
 import TeamDashboardPage from './pages/dashboard/TeamDashboardPage';
+import EscalationsPage from './pages/escalations/EscalationsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,17 @@ function App() {
                         <ProtectedRoute>
                           <AppLayout>
                             <TeamDashboardPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
+                      path="/escalations"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <EscalationsPage />
                           </AppLayout>
                         </ProtectedRoute>
                       }

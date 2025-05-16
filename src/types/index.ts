@@ -14,6 +14,9 @@ export type TaskPriority = 'low' | 'medium' | 'high';
 export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'checker1-approved' | 'approved' | 'rejected';
 export type TaskFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'quarterly' | 'annually' | 'one-time';
 
+// New type for escalation priority
+export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
+
 export interface TaskAttachment {
   id: string;
   taskId: string;
@@ -55,6 +58,14 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
   notificationSettings?: TaskNotificationSettings; // New field for notification settings
+  // New field to indicate if task is escalated and its priority
+  escalation?: {
+    isEscalated: boolean;
+    priority: EscalationPriority;
+    reason: string;
+    escalatedAt: string; // ISO date string
+    escalatedBy?: string; // User ID who escalated the task
+  };
 }
 
 export interface TaskComment {

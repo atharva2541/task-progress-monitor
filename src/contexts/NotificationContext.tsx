@@ -30,6 +30,15 @@ const mockNotifications: Notification[] = [
     type: 'error',
     read: false,
     createdAt: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString()
+  },
+  {
+    id: '4',
+    userId: '4', // For Checker2
+    title: 'Critical Escalation',
+    message: 'The task "Monthly Fraud Monitoring" is severely overdue and requires immediate attention.',
+    type: 'error',
+    read: false,
+    createdAt: new Date().toISOString()
   }
 ];
 

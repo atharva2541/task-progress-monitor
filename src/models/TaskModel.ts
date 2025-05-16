@@ -1,5 +1,5 @@
 
-import { Task, TaskStatus } from '@/types';
+import { Task, TaskStatus, EscalationPriority } from '@/types';
 
 export type TaskServiceProps = {
   tasks: Task[];
@@ -19,4 +19,8 @@ export type TaskServiceProps = {
     s3Key: string;
   }) => Promise<void>;
   removeTaskAttachment: (taskId: string, attachmentId: string) => void;
+  // New methods for escalations
+  escalateTask: (taskId: string, priority: EscalationPriority, reason: string) => void;
+  deescalateTask: (taskId: string) => void;
+  getEscalatedTasks: () => Task[];
 };

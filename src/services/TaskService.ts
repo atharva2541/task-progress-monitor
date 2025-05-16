@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { Task, TaskStatus, TaskComment, TaskAttachment } from '@/types';
+import { Task, TaskStatus, TaskComment, TaskAttachment, EscalationPriority } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockTasks } from '@/data/mockTasks';
@@ -86,6 +85,11 @@ export function useTaskService() {
           status,
           updatedAt: new Date().toISOString()
         };
+        
+        // Add submittedAt date when the task is submitted for review
+        if (status === 'submitted') {
+          updatedTask.submittedAt = new Date().toISOString();
+        }
         
         if (comment) {
           updatedTask.comments = [
@@ -211,6 +215,63 @@ export function useTaskService() {
     }
   }, []);
 
+  // New method to escalate a task
+  const escalateTask = (taskId: string, priority: EscalationPriority, reason: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        return {
+          ...task,
+          escalation: {
+            isEscalated: true,
+            priority,
+            reason,
+            escalatedAt: new Date().toISOString(),
+            escalatedBy: user?.id
+          },
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return task;
+    }));
+    
+    const priorityLabels = {
+      'critical': 'Critical',
+      'high': 'High',
+      'medium': 'Medium',
+      'low': 'Low'
+    };
+    
+    toast({
+      title: `Task Escalated - ${priorityLabels[priority]} Priority`,
+      description: `The task has been escalated with reason: ${reason}`,
+      variant: priority === 'critical' || priority === 'high' ? 'destructive' : 'default'
+    });
+  };
+
+  // Method to de-escalate a task
+  const deescalateTask = (taskId: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId && task.escalation) {
+        const { escalation, ...taskWithoutEscalation } = task;
+        return {
+          ...taskWithoutEscalation,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return task;
+    }));
+    
+    toast({
+      title: 'Task De-escalated',
+      description: 'The task has been de-escalated and returned to normal workflow.'
+    });
+  };
+
+  // Method to get all escalated tasks
+  const getEscalatedTasks = () => {
+    return tasks.filter(task => task.escalation?.isEscalated);
+  };
+
   return {
     tasks,
     addTask,
@@ -223,6 +284,10 @@ export function useTaskService() {
     getTasksByChecker,
     getUserById,
     addTaskAttachment,
-    removeTaskAttachment
+    removeTaskAttachment,
+    // New escalation methods
+    escalateTask,
+    deescalateTask,
+    getEscalatedTasks
   };
 }
