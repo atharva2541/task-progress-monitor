@@ -41,8 +41,8 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <TaskProvider>
-              <NotificationProvider>
+            <NotificationProvider>
+              <TaskProvider>
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
@@ -167,8 +167,8 @@ function App() {
                     <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
                   </Routes>
                 </BrowserRouter>
-              </NotificationProvider>
-            </TaskProvider>
+              </TaskProvider>
+            </NotificationProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
