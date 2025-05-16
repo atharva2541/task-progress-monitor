@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -99,6 +100,7 @@ const UserManagementPage = () => {
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   // Initialize form with react-hook-form
   const form = useForm<UserFormValues>({
@@ -110,6 +112,15 @@ const UserManagementPage = () => {
       roles: ['maker']
     },
   });
+
+  // Function to check if email already exists
+  const checkEmailExists = (email: string, userId?: string): boolean => {
+    return users.some(user => {
+      // If editing a user, exclude the current user from the check
+      if (userId && user.id === userId) return false;
+      return user.email.toLowerCase() === email.toLowerCase();
+    });
+  };
 
   // Handle role selection changes
   const handleRoleChange = (role: string) => {
@@ -192,10 +203,22 @@ const UserManagementPage = () => {
         roles: ['maker']
       });
     }
+    setEmailError(null);
   }, [userToEdit, form]);
 
   // Handle form submission
   const onSubmit = (data: UserFormValues) => {
+    // Reset previous email error
+    setEmailError(null);
+    
+    // Check if email already exists
+    const emailExists = checkEmailExists(data.email, userToEdit?.id);
+    
+    if (emailExists) {
+      setEmailError(`A user with the email ${data.email} already exists`);
+      return;
+    }
+    
     // Ensure that if admin role is selected, it's the only role
     let finalRoles = [...data.roles];
     let finalRole = data.role;
@@ -403,6 +426,9 @@ const UserManagementPage = () => {
                     <FormControl>
                       <Input placeholder="john@example.com" {...field} />
                     </FormControl>
+                    {emailError && (
+                      <p className="text-sm font-medium text-destructive">{emailError}</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -502,6 +528,7 @@ const UserManagementPage = () => {
                   onClick={() => {
                     setUserToEdit(null);
                     setIsDialogOpen(false);
+                    setEmailError(null);
                     form.reset();
                   }}
                 >
