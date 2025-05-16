@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -171,8 +172,15 @@ const UserManagementPage = () => {
       });
       setUserToEdit(null);
     } else {
-      // Create new user
-      addUser(processedData);
+      // Create new user - ensure all required fields are present
+      const newUser: Omit<User, 'id'> = {
+        name: processedData.name,
+        email: processedData.email,
+        role: processedData.role,
+        roles: processedData.roles
+      };
+      
+      addUser(newUser);
       toast({
         title: 'User Created',
         description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
