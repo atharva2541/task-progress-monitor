@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FileText, ArrowLeft, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UserTasksViewProps {
   userId: string;
@@ -34,7 +35,7 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
   const { users } = useAuth();
   const user = users.find(u => u.id === userId);
   
-  const [activeTab, setActiveTab] = useState<'maker' | 'checker1' | 'checker2'>('maker');
+  const [activeTab, setActiveTab] = useState<'my-tasks' | 'to-review'>('my-tasks');
   
   if (!user) {
     return (
@@ -48,24 +49,26 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
     );
   }
 
-  // Get tasks based on active tab
-  let filteredTasks = [];
-  if (activeTab === 'maker') {
-    filteredTasks = getTasksByAssignee(userId);
-  } else if (activeTab === 'checker1') {
-    filteredTasks = tasks.filter(task => task.checker1 === userId);
-  } else if (activeTab === 'checker2') {
-    filteredTasks = tasks.filter(task => task.checker2 === userId);
-  }
+  // Get tasks assigned to this user (maker role)
+  const myTasks = getTasksByAssignee(userId);
+  
+  // Get tasks where user is checker1 or checker2
+  const tasksToReview = tasks.filter(
+    task => task.checker1 === userId || task.checker2 === userId
+  );
 
-  const taskStats = {
-    pending: filteredTasks.filter(task => task.status === 'pending').length,
-    inProgress: filteredTasks.filter(task => task.status === 'in-progress').length,
-    submitted: filteredTasks.filter(task => task.status === 'submitted').length,
-    approved: filteredTasks.filter(task => task.status === 'approved').length,
-    rejected: filteredTasks.filter(task => task.status === 'rejected').length,
-    total: filteredTasks.length
-  };
+  // Get stats based on active tab
+  const getTaskStats = (taskList: any[]) => ({
+    pending: taskList.filter(task => task.status === 'pending').length,
+    inProgress: taskList.filter(task => task.status === 'in-progress').length,
+    submitted: taskList.filter(task => task.status === 'submitted').length,
+    approved: taskList.filter(task => task.status === 'approved').length,
+    rejected: taskList.filter(task => task.status === 'rejected').length,
+    total: taskList.length
+  });
+  
+  const myTasksStats = getTaskStats(myTasks);
+  const reviewTasksStats = getTaskStats(tasksToReview);
   
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -97,6 +100,58 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
     }
   };
 
+  // Helper to render task table
+  const renderTaskTable = (taskList: any[]) => (
+    <div className="border rounded-md">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Task Name</TableHead>
+            <TableHead>Priority</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {taskList.length > 0 ? (
+            taskList.map((task) => (
+              <TableRow key={task.id}>
+                <TableCell className="font-medium">{task.name}</TableCell>
+                <TableCell>{getPriorityBadge(task.priority)}</TableCell>
+                <TableCell>{getStatusBadge(task.status)}</TableCell>
+                <TableCell>
+                  {new Date(task.dueDate).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate(`/tasks/${task.id}`)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    View
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center">
+                No tasks found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+        {taskList.length > 0 && (
+          <TableCaption>
+            Showing {taskList.length} tasks
+          </TableCaption>
+        )}
+      </Table>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -112,137 +167,143 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
           <p className="text-muted-foreground">User Performance Dashboard</p>
         </div>
       </div>
-      
-      <div className="grid gap-4 md:grid-cols-6">
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.total}</div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.pending}</div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.inProgress}</div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Submitted</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.submitted}</div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.approved}</div>
-          </CardContent>
-        </Card>
-        <Card className="md:col-span-1">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{taskStats.rejected}</div>
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="flex border-b">
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'maker' ? 'border-b-2 border-primary' : ''}`}
-          onClick={() => setActiveTab('maker')}
-        >
-          Maker Tasks
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'checker1' ? 'border-b-2 border-primary' : ''}`}
-          onClick={() => setActiveTab('checker1')}
-        >
-          Checker 1 Tasks
-        </button>
-        <button
-          className={`px-4 py-2 font-medium ${activeTab === 'checker2' ? 'border-b-2 border-primary' : ''}`}
-          onClick={() => setActiveTab('checker2')}
-        >
-          Checker 2 Tasks
-        </button>
-      </div>
-      
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>{activeTab === 'maker' ? 'Maker' : activeTab === 'checker1' ? 'Checker 1' : 'Checker 2'} Tasks</CardTitle>
-          <CardDescription>
-            Tasks where user is acting as {activeTab === 'maker' ? 'a Maker' : activeTab === 'checker1' ? 'Checker 1' : 'Checker 2'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTasks.length > 0 ? (
-                  filteredTasks.map((task) => (
-                    <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.name}</TableCell>
-                      <TableCell>{getPriorityBadge(task.priority)}</TableCell>
-                      <TableCell>{getStatusBadge(task.status)}</TableCell>
-                      <TableCell>
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => navigate(`/tasks/${task.id}`)}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No tasks found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-              {filteredTasks.length > 0 && (
-                <TableCaption>
-                  Showing {filteredTasks.length} tasks
-                </TableCaption>
-              )}
-            </Table>
+
+      <Tabs defaultValue="my-tasks" className="w-full" onValueChange={(val) => setActiveTab(val as 'my-tasks' | 'to-review')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="my-tasks">My Tasks</TabsTrigger>
+          <TabsTrigger value="to-review">Tasks to Review</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="my-tasks">
+          <div className="grid gap-4 md:grid-cols-6">
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.total}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.pending}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.inProgress}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Submitted</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.submitted}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.approved}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{myTasksStats.rejected}</div>
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+          
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle>My Tasks</CardTitle>
+              <CardDescription>
+                Tasks where you are the assignee (Maker)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderTaskTable(myTasks)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="to-review">
+          <div className="grid gap-4 md:grid-cols-6">
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Total</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.total}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Pending</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.pending}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">In Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.inProgress}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Submitted</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.submitted}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Approved</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.approved}</div>
+              </CardContent>
+            </Card>
+            <Card className="md:col-span-1">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{reviewTasksStats.rejected}</div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle>Tasks to Review</CardTitle>
+              <CardDescription>
+                Tasks where you are Checker 1 or Checker 2
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {renderTaskTable(tasksToReview)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
