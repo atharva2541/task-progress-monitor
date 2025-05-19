@@ -1,5 +1,5 @@
 
-import { Task } from '@/models/TaskModel';
+import { Task, TaskStatus } from '@/types';
 import { calculateDaysOverdue } from '@/utils/date-utils';
 import { subMonths } from 'date-fns';
 
