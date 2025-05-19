@@ -151,6 +151,17 @@ function App() {
                     />
                     
                     <Route
+                      path="/admin/productivity"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <ProductivityAnalyticsPage />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    <Route
                       path="/calendar"
                       element={
                         <ProtectedRoute>
