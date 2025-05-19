@@ -19,7 +19,8 @@ import {
   Users, 
   Calendar, 
   Settings, 
-  BarChart4 
+  BarChart4, 
+  FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -37,6 +38,7 @@ export function AppSidebar() {
     const roleSpecificItems = {
       admin: [
         { title: 'User Management', icon: Users, path: '/admin/users' },
+        { title: 'User Productivity', icon: BarChart4, path: '/admin/user-productivity' },
         { title: 'Settings', icon: Settings, path: '/settings' },
       ],
       maker: [],
