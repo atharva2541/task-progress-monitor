@@ -93,7 +93,7 @@ export function AppSidebar() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <Link to="/system-settings" className="flex items-center gap-3">
+                    <Link to="/admin/system" className="flex items-center gap-3">
                       <Settings className="h-5 w-5" />
                       <span>System Settings</span>
                     </Link>
