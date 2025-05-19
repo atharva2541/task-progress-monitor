@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,9 +8,6 @@ import { TaskStatusChart } from './TaskStatusChart';
 import { TaskPriorityChart } from './TaskPriorityChart';
 import { RecentTasksList } from './RecentTasksList';
 import { TeamPerformanceChart } from './TeamPerformanceChart';
-import { Button } from '@/components/ui/button';
-import { FileText, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 export function AdminDashboard() {
   const { tasks } = useTask();
@@ -55,26 +53,9 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Overview of system performance and metrics</p>
-        </div>
-        
-        <div className="flex gap-4">
-          <Button variant="outline" asChild>
-            <Link to="/admin/user-productivity">
-              <Users className="mr-2 h-4 w-4" />
-              User Productivity
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link to="/admin/reports">
-              <FileText className="mr-2 h-4 w-4" />
-              Reports
-            </Link>
-          </Button>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+        <p className="text-muted-foreground">Overview of system performance and metrics</p>
       </div>
 
       <DashboardSummaryCards 
