@@ -1,5 +1,5 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -37,6 +37,12 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ onCreateTask
       });
       return;
     }
+    
+    // Ensure observationStatus is set (should be defaulted to "no", but double-check)
+    if (!data.observationStatus) {
+      data.observationStatus = "no";
+    }
+    
     onCreateTask(data);
   };
 

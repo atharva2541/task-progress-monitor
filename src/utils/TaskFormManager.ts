@@ -23,8 +23,8 @@ export const taskFormSchema = z.object({
     preDays: [1, 3, 7],
     customDays: [],
   }),
-  // Added observation status as required
-  observationStatus: z.enum(["yes", "no", "mixed"]).optional(),
+  // Making observation status required
+  observationStatus: z.enum(["yes", "no", "mixed"]).default("no"),
 })
 // Add a more explicit refinement to block submission when Maker and Checker1 are the same
 .refine(
@@ -54,7 +54,7 @@ export class TaskFormManager {
         preDays: [1, 3, 7], // Default mandatory days
         customDays: [], // Optional custom days
       },
-      observationStatus: undefined, // Initially undefined
+      observationStatus: "no", // Set default value instead of undefined
     };
   }
 
@@ -96,7 +96,7 @@ export class TaskFormManager {
       updatedAt: new Date().toISOString(),
       comments: [],
       attachments: [],
-      // Set default observationStatus value - initially null since it hasn't been observed yet
+      // Always include observation status with default value if not provided
       observationStatus: data.observationStatus || 'no',
     };
   }
