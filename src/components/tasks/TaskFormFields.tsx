@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -249,14 +249,5 @@ export const TaskFormFields = ({ form }) => {
   );
 };
 
-// Add the missing FormDescription component
-const FormDescription = React.forwardRef(({ className, ...props }, ref) => {
-  return (
-    <p
-      ref={ref}
-      className={'text-sm text-muted-foreground ${className}'}
-      {...props}
-    />
-  );
-});
-FormDescription.displayName = "FormDescription";
+// Remove the duplicate FormDescription component since we're now importing it
+// from @/components/ui/form at the top of the file
