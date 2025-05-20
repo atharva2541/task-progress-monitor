@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -41,6 +42,35 @@ export interface TaskNotificationSettings {
   notifyChecker2: boolean;
 }
 
+// New interface for task approval history
+export interface TaskApproval {
+  id: string;
+  timestamp: string; // ISO date string
+  userId: string; // User ID who approved/rejected
+  userRole: UserRole; // Role of the user who approved/rejected
+  status: 'approved' | 'rejected';
+  comment?: string;
+}
+
+// New interface for task instances (recurring task occurrences)
+export interface TaskInstance {
+  id: string;
+  baseTaskId: string; // ID of the parent recurring task
+  instanceReference: string; // Human-readable reference code (e.g., "TASK-123-202505")
+  periodStart: string; // ISO date string for the start of the period this instance covers
+  periodEnd: string; // ISO date string for the end of the period this instance covers
+  status: TaskStatus;
+  dueDate: string; // ISO date string
+  submittedAt?: string; // ISO date string
+  completedAt?: string; // ISO date string
+  comments: TaskComment[];
+  attachments: TaskAttachment[];
+  approvals: TaskApproval[]; // Record of each approval/rejection
+  observationStatus: ObservationStatus;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -60,7 +90,6 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
   notificationSettings?: TaskNotificationSettings; // New field for notification settings
-  // Updated: Made observationStatus required and non-nullable
   observationStatus: ObservationStatus;
   // New fields to track observation status history
   observationHistory?: {
@@ -76,6 +105,14 @@ export interface Task {
     escalatedAt: string; // ISO date string
     escalatedBy?: string; // User ID who escalated the task
   };
+  // New field to track instances of recurring tasks
+  instances?: TaskInstance[];
+  // Flag to indicate if this is the task template (true) or an active instance (false)
+  isTemplate?: boolean;
+  // Reference to the next scheduled instance (if this is a template)
+  currentInstanceId?: string;
+  // Date when the next instance should be generated
+  nextInstanceDate?: string; // ISO date string
 }
 
 export interface TaskComment {

@@ -40,6 +40,13 @@ export const taskFormSchema = z.object({
     message: "Maker and Second Checker cannot be the same user",
     path: ["checker2"], // This ensures the error is associated with the checker2 field
   }
+)
+.refine(
+  (data) => data.checker1 !== data.checker2,
+  {
+    message: "First Checker and Second Checker cannot be the same user",
+    path: ["checker2"], // This ensures the error is associated with the checker2 field
+  }
 );
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -66,6 +73,8 @@ export class TaskFormManager {
   }
 
   static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Task {
+    const now = new Date().toISOString();
+    
     // Create full notification settings with all mandatory settings enabled
     const notificationSettings: TaskNotificationSettings = {
       // Pre-notifications settings
@@ -99,12 +108,15 @@ export class TaskFormManager {
       dueDate: data.dueDate,
       status: 'pending',
       notificationSettings,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
       comments: [],
       attachments: [],
       // Always include observation status with default value if not provided
       observationStatus: data.observationStatus || 'no',
+      // For recurring tasks, add additional fields
+      isTemplate: data.isRecurring,
+      instances: [],
     };
   }
 

@@ -31,7 +31,7 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, onUpdateTa
     }
   }, [task, form]);
   
-  // Validate that Maker and Checkers are not the same on submit
+  // Validate that Maker, Checker1, and Checker2 are not the same on submit
   const handleSubmit = (data: TaskFormValues) => {
     if (data.assignedTo === data.checker1) {
       toast({
@@ -55,6 +55,19 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, onUpdateTa
       form.setError("checker2", {
         type: "manual", 
         message: "Maker and Second Checker cannot be the same user"
+      });
+      return;
+    }
+    
+    if (data.checker1 === data.checker2) {
+      toast({
+        title: "Validation Error",
+        description: "First Checker and Second Checker cannot be the same user",
+        variant: "destructive"
+      });
+      form.setError("checker2", {
+        type: "manual", 
+        message: "First Checker and Second Checker cannot be the same user"
       });
       return;
     }

@@ -1,5 +1,5 @@
 
-import { Task, TaskStatus, EscalationPriority, ObservationStatus } from '@/types';
+import { Task, TaskStatus, EscalationPriority, ObservationStatus, TaskInstance, TaskApproval } from '@/types';
 
 export type TaskServiceProps = {
   tasks: Task[];
@@ -26,4 +26,15 @@ export type TaskServiceProps = {
   escalateTask: (taskId: string, priority: EscalationPriority, reason: string) => void;
   deescalateTask: (taskId: string) => void;
   getEscalatedTasks: () => Task[];
+  
+  // New methods for task instances
+  createTaskInstance: (baseTaskId: string) => Promise<string>; // Returns the new instance ID
+  getTaskInstanceById: (instanceId: string) => TaskInstance | undefined;
+  getTaskInstances: (baseTaskId: string) => TaskInstance[];
+  addTaskApproval: (
+    instanceId: string, 
+    approval: Omit<TaskApproval, 'id' | 'timestamp'>
+  ) => void;
+  completeTaskInstance: (instanceId: string) => void;
+  rolloverRecurringTask: (baseTaskId: string) => Promise<string>; // Creates next instance based on frequency
 };
