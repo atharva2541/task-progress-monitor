@@ -23,10 +23,15 @@ export const taskFormSchema = z.object({
     preDays: [1, 3, 7],
     customDays: [],
   }),
-}).refine((data) => data.assignedTo !== data.checker1, {
-  message: "Maker and First Checker cannot be the same user",
-  path: ["checker1"],
-});
+})
+// Add a more explicit refinement to block submission when Maker and Checker1 are the same
+.refine(
+  (data) => data.assignedTo !== data.checker1, 
+  {
+    message: "Maker and First Checker cannot be the same user",
+    path: ["checker1"], // This ensures the error is associated with the checker1 field
+  }
+);
 
 export type TaskFormValues = z.infer<typeof taskFormSchema>;
 

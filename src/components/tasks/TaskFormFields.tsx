@@ -35,6 +35,26 @@ export const TaskFormFields = ({ form }) => {
     }
   }, [selectedMakerId, selectedChecker1Id, form]);
 
+  // Additional validation before form submission
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      // Re-validate when either assignedTo or checker1 changes
+      if (name === "assignedTo" || name === "checker1") {
+        const maker = form.getValues("assignedTo");
+        const checker1 = form.getValues("checker1");
+        
+        if (maker && checker1 && maker === checker1) {
+          form.setError("checker1", {
+            type: "manual",
+            message: "Maker and First Checker cannot be the same user"
+          });
+        }
+      }
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   return (
     <div className="space-y-4">
       {showMakerCheckerWarning && (
@@ -227,6 +247,9 @@ export const TaskFormFields = ({ form }) => {
                   // Only set the value if it's not the same as the maker
                   if (value !== selectedMakerId) {
                     field.onChange(value);
+                  } else {
+                    // Show error toast or alert
+                    setShowMakerCheckerWarning(true);
                   }
                 }} 
                 value={field.value}
