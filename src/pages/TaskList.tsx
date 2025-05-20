@@ -23,7 +23,7 @@ const TaskList: React.FC = () => {
 
   const handleCreateTask = (formData: TaskFormValues) => {
     try {
-      // Ensure all required properties are provided and not optional
+      // Only admin can create tasks (this already exists)
       addTask({
         name: formData.name,
         description: formData.description,
@@ -55,7 +55,7 @@ const TaskList: React.FC = () => {
   };
 
   const handleEditTask = (formData: TaskFormValues) => {
-    if (!selectedTask) return;
+    if (!selectedTask || !isAdmin) return; // Ensure only admin can edit
     try {
       updateTask(selectedTask.id, formData);
       setIsEditDialogOpen(false);
@@ -75,6 +75,7 @@ const TaskList: React.FC = () => {
   };
 
   const handleDeleteTask = (taskId: string) => {
+    if (!isAdmin) return; // Ensure only admin can delete
     try {
       deleteTask(taskId);
       toast({
@@ -88,6 +89,14 @@ const TaskList: React.FC = () => {
         variant: "destructive",
       });
       console.error("Error deleting task:", error);
+    }
+  };
+
+  // Function to handle edit task request - only proceed if admin
+  const handleEditRequest = (task: Task) => {
+    if (isAdmin) {
+      setSelectedTask(task);
+      setIsEditDialogOpen(true);
     }
   };
 
@@ -111,14 +120,12 @@ const TaskList: React.FC = () => {
       {/* Task List */}
       <TaskTable 
         tasks={tasks} 
-        onEditTask={(task) => {
-          setSelectedTask(task);
-          setIsEditDialogOpen(true);
-        }} 
+        onEditTask={isAdmin ? handleEditRequest : undefined} 
+        onDeleteTask={isAdmin ? handleDeleteTask : undefined} // Pass delete handler only if admin
       />
 
-      {/* Edit Dialog */}
-      {selectedTask && (
+      {/* Edit Dialog - only accessible to admins */}
+      {isAdmin && selectedTask && (
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogHeader>
             <DialogTitle>Edit Task</DialogTitle>
