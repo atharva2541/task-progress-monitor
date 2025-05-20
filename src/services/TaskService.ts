@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Task, TaskStatus, TaskComment, TaskAttachment, EscalationPriority } from '@/types';
+import { Task, TaskStatus, TaskComment, TaskAttachment, EscalationPriority, ObservationStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { mockTasks } from '@/data/mockTasks';
@@ -122,6 +122,33 @@ export function useTaskService() {
       title: statusMessages[status],
       description: `The task status has been updated to ${status}.`,
       variant: status === 'rejected' ? 'destructive' : 'default'
+    });
+  };
+
+  const updateObservationStatus = (taskId: string, status: ObservationStatus, userId: string) => {
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        // Store previous status for history tracking
+        const previousStatus = task.observationStatus || null;
+        
+        return {
+          ...task,
+          observationStatus: status,
+          // Add to history if there was a previous status
+          observationHistory: previousStatus ? {
+            previousStatus,
+            changedAt: new Date().toISOString(),
+            changedBy: userId
+          } : undefined,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return task;
+    }));
+
+    toast({
+      title: 'Observation status updated',
+      description: `Task observation status has been set to ${status === 'yes' ? 'Yes' : status === 'no' ? 'No' : 'Mixed'}.`
     });
   };
 
@@ -288,6 +315,8 @@ export function useTaskService() {
     // New escalation methods
     escalateTask,
     deescalateTask,
-    getEscalatedTasks
+    getEscalatedTasks,
+    // New method to update observation status
+    updateObservationStatus
   };
 }
