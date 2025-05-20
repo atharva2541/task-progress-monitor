@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import { isAwsConfigured } from "@/utils/aws-config";
+import { isAwsConfigured, AWS_REGIONS } from "@/utils/aws-config";
 
 // Form schema
 const awsFormSchema = z.object({
@@ -93,16 +92,12 @@ export function AwsSettings() {
                         <SelectValue placeholder="Select AWS region" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="us-east-1">US East (N. Virginia)</SelectItem>
-                      <SelectItem value="us-east-2">US East (Ohio)</SelectItem>
-                      <SelectItem value="us-west-1">US West (N. California)</SelectItem>
-                      <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
-                      <SelectItem value="eu-west-1">EU (Ireland)</SelectItem>
-                      <SelectItem value="eu-central-1">EU (Frankfurt)</SelectItem>
-                      <SelectItem value="ap-northeast-1">Asia Pacific (Tokyo)</SelectItem>
-                      <SelectItem value="ap-southeast-1">Asia Pacific (Singapore)</SelectItem>
-                      <SelectItem value="ap-southeast-2">Asia Pacific (Sydney)</SelectItem>
+                    <SelectContent className="max-h-[300px]">
+                      {AWS_REGIONS.map((region) => (
+                        <SelectItem key={region.value} value={region.value}>
+                          {region.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
