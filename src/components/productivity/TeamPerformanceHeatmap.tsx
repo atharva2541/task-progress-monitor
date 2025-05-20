@@ -3,8 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateActivityHeatmapData } from '@/utils/productivity-utils';
 
-export function TeamPerformanceHeatmap({ tasks, timeRange }) {
-  const [activityData, setActivityData] = useState({});
+// Define the type for our activity data
+type ActivityData = {
+  [key: string]: number;
+};
+
+export function TeamPerformanceHeatmap({ tasks, timeRange }: { tasks: any; timeRange: any }) {
+  const [activityData, setActivityData] = useState<ActivityData>({});
 
   useEffect(() => {
     // Generate heatmap data based on tasks and timeRange
@@ -21,7 +26,7 @@ export function TeamPerformanceHeatmap({ tasks, timeRange }) {
   const maxActivity = Object.values(activityData).reduce((max, val) => Math.max(max, val), 0);
   
   // Get color intensity based on activity level
-  const getColorIntensity = (count) => {
+  const getColorIntensity = (count: number) => {
     if (!count) return 'bg-gray-100';
     const intensity = Math.min(0.9, (count / maxActivity) * 0.8 + 0.1);
     return `rgb(79, 70, 229, ${intensity})`;
