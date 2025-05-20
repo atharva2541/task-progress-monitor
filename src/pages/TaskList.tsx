@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -18,9 +19,10 @@ const TaskList: React.FC = () => {
 
   const handleCreateTask = (formData: TaskFormValues) => {
     try {
-      // Add observationStatus to the task
+      // Add status and observationStatus to the task
       addTask({
         ...formData,
+        status: 'pending', // Set the default status to 'pending'
         observationStatus: formData.observationStatus || 'no', // Ensure observationStatus is set
       });
       
