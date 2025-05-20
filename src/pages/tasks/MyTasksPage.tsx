@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -26,7 +25,9 @@ import { useNavigate } from 'react-router-dom';
 import { calculateDaysOverdue } from '@/utils/date-utils';
 
 const MyTasksPage = () => {
-  const { tasks, getUserById } = useAuthorizedTasks(); // Using authorized tasks instead
+  // Fixed: Use the task context with authorized tasks
+  const taskContext = useAuthorizedTasks();
+  const { tasks } = taskContext;
   const { user } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
@@ -34,7 +35,6 @@ const MyTasksPage = () => {
   if (!user) return null;
   
   // Get tasks assigned to this user as a maker
-  // Consider primary role and any additional roles the user might have
   const userRoles = user.roles || [user.role];
   const myTasks = tasks.filter(task => task.assignedTo === user.id);
   
@@ -74,7 +74,7 @@ const MyTasksPage = () => {
           read: false
         });
         
-        // Notify checkers about overdue tasks
+        // Check if we can access the correct checker users through the task context
         if (task.checker1) {
           addNotification({
             userId: task.checker1,
