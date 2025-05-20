@@ -14,12 +14,14 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
 import { calculateDaysOverdue } from '@/utils/date-utils';
+import { Task } from '@/types';
 
 type TaskTableProps = {
-  tasks: any[];
+  tasks: Task[];
+  onEditTask?: (task: Task) => void;
 };
 
-export const TaskTable = ({ tasks }: TaskTableProps) => {
+export const TaskTable = ({ tasks, onEditTask }: TaskTableProps) => {
   const navigate = useNavigate();
 
   return (
@@ -49,14 +51,25 @@ export const TaskTable = ({ tasks }: TaskTableProps) => {
                   {calculateDaysOverdue(task.dueDate)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/tasks/${task.id}`)}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    View
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    {onEditTask && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onEditTask(task)}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => navigate(`/tasks/${task.id}`)}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      View
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))

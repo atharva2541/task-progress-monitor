@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
 import { TaskTable } from '@/components/tasks/review/TaskTable';
-import { Task, TaskFormValues } from '@/types';
+import { Task } from '@/types';
+import { TaskFormValues } from '@/utils/TaskFormManager';
 import { useTask } from '@/contexts/TaskContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -91,10 +92,13 @@ const TaskList: React.FC = () => {
       </div>
 
       {/* Task List */}
-      <TaskTable tasks={tasks} onEditTask={(task) => {
-        setSelectedTask(task);
-        setIsEditDialogOpen(true);
-      }} />
+      <TaskTable 
+        tasks={tasks} 
+        onEditTask={(task) => {
+          setSelectedTask(task);
+          setIsEditDialogOpen(true);
+        }} 
+      />
 
       {/* Edit Dialog */}
       {selectedTask && (
