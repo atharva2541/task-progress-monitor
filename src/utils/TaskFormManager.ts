@@ -1,3 +1,4 @@
+
 import { z } from "zod";
 import { Task, TaskNotificationSettings } from "@/types";
 import { UseFormReturn } from "react-hook-form";
@@ -23,7 +24,7 @@ export const taskFormSchema = z.object({
     customDays: [],
   }),
 }).refine((data) => data.assignedTo !== data.checker1, {
-  message: "Maker cannot be the same as First Checker",
+  message: "Maker and First Checker cannot be the same user",
   path: ["checker1"],
 });
 

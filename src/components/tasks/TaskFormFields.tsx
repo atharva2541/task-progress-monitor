@@ -37,6 +37,7 @@ export const TaskFormFields = ({ form }) => {
         </Alert>
       )}
       
+      {/* Task Name field */}
       <FormField
         control={form.control}
         name="name"
@@ -51,6 +52,7 @@ export const TaskFormFields = ({ form }) => {
         )}
       />
 
+      {/* Description field */}
       <FormField
         control={form.control}
         name="description"
@@ -65,6 +67,7 @@ export const TaskFormFields = ({ form }) => {
         )}
       />
 
+      {/* Category and Due Date fields */}
       <div className="grid grid-cols-2 gap-4">
         <FormField
           control={form.control}
@@ -94,6 +97,7 @@ export const TaskFormFields = ({ form }) => {
           )}
         />
 
+        {/* Priority and Frequency fields */}
         <FormField
           control={form.control}
           name="priority"
@@ -145,6 +149,7 @@ export const TaskFormFields = ({ form }) => {
         />
       </div>
 
+      {/* Recurring Task toggle */}
       <FormField
         control={form.control}
         name="isRecurring"
@@ -164,7 +169,9 @@ export const TaskFormFields = ({ form }) => {
         )}
       />
 
+      {/* User assignments section */}
       <div className="grid grid-cols-3 gap-4">
+        {/* Maker selection */}
         <FormField
           control={form.control}
           name="assignedTo"
@@ -190,6 +197,7 @@ export const TaskFormFields = ({ form }) => {
           )}
         />
 
+        {/* Checker1 selection with validation */}
         <FormField
           control={form.control}
           name="checker1"
@@ -210,16 +218,20 @@ export const TaskFormFields = ({ form }) => {
                       disabled={user.id === selectedMakerId}
                       className={user.id === selectedMakerId ? "text-gray-400 line-through" : ""}
                     >
-                      {user.name} {user.id === selectedMakerId ? "(Maker)" : ""}
+                      {user.name} {user.id === selectedMakerId ? "(Cannot be Maker)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <FormDescription className="text-xs text-red-500">
+                {selectedMakerId === field.value && "First Checker cannot be the same as Maker"}
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        {/* Checker2 selection */}
         <FormField
           control={form.control}
           name="checker2"
