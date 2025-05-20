@@ -17,6 +17,9 @@ export type TaskFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'qu
 // New type for escalation priority
 export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
 
+// New type for observations status
+export type ObservationStatus = 'yes' | 'no' | 'mixed' | null;
+
 export interface TaskAttachment {
   id: string;
   taskId: string;
@@ -58,6 +61,14 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
   notificationSettings?: TaskNotificationSettings; // New field for notification settings
+  // New field for observations status
+  observationStatus?: ObservationStatus;
+  // New fields to track observation status history
+  observationHistory?: {
+    previousStatus: ObservationStatus;
+    changedAt: string; // ISO date string
+    changedBy: string; // User ID who changed the status
+  };
   // New field to indicate if task is escalated and its priority
   escalation?: {
     isEscalated: boolean;

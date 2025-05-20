@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTask } from '@/contexts/TaskContext';
@@ -15,6 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { TaskAttachments } from '@/components/tasks/TaskAttachments';
+import { ObservationStatusDropdown } from '@/components/tasks/ObservationStatusDropdown';
+import { DaysPastDueCounter } from '@/components/tasks/DaysPastDueCounter';
 import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 
@@ -92,6 +95,9 @@ const TaskDetail = () => {
   
   // Determine if checker2 can approve or reject - only if checker1 has approved
   const canChecker2Action = isChecker2 && task.status === 'checker1-approved';
+
+  // Can edit observation status (maker, checker1, checker2, or admin)
+  const canEditObservationStatus = isMaker || isChecker1 || isChecker2 || isAdmin;
 
   // Can upload attachments (maker)
   const canUploadAttachments = isMaker && ['pending', 'in-progress', 'rejected'].includes(task.status);
@@ -187,6 +193,23 @@ const TaskDetail = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Days Past Due Counter */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Days Past Due</h3>
+                <DaysPastDueCounter dueDate={task.dueDate} />
+              </div>
+              
+              {/* Observation Status Dropdown */}
+              {canEditObservationStatus && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Observations Found?</h3>
+                  <ObservationStatusDropdown 
+                    taskId={task.id} 
+                    currentStatus={task.observationStatus || null} 
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
           
