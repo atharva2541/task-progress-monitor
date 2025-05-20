@@ -1,6 +1,6 @@
 
 import { z } from "zod";
-import { Task, TaskNotificationSettings } from "@/types";
+import { Task, TaskNotificationSettings, ObservationStatus } from "@/types";
 import { UseFormReturn } from "react-hook-form";
 
 export const taskFormSchema = z.object({
@@ -23,6 +23,8 @@ export const taskFormSchema = z.object({
     preDays: [1, 3, 7],
     customDays: [],
   }),
+  // Added observation status as required
+  observationStatus: z.enum(["yes", "no", "mixed"]).optional(),
 })
 // Add a more explicit refinement to block submission when Maker and Checker1 are the same
 .refine(
@@ -51,7 +53,8 @@ export class TaskFormManager {
       notifications: {
         preDays: [1, 3, 7], // Default mandatory days
         customDays: [], // Optional custom days
-      }
+      },
+      observationStatus: undefined, // Initially undefined
     };
   }
 
@@ -93,6 +96,8 @@ export class TaskFormManager {
       updatedAt: new Date().toISOString(),
       comments: [],
       attachments: [],
+      // Set default observationStatus value - initially null since it hasn't been observed yet
+      observationStatus: data.observationStatus || 'no',
     };
   }
 
@@ -111,7 +116,8 @@ export class TaskFormManager {
       notifications: {
         preDays: [1, 3, 7], // Always set mandatory days
         customDays: task.notificationSettings?.preDays?.filter(day => ![1, 3, 7].includes(day)) || [],
-      }
+      },
+      observationStatus: task.observationStatus, // Include observation status
     };
     form.reset(formData);
   }

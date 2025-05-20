@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -18,7 +17,7 @@ export type TaskFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly' | 'qu
 export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
 
 // New type for observations status
-export type ObservationStatus = 'yes' | 'no' | 'mixed' | null;
+export type ObservationStatus = 'yes' | 'no' | 'mixed';
 
 export interface TaskAttachment {
   id: string;
@@ -61,8 +60,8 @@ export interface Task {
   comments?: TaskComment[];
   attachments?: TaskAttachment[]; // New field for file attachments
   notificationSettings?: TaskNotificationSettings; // New field for notification settings
-  // New field for observations status
-  observationStatus?: ObservationStatus;
+  // Updated: Made observationStatus required and non-nullable
+  observationStatus: ObservationStatus;
   // New fields to track observation status history
   observationHistory?: {
     previousStatus: ObservationStatus;

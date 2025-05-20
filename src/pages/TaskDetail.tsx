@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTask } from '@/contexts/TaskContext';
@@ -18,8 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { TaskAttachments } from '@/components/tasks/TaskAttachments';
 import { ObservationStatusDropdown } from '@/components/tasks/ObservationStatusDropdown';
 import { DaysPastDueCounter } from '@/components/tasks/DaysPastDueCounter';
-import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -28,6 +28,7 @@ const TaskDetail = () => {
   const { user } = useAuth();
 
   const [comment, setComment] = useState('');
+  const [showObservationWarning, setShowObservationWarning] = useState(false);
   const task = taskId ? getTaskById(taskId) : undefined;
 
   if (!task) {
@@ -106,6 +107,20 @@ const TaskDetail = () => {
   const canDeleteAttachments = isMaker || isAdmin;
 
   const handleTaskAction = (newStatus: 'in-progress' | 'submitted' | 'checker1-approved' | 'approved' | 'rejected') => {
+    // For task submission, check if observation status is set
+    if (newStatus === 'submitted') {
+      if (!task.observationStatus) {
+        setShowObservationWarning(true);
+        toast({
+          title: "Observation Status Required",
+          description: "Please specify if observations were found before submitting the task.",
+          variant: "destructive"
+        });
+        return;
+      }
+      setShowObservationWarning(false);
+    }
+
     // If checker1 is approving, change status to 'checker1-approved'
     if (isChecker1 && newStatus === 'approved') {
       updateTaskStatus(task.id, 'checker1-approved', comment);
@@ -200,16 +215,29 @@ const TaskDetail = () => {
                 <DaysPastDueCounter dueDate={task.dueDate} />
               </div>
               
-              {/* Observation Status Dropdown */}
-              {canEditObservationStatus && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Observations Found?</h3>
+              {/* Observation Status Dropdown with Required indicator */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">
+                  Observations Found? <span className="text-red-500">*</span>
+                </h3>
+                
+                {showObservationWarning && (
+                  <Alert variant="destructive" className="mb-2">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    <AlertDescription>
+                      You must specify if observations were found before submitting the task.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
+                {canEditObservationStatus && (
                   <ObservationStatusDropdown 
                     taskId={task.id} 
                     currentStatus={task.observationStatus || null} 
+                    required={true}
                   />
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
           
@@ -310,6 +338,8 @@ const TaskDetail = () => {
                         
                         <Button 
                           onClick={() => handleTaskAction('submitted')}
+                          disabled={!task.observationStatus}
+                          title={!task.observationStatus ? "Set 'Observations Found?' before submitting" : ""}
                         >
                           Submit for Review
                         </Button>
