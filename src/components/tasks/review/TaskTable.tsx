@@ -16,6 +16,7 @@ import { PriorityBadge } from './PriorityBadge';
 import { calculateDaysOverdue } from '@/utils/date-utils';
 import { Task } from '@/types';
 import { useAuth } from '@/contexts/AuthContext'; // Add import for auth context
+import { DaysPastDueCounter } from '@/components/tasks/DaysPastDueCounter';
 
 type TaskTableProps = {
   tasks: Task[];
@@ -27,6 +28,20 @@ export const TaskTable = ({ tasks, onEditTask, onDeleteTask }: TaskTableProps) =
   const navigate = useNavigate();
   const { user } = useAuth(); // Get current user to check role
   const isAdmin = user?.role === 'admin'; // Check if user is admin
+
+  // Helper function to determine if task was submitted late
+  const wasSubmittedLate = (task: Task): boolean => {
+    if (!task.submittedAt) return false;
+    
+    const dueDate = new Date(task.dueDate);
+    const submittedDate = new Date(task.submittedAt);
+    
+    // Reset time portions for proper comparison
+    dueDate.setHours(0, 0, 0, 0);
+    submittedDate.setHours(0, 0, 0, 0);
+    
+    return submittedDate > dueDate;
+  };
 
   return (
     <div className="border rounded-md">
@@ -52,7 +67,11 @@ export const TaskTable = ({ tasks, onEditTask, onDeleteTask }: TaskTableProps) =
                   {new Date(task.dueDate).toLocaleDateString()}
                 </TableCell>
                 <TableCell>
-                  {calculateDaysOverdue(task.dueDate)}
+                  <DaysPastDueCounter 
+                    dueDate={task.dueDate} 
+                    status={task.status}
+                    wasSubmittedLate={wasSubmittedLate(task)}
+                  />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
