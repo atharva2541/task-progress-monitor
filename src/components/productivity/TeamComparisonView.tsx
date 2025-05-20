@@ -43,7 +43,7 @@ export function TeamComparisonView({ tasks, users }) {
             <CardTitle>Activity Patterns</CardTitle>
           </CardHeader>
           <CardContent>
-            <TeamPerformanceHeatmap tasks={tasks} users={users} timeRange={timeRange} />
+            <TeamPerformanceHeatmap tasks={tasks} timeRange={timeRange} />
           </CardContent>
         </Card>
       </div>

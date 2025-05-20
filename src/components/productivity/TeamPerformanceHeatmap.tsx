@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { generateActivityHeatmapData } from '@/utils/productivity-utils';
 
 export function TeamPerformanceHeatmap({ tasks, timeRange }) {
-  const [activityData, setActivityData] = useState([]);
+  const [activityData, setActivityData] = useState({});
 
   useEffect(() => {
     // Generate heatmap data based on tasks and timeRange
