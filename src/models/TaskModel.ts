@@ -1,7 +1,9 @@
+
 import { Task, TaskStatus, EscalationPriority, ObservationStatus } from '@/types';
 
 export type TaskServiceProps = {
   tasks: Task[];
+  getUserAccessibleTasks: (userId: string, userRole: string) => Task[]; // Add new method to type
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'submittedAt'>) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;

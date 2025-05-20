@@ -1,11 +1,11 @@
 
 import React from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 
 const Checker1CalendarPage = () => {
-  const { tasks } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const { user } = useAuth();
   
   if (!user) return null;

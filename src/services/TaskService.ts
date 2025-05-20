@@ -9,6 +9,19 @@ export function useTaskService() {
   const { toast } = useToast();
   const { getUserById: authGetUserById, user } = useAuth();
 
+  // New method to get tasks accessible to a specific user
+  const getUserAccessibleTasks = (userId: string, userRole: string): Task[] => {
+    // Admin can see all tasks
+    if (userRole === 'admin') return tasks;
+    
+    // Non-admins can only see tasks they're involved in
+    return tasks.filter(task => 
+      task.assignedTo === userId || // As Maker
+      task.checker1 === userId ||   // As Checker1
+      task.checker2 === userId      // As Checker2
+    );
+  };
+
   const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newTask: Task = {
       ...task,
@@ -301,6 +314,7 @@ export function useTaskService() {
 
   return {
     tasks,
+    getUserAccessibleTasks,
     addTask,
     updateTask,
     deleteTask,

@@ -1,17 +1,16 @@
 
 import React from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 
 const Checker2CalendarPage = () => {
-  const { tasks } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const { user } = useAuth();
   
   if (!user) return null;
   
   // Get tasks assigned to this checker2 - ensure we only get tasks where the user is checker2
-  // Include tasks that are in checker1-approved status as these need final approval
   const checker2Tasks = tasks.filter(task => 
     task.checker2 === user.id && 
     (task.status === 'checker1-approved' || task.status === 'approved' || task.status === 'rejected')

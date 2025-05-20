@@ -1,6 +1,5 @@
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -17,12 +16,13 @@ import { useNavigate } from 'react-router-dom';
 
 export function MakerDashboard() {
   const { user } = useAuth();
-  const { tasks, getTasksByAssignee } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const navigate = useNavigate();
 
   if (!user) return null;
 
-  const userTasks = getTasksByAssignee(user.id);
+  // Only get tasks where this user is the maker
+  const userTasks = tasks.filter(task => task.assignedTo === user.id);
   
   // Calculate task metrics
   const pendingTasks = userTasks.filter(task => task.status === 'pending');

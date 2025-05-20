@@ -42,3 +42,26 @@ export function useTask() {
   }
   return context;
 }
+
+// New helper function to filter tasks based on user role and access rights
+export function useAuthorizedTasks() {
+  const taskContext = useTask();
+  const { user } = useAuth();
+  
+  if (!user) return { tasks: [] };
+  
+  // Filter tasks based on user role and involvement
+  const authorizedTasks = taskContext.tasks.filter(task => {
+    // Admin can see all tasks
+    if (user.role === 'admin') return true;
+    
+    // Users can only see tasks they're involved in
+    return (
+      task.assignedTo === user.id || // As Maker
+      task.checker1 === user.id ||   // As Checker1
+      task.checker2 === user.id      // As Checker2
+    );
+  });
+  
+  return { ...taskContext, tasks: authorizedTasks };
+}

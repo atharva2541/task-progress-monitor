@@ -1,6 +1,5 @@
-
 import { useAuth } from '@/contexts/AuthContext';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -25,7 +24,7 @@ import { useState } from 'react';
 
 export function CheckerDashboard() {
   const { user } = useAuth();
-  const { tasks, getTasksByChecker } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const navigate = useNavigate();
   const [selectedMaker, setSelectedMaker] = useState<string | null>(null);
 
@@ -33,13 +32,15 @@ export function CheckerDashboard() {
 
   const isChecker2 = user.role === 'checker2';
   
-  // Get tasks assigned to this checker
-  const checkerTasks = getTasksByChecker(user.id);
+  // Get tasks assigned to this checker - strict filtering by user role
+  const checkerTasks = tasks.filter(task => 
+    task.checker1 === user.id || task.checker2 === user.id
+  );
 
-  // Tasks that need review
+  // Tasks that need review - only include tasks this user is assigned to review
   const reviewTasks = checkerTasks.filter(task => 
-    task.status === 'submitted' && 
-    (task.checker1 === user.id || task.checker2 === user.id)
+    (task.status === 'submitted' && task.checker1 === user.id) || 
+    (task.status === 'checker1-approved' && task.checker2 === user.id)
   );
   
   // Get all unique makers assigned to this checker
@@ -63,12 +64,14 @@ export function CheckerDashboard() {
            (task.status === 'pending' || task.status === 'in-progress');
   });
 
-  // Get escalated tasks (for checker2 only)
+  // Get escalated tasks (for checker2 only) - limited to tasks assigned to this checker2
   const escalatedTasks = isChecker2
     ? tasks.filter(task => 
-        task.status === 'rejected' || 
-        (new Date(task.dueDate) < new Date() && 
-         (task.status === 'pending' || task.status === 'in-progress'))
+        (task.checker2 === user.id) && (
+          task.status === 'rejected' || 
+          (new Date(task.dueDate) < new Date() && 
+           (task.status === 'pending' || task.status === 'in-progress'))
+        )
       )
     : [];
 

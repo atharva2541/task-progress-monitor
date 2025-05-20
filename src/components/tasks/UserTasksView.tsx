@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Card,
@@ -30,9 +29,9 @@ interface UserTasksViewProps {
 }
 
 export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
-  const { tasks, getTasksByAssignee, getTasksByChecker, getUserById } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const navigate = useNavigate();
-  const { users } = useAuth();
+  const { users, user: currentUser } = useAuth();
   const user = users.find(u => u.id === userId);
   
   const [activeTab, setActiveTab] = useState<'my-tasks' | 'to-review'>('my-tasks');
@@ -49,8 +48,24 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
     );
   }
 
+  // Only admins can see other users' tasks, or users can see their own tasks
+  const canViewUserTasks = currentUser?.role === 'admin' || currentUser?.id === userId;
+  
+  if (!canViewUserTasks) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-red-500 font-medium">Access Denied</p>
+        <p className="mt-2">You don't have permission to view this user's tasks.</p>
+        <Button onClick={onBack} variant="outline" className="mt-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+      </div>
+    );
+  }
+
   // Get tasks assigned to this user (maker role)
-  const myTasks = getTasksByAssignee(userId);
+  const myTasks = tasks.filter(task => task.assignedTo === userId);
   
   // Get tasks where user is checker1 or checker2
   const tasksToReview = tasks.filter(

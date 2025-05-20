@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import { useTask, useAuthorizedTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 import { 
@@ -11,11 +11,30 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Shield } from 'lucide-react';
 
 const AdminCalendarPage = () => {
-  const { tasks } = useTask();
+  // Use regular tasks for admin, authorized tasks for non-admin
+  const { user } = useAuth();
+  const { tasks } = user?.role === 'admin' ? useTask() : useAuthorizedTasks();
   const { users } = useAuth();
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  
+  // Only admins should have full visibility
+  const isAdmin = user?.role === 'admin';
+  
+  if (!isAdmin) {
+    return (
+      <Alert variant="destructive" className="my-8">
+        <Shield className="h-4 w-4" />
+        <AlertTitle>Access Denied</AlertTitle>
+        <AlertDescription>
+          You don't have permission to access the admin calendar.
+        </AlertDescription>
+      </Alert>
+    );
+  }
   
   // Filter tasks based on selected user
   const filteredTasks = tasks.filter(task => {

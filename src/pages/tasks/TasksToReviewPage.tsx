@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
-import { useTask } from '@/contexts/TaskContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NoCheckerRoleMessage } from '@/components/tasks/review/NoCheckerRoleMessage';
 import { TaskTabContent } from '@/components/tasks/review/TaskTabContent';
 
 const TasksToReviewPage = () => {
-  const { tasks } = useTask();
+  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'checker1' | 'checker2'>('checker1');
   
@@ -18,11 +18,11 @@ const TasksToReviewPage = () => {
   const hasChecker1Role = userRoles.includes('checker1');
   const hasChecker2Role = userRoles.includes('checker2');
   
-  // Get tasks where user is checker1
+  // Get tasks where user is checker1 - strictly only tasks where this user is checker1
   const checker1Tasks = hasChecker1Role ? 
     tasks.filter(task => task.checker1 === user.id) : [];
   
-  // Get tasks where user is checker2
+  // Get tasks where user is checker2 - strictly only tasks where this user is checker2
   const checker2Tasks = hasChecker2Role ? 
     tasks.filter(task => 
       task.checker2 === user.id && 

@@ -1,7 +1,8 @@
+
 import React, { useEffect } from 'react';
-import { useTask } from '@/contexts/TaskContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 import { 
   Card,
   CardContent, 
@@ -25,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { calculateDaysOverdue } from '@/utils/date-utils';
 
 const MyTasksPage = () => {
-  const { tasks, getUserById } = useTask();
+  const { tasks, getUserById } = useAuthorizedTasks(); // Using authorized tasks instead
   const { user } = useAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
