@@ -21,10 +21,19 @@ export const TaskFormFields = ({ form }) => {
   useEffect(() => {
     if (selectedMakerId && selectedChecker1Id && selectedMakerId === selectedChecker1Id) {
       setShowMakerCheckerWarning(true);
+      // Set error on checker1 field
+      form.setError("checker1", {
+        type: "manual",
+        message: "Maker and First Checker cannot be the same user"
+      });
     } else {
       setShowMakerCheckerWarning(false);
+      // Clear error if it was manually set
+      if (form.formState.errors.checker1?.type === "manual") {
+        form.clearErrors("checker1");
+      }
     }
-  }, [selectedMakerId, selectedChecker1Id]);
+  }, [selectedMakerId, selectedChecker1Id, form]);
 
   return (
     <div className="space-y-4">
@@ -178,7 +187,16 @@ export const TaskFormFields = ({ form }) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Assigned To (Maker)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select 
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  // If current checker1 is same as newly selected maker, reset checker1
+                  if (value === form.getValues("checker1")) {
+                    form.setValue("checker1", "");
+                  }
+                }} 
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select maker" />
@@ -204,9 +222,17 @@ export const TaskFormFields = ({ form }) => {
           render={({ field }) => (
             <FormItem>
               <FormLabel>First Checker</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select 
+                onValueChange={(value) => {
+                  // Only set the value if it's not the same as the maker
+                  if (value !== selectedMakerId) {
+                    field.onChange(value);
+                  }
+                }} 
+                value={field.value}
+              >
                 <FormControl>
-                  <SelectTrigger className={selectedMakerId === field.value ? "border-red-500" : ""}>
+                  <SelectTrigger className={selectedMakerId === field.value ? "border-red-500 bg-red-50" : ""}>
                     <SelectValue placeholder="Select first checker" />
                   </SelectTrigger>
                 </FormControl>
@@ -223,9 +249,11 @@ export const TaskFormFields = ({ form }) => {
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription className="text-xs text-red-500">
-                {selectedMakerId === field.value && "First Checker cannot be the same as Maker"}
-              </FormDescription>
+              {selectedMakerId === field.value && (
+                <FormDescription className="text-xs text-red-500 font-medium">
+                  First Checker cannot be the same as Maker
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
@@ -260,6 +288,3 @@ export const TaskFormFields = ({ form }) => {
     </div>
   );
 };
-
-// Remove the duplicate FormDescription component since we're now importing it
-// from @/components/ui/form at the top of the file
