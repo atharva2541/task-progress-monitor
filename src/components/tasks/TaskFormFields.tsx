@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -12,41 +11,64 @@ import { AlertTriangleIcon } from "lucide-react";
 export const TaskFormFields = ({ form }) => {
   const { users } = useAuth();
   const [showMakerCheckerWarning, setShowMakerCheckerWarning] = useState(false);
+  const [showMakerChecker2Warning, setShowMakerChecker2Warning] = useState(false);
 
   // Selected values for real-time validation
   const selectedMakerId = form.watch("assignedTo");
   const selectedChecker1Id = form.watch("checker1");
+  const selectedChecker2Id = form.watch("checker2");
 
-  // Check for maker-checker1 conflict
+  // Check for maker-checker conflicts
   useEffect(() => {
+    // Check maker-checker1 conflict
     if (selectedMakerId && selectedChecker1Id && selectedMakerId === selectedChecker1Id) {
       setShowMakerCheckerWarning(true);
-      // Set error on checker1 field
       form.setError("checker1", {
         type: "manual",
         message: "Maker and First Checker cannot be the same user"
       });
     } else {
       setShowMakerCheckerWarning(false);
-      // Clear error if it was manually set
       if (form.formState.errors.checker1?.type === "manual") {
         form.clearErrors("checker1");
       }
     }
-  }, [selectedMakerId, selectedChecker1Id, form]);
+    
+    // Check maker-checker2 conflict
+    if (selectedMakerId && selectedChecker2Id && selectedMakerId === selectedChecker2Id) {
+      setShowMakerChecker2Warning(true);
+      form.setError("checker2", {
+        type: "manual",
+        message: "Maker and Second Checker cannot be the same user"
+      });
+    } else {
+      setShowMakerChecker2Warning(false);
+      if (form.formState.errors.checker2?.type === "manual") {
+        form.clearErrors("checker2");
+      }
+    }
+  }, [selectedMakerId, selectedChecker1Id, selectedChecker2Id, form]);
 
   // Additional validation before form submission
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
-      // Re-validate when either assignedTo or checker1 changes
-      if (name === "assignedTo" || name === "checker1") {
+      // Re-validate when relevant fields change
+      if (name === "assignedTo" || name === "checker1" || name === "checker2") {
         const maker = form.getValues("assignedTo");
         const checker1 = form.getValues("checker1");
+        const checker2 = form.getValues("checker2");
         
         if (maker && checker1 && maker === checker1) {
           form.setError("checker1", {
             type: "manual",
             message: "Maker and First Checker cannot be the same user"
+          });
+        }
+        
+        if (maker && checker2 && maker === checker2) {
+          form.setError("checker2", {
+            type: "manual",
+            message: "Maker and Second Checker cannot be the same user"
           });
         }
       }
@@ -57,11 +79,14 @@ export const TaskFormFields = ({ form }) => {
 
   return (
     <div className="space-y-4">
-      {showMakerCheckerWarning && (
+      {(showMakerCheckerWarning || showMakerChecker2Warning) && (
         <Alert variant="destructive" className="mb-4">
           <AlertTriangleIcon className="h-4 w-4 mr-2" />
           <AlertDescription>
-            Maker and First Checker cannot be the same user. Please select different users.
+            {showMakerCheckerWarning && "Maker and First Checker cannot be the same user."}
+            {showMakerCheckerWarning && showMakerChecker2Warning && " "}
+            {showMakerChecker2Warning && "Maker and Second Checker cannot be the same user."}
+            {" Please select different users."}
           </AlertDescription>
         </Alert>
       )}
@@ -214,6 +239,10 @@ export const TaskFormFields = ({ form }) => {
                   if (value === form.getValues("checker1")) {
                     form.setValue("checker1", "");
                   }
+                  // If current checker2 is same as newly selected maker, reset checker2
+                  if (value === form.getValues("checker2")) {
+                    form.setValue("checker2", "");
+                  }
                 }} 
                 value={field.value}
               >
@@ -282,27 +311,48 @@ export const TaskFormFields = ({ form }) => {
           )}
         />
 
-        {/* Checker2 selection */}
+        {/* Checker2 selection with validation */}
         <FormField
           control={form.control}
           name="checker2"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Second Checker</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select 
+                onValueChange={(value) => {
+                  // Only set the value if it's not the same as the maker
+                  if (value !== selectedMakerId) {
+                    field.onChange(value);
+                  } else {
+                    // Show error for maker-checker2 conflict
+                    setShowMakerChecker2Warning(true);
+                  }
+                }} 
+                value={field.value}
+              >
                 <FormControl>
-                  <SelectTrigger>
+                  <SelectTrigger className={selectedMakerId === field.value ? "border-red-500 bg-red-50" : ""}>
                     <SelectValue placeholder="Select second checker" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
                   {users?.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                    <SelectItem 
+                      key={user.id} 
+                      value={user.id}
+                      disabled={user.id === selectedMakerId}
+                      className={user.id === selectedMakerId ? "text-gray-400 line-through" : ""}
+                    >
+                      {user.name} {user.id === selectedMakerId ? "(Cannot be Maker)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {selectedMakerId === field.value && (
+                <FormDescription className="text-xs text-red-500 font-medium">
+                  Second Checker cannot be the same as Maker
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}

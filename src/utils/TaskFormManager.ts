@@ -26,12 +26,19 @@ export const taskFormSchema = z.object({
   // Making observation status required
   observationStatus: z.enum(["yes", "no", "mixed"]).default("no"),
 })
-// Add a more explicit refinement to block submission when Maker and Checker1 are the same
+// Add refinements for validation
 .refine(
   (data) => data.assignedTo !== data.checker1, 
   {
     message: "Maker and First Checker cannot be the same user",
     path: ["checker1"], // This ensures the error is associated with the checker1 field
+  }
+)
+.refine(
+  (data) => data.assignedTo !== data.checker2,
+  {
+    message: "Maker and Second Checker cannot be the same user",
+    path: ["checker2"], // This ensures the error is associated with the checker2 field
   }
 );
 
