@@ -19,9 +19,18 @@ const TaskList: React.FC = () => {
 
   const handleCreateTask = (formData: TaskFormValues) => {
     try {
-      // Add status and observationStatus to the task
+      // Ensure all required properties are provided and not optional
       addTask({
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        assignedTo: formData.assignedTo,
+        checker1: formData.checker1,
+        checker2: formData.checker2,
+        priority: formData.priority,
+        frequency: formData.frequency,
+        isRecurring: formData.isRecurring,
+        dueDate: formData.dueDate,
         status: 'pending', // Set the default status to 'pending'
         observationStatus: formData.observationStatus || 'no', // Ensure observationStatus is set
       });
