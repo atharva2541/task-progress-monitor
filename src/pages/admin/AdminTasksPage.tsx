@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Task } from "@/types";
 import { useTask } from "@/contexts/TaskContext";
@@ -23,7 +22,7 @@ import { cn } from "@/lib/utils";
 
 const AdminTasksPage = () => {
   const { tasks, addTask, updateTask, getUserById } = useTask();
-  const { users } = useAuth();
+  const { users, user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -95,7 +94,9 @@ const AdminTasksPage = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Task Management</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
+        {user?.role === 'admin' && (
+          <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
+        )}
       </div>
       
       <div className="rounded-md border">

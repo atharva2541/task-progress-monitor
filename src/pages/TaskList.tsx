@@ -9,6 +9,7 @@ import { Task } from '@/types';
 import { TaskFormValues } from '@/utils/TaskFormManager';
 import { useTask } from '@/contexts/TaskContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const TaskList: React.FC = () => {
   const { tasks, addTask, updateTask, deleteTask } = useTask();
@@ -16,6 +17,9 @@ const TaskList: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const isAdmin = user?.role === 'admin';
 
   const handleCreateTask = (formData: TaskFormValues) => {
     try {
@@ -91,15 +95,17 @@ const TaskList: React.FC = () => {
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">All Tasks</h1>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Create New Task</Button>
-          </DialogTrigger>
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
-          </DialogHeader>
-          <CreateTaskDialog onCreateTask={handleCreateTask} />
-        </Dialog>
+        {isAdmin && (
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Create New Task</Button>
+            </DialogTrigger>
+            <DialogHeader>
+              <DialogTitle>Create New Task</DialogTitle>
+            </DialogHeader>
+            <CreateTaskDialog onCreateTask={handleCreateTask} />
+          </Dialog>
+        )}
       </div>
 
       {/* Task List */}
