@@ -1,5 +1,5 @@
 
-import { createContext, useContext, ReactNode, useState, useCallback } from 'react';
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from 'react';
 import { AdminLog, AdminLogFilter, User } from '@/types';
 import adminLogService from '@/services/AdminLogService';
 import { useAuth } from './AuthContext';
@@ -82,8 +82,8 @@ export function AdminLogProvider({ children }: { children: ReactNode }) {
     adminLogService.exportToExcel(filteredLogs);
   }, [filteredLogs]);
 
-  // Update filtered logs when filter changes
-  useState(() => {
+  // Fix: Change useState to useEffect to run the effect after render
+  useEffect(() => {
     updateFilteredLogs();
   }, [filter, logs, updateFilteredLogs]);
 
