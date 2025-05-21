@@ -118,6 +118,7 @@ export function ReportGenerator({ tasks, users }) {
                     <SelectItem value="performance">Performance Metrics</SelectItem>
                     <SelectItem value="completion">Task Completion</SelectItem>
                     <SelectItem value="trend">Productivity Trends</SelectItem>
+                    <SelectItem value="task-details">Task Details Report</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

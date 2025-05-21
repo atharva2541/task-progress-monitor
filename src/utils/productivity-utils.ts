@@ -1,5 +1,5 @@
-
-import { format, subMonths, isAfter, parseISO, differenceInDays } from 'date-fns';
+import { format, subMonths, isAfter, parseISO, differenceInDays, differenceInCalendarDays } from 'date-fns';
+import { calculateDaysOverdue } from './date-utils';
 
 // Get filtered tasks based on time range
 export function getFilteredTasksByTimeRange(tasks, timeRange) {
@@ -257,6 +257,57 @@ export function generateActivityHeatmapData(tasks, timeRange) {
   return activityData;
 }
 
+// Generate task details report data
+export function generateTaskDetailsReportData(tasks, users, selectedUserId, timeRange) {
+  const filteredTasks = getFilteredTasksByTimeRange(tasks, timeRange);
+  
+  // Filter tasks by selected user if specified
+  let tasksForReport = filteredTasks;
+  if (selectedUserId !== 'all') {
+    tasksForReport = filteredTasks.filter(task => task.assignedTo === selectedUserId);
+  }
+  
+  return tasksForReport.map(task => {
+    const assignedUser = users.find(u => u.id === task.assignedTo);
+    const daysOverdue = task.dueDate ? calculateDaysOverdue(task.dueDate) : null;
+    
+    // Calculate days pending since submission
+    let daysPending = null;
+    if (task.submittedAt) {
+      const submittedDate = new Date(task.submittedAt);
+      const today = new Date();
+      
+      if (task.status === 'approved' || task.status === 'checker1-approved') {
+        // If approved, calculate days between submission and approval
+        const approvalDate = task.approvedAt ? new Date(task.approvedAt) : today;
+        daysPending = differenceInCalendarDays(approvalDate, submittedDate);
+      } else {
+        // If not approved, calculate days between submission and today
+        daysPending = differenceInCalendarDays(today, submittedDate);
+      }
+    }
+    
+    // Format status for better readability
+    let formattedStatus = task.status;
+    if (task.status === 'approved' || task.status === 'checker1-approved') {
+      formattedStatus = 'Approved';
+    } else if (task.status === 'rejected') {
+      formattedStatus = 'Rejected';
+    } else if (task.status === 'pending') {
+      formattedStatus = 'Pending';
+    }
+    
+    return {
+      userName: assignedUser ? assignedUser.name : 'Unassigned',
+      taskName: task.name,
+      submissionDate: task.submittedAt || 'Not submitted',
+      daysOverdue: daysOverdue !== null ? daysOverdue : 'N/A',
+      daysPending: daysPending !== null ? daysPending : 'N/A',
+      status: formattedStatus
+    };
+  });
+}
+
 // Generate report preview data
 export function generateReportPreviewData(tasks, users, selectedUserId, reportType, timeRange) {
   const filteredTasks = getFilteredTasksByTimeRange(tasks, timeRange);
@@ -326,7 +377,31 @@ export function generateReportPreviewData(tasks, users, selectedUserId, reportTy
       });
       break;
       
-    // Add other report types here
+    case 'trend':
+      reportData.title = 'Productivity Trends Report';
+      reportData.columns = [
+        { key: 'date', label: 'Period' },
+        { key: 'completion', label: 'Completion %', format: 'percentage' },
+        { key: 'onTime', label: 'On-Time %', format: 'percentage' },
+        { key: 'rejection', label: 'Rejection %', format: 'percentage' }
+      ];
+      
+      reportData.data = generateProductivityTrendData(filteredTasks, timeRange);
+      break;
+      
+    case 'task-details':
+      reportData.title = 'Task Details Report';
+      reportData.columns = [
+        { key: 'userName', label: 'User Name' },
+        { key: 'taskName', label: 'Task Name' },
+        { key: 'submissionDate', label: 'Submission Date', format: 'date' },
+        { key: 'daysOverdue', label: 'Days Overdue' },
+        { key: 'daysPending', label: 'Days Pending' },
+        { key: 'status', label: 'Status' }
+      ];
+      
+      reportData.data = generateTaskDetailsReportData(filteredTasks, users, selectedUserId, timeRange);
+      break;
   }
   
   return reportData;
