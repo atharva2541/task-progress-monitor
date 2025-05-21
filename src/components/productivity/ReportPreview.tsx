@@ -1,6 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Helper function to format cell values based on their type
 const formatCellValue = (value, format) => {
@@ -35,9 +36,66 @@ export function ReportPreview({ reportData }) {
     format: 'text'
   }));
   
+  // Generate summary for task details report
+  const renderTaskDetailsSummary = () => {
+    if (reportData.title !== 'Task Details Report') return null;
+    
+    // Calculate statistics
+    const totalTasks = reportData.data.length;
+    const approvedTasks = reportData.data.filter(task => 
+      task.status === 'Approved'
+    ).length;
+    const pendingTasks = reportData.data.filter(task => 
+      task.status === 'Pending'
+    ).length;
+    const rejectedTasks = reportData.data.filter(task => 
+      task.status === 'Rejected'
+    ).length;
+    
+    // Calculate average days overdue for tasks that are overdue
+    const overdueTasks = reportData.data.filter(task => 
+      task.daysOverdue !== 'N/A' && typeof task.daysOverdue === 'number' && task.daysOverdue > 0
+    );
+    
+    const avgDaysOverdue = overdueTasks.length > 0 
+      ? overdueTasks.reduce((acc, task) => acc + task.daysOverdue, 0) / overdueTasks.length 
+      : 0;
+    
+    return (
+      <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{totalTasks}</div>
+            <p className="text-xs text-muted-foreground">Total Tasks</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{approvedTasks}</div>
+            <p className="text-xs text-muted-foreground">Approved Tasks</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{pendingTasks}</div>
+            <p className="text-xs text-muted-foreground">Pending Tasks</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-2xl font-bold">{avgDaysOverdue.toFixed(1)}</div>
+            <p className="text-xs text-muted-foreground">Avg. Days Overdue</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+  
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">{reportData.title}</h3>
+      
+      {renderTaskDetailsSummary()}
       
       <div className="border rounded-md">
         <Table>
