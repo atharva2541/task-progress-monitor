@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +45,11 @@ const otpFormSchema = z.object({
   otp: z.string().length(6, { message: 'OTP must be 6 digits' })
 });
 
+// Forgot password email schema
+const forgotPasswordEmailSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' })
+});
+
 // Strong password schema with custom validation
 const passwordSchema = z.string()
   .min(8, { message: 'Password must be at least 8 characters' })
@@ -78,7 +82,7 @@ const directLoginSchema = z.object({
 });
 
 // Login page states
-type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD' | 'FIRST_LOGIN';
+type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD' | 'FIRST_LOGIN' | 'FORGOT_PASSWORD' | 'FORGOT_PASSWORD_OTP' | 'FORGOT_PASSWORD_RESET';
 
 const LoginPage = () => {
   const { requestOtp, verifyOtp, resetPassword, directLogin, isLoading, isPasswordExpired, isFirstLogin, checkPasswordStrength } = useAuth();
@@ -120,6 +124,14 @@ const LoginPage = () => {
       email: '',
       password: '',
       confirmPassword: ''
+    },
+  });
+
+  // Form for forgot password email
+  const forgotPasswordEmailForm = useForm<z.infer<typeof forgotPasswordEmailSchema>>({
+    resolver: zodResolver(forgotPasswordEmailSchema),
+    defaultValues: {
+      email: ''
     },
   });
 
@@ -259,6 +271,75 @@ const LoginPage = () => {
     return onResetPassword(values);
   };
 
+  // Handle forgot password email submission
+  const onForgotPasswordEmailSubmit = async (values: z.infer<typeof forgotPasswordEmailSchema>) => {
+    setError(null);
+    setEmail(values.email);
+    
+    try {
+      // Request OTP for password reset
+      const success = await requestOtp(values.email);
+      
+      if (success) {
+        setLoginState('FORGOT_PASSWORD_OTP');
+        toast({
+          title: 'Verification Code Sent',
+          description: `A verification code has been sent to ${values.email}`,
+        });
+      } else {
+        setError('User not found. Please check your email address.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
+  // Handle forgot password OTP verification
+  const onVerifyForgotPasswordOtp = async (values: z.infer<typeof otpFormSchema>) => {
+    setError(null);
+    
+    try {
+      const result = await verifyOtp(email, values.otp);
+      
+      if (result.success) {
+        // Move to reset password form
+        setLoginState('FORGOT_PASSWORD_RESET');
+        resetForm.setValue('email', email);
+        toast({
+          title: 'OTP Verified',
+          description: 'Please set your new password',
+        });
+      } else {
+        setError('Invalid OTP. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred during verification. Please try again.');
+    }
+  };
+
+  // Handle forgot password reset
+  const onForgotPasswordReset = async (values: z.infer<typeof resetFormSchema>) => {
+    setError(null);
+    
+    try {
+      const success = await resetPassword(values.email, values.password);
+      
+      if (success) {
+        toast({
+          title: 'Password Updated',
+          description: 'Your password has been successfully reset. You can now login with your new password.',
+          variant: 'default',
+        });
+        setLoginState('LOGIN');
+        loginForm.reset();
+      } else {
+        setError('Failed to update password. Please make sure it meets all requirements.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
   // Get password strength indicator color
   const getPasswordStrengthColor = (): string => {
     if (passwordStrength <= 33) return "bg-destructive";
@@ -283,6 +364,9 @@ const LoginPage = () => {
               {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
               {loginState === 'RESET_PASSWORD' && 'Create a new password'}
               {loginState === 'FIRST_LOGIN' && 'Set your new password for first time login'}
+              {loginState === 'FORGOT_PASSWORD' && 'Enter your email to reset password'}
+              {loginState === 'FORGOT_PASSWORD_OTP' && 'Enter the verification code sent to your email'}
+              {loginState === 'FORGOT_PASSWORD_RESET' && 'Create a new password'}
             </CardDescription>
           </CardHeader>
           
@@ -297,114 +381,130 @@ const LoginPage = () => {
             
             {/* Login Tabs */}
             {loginState === 'LOGIN' && (
-              <Tabs defaultValue="direct" onValueChange={(val) => setLoginMode(val as 'otp' | 'direct')}>
-                <TabsList className="grid w-full grid-cols-2 mb-6">
-                  <TabsTrigger value="direct">Direct Login (Test)</TabsTrigger>
-                  <TabsTrigger value="otp">OTP Login</TabsTrigger>
-                </TabsList>
+              <>
+                <Tabs defaultValue="direct" onValueChange={(val) => setLoginMode(val as 'otp' | 'direct')}>
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="direct">Direct Login (Test)</TabsTrigger>
+                    <TabsTrigger value="otp">OTP Login</TabsTrigger>
+                  </TabsList>
+                  
+                  {/* Direct Login Form */}
+                  <TabsContent value="direct">
+                    <Form {...directLoginForm}>
+                      <form onSubmit={directLoginForm.handleSubmit(onDirectLogin)} className="space-y-5">
+                        <FormField
+                          control={directLoginForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700">Email</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter your email" 
+                                  type="email" 
+                                  className="bg-gray-50"
+                                  autoComplete="email"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="text-sm text-gray-500 mt-2 mb-4 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                          <p>You can use these test accounts:</p>
+                          <ul className="list-disc pl-5 mt-1">
+                            <li>admin@example.com (Admin)</li>
+                            <li>maker@example.com (Maker)</li>
+                            <li>checker1@example.com (Checker 1)</li>
+                            <li>checker2@example.com (Checker 2)</li>
+                          </ul>
+                        </div>
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                          disabled={isLoading}
+                        >
+                          <UserCircle className="mr-2 h-4 w-4" />
+                          {isLoading ? 'Logging in...' : 'Direct Login (Testing)'}
+                        </Button>
+                      </form>
+                    </Form>
+                  </TabsContent>
+                  
+                  {/* OTP Login Form */}
+                  <TabsContent value="otp">
+                    <Form {...loginForm}>
+                      <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
+                        <FormField
+                          control={loginForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700">Email</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter your email" 
+                                  type="email" 
+                                  className="bg-gray-50"
+                                  autoComplete="email"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={loginForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-700">Password</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter your password" 
+                                  type="password" 
+                                  className="bg-gray-50"
+                                  autoComplete="current-password"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                          disabled={isLoading}
+                        >
+                          <LockKeyhole className="mr-2 h-4 w-4" />
+                          {isLoading ? 'Authenticating...' : 'Sign In with OTP'}
+                        </Button>
+                      </form>
+                    </Form>
+                  </TabsContent>
+                </Tabs>
                 
-                {/* Direct Login Form */}
-                <TabsContent value="direct">
-                  <Form {...directLoginForm}>
-                    <form onSubmit={directLoginForm.handleSubmit(onDirectLogin)} className="space-y-5">
-                      <FormField
-                        control={directLoginForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Email</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your email" 
-                                type="email" 
-                                className="bg-gray-50"
-                                autoComplete="email"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <div className="text-sm text-gray-500 mt-2 mb-4 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                        <p>You can use these test accounts:</p>
-                        <ul className="list-disc pl-5 mt-1">
-                          <li>admin@example.com (Admin)</li>
-                          <li>maker@example.com (Maker)</li>
-                          <li>checker1@example.com (Checker 1)</li>
-                          <li>checker2@example.com (Checker 2)</li>
-                        </ul>
-                      </div>
-                      
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                        disabled={isLoading}
-                      >
-                        <UserCircle className="mr-2 h-4 w-4" />
-                        {isLoading ? 'Logging in...' : 'Direct Login (Testing)'}
-                      </Button>
-                    </form>
-                  </Form>
-                </TabsContent>
-                
-                {/* OTP Login Form */}
-                <TabsContent value="otp">
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
-                      <FormField
-                        control={loginForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Email</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your email" 
-                                type="email" 
-                                className="bg-gray-50"
-                                autoComplete="email"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={loginForm.control}
-                        name="password"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">Password</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="Enter your password" 
-                                type="password" 
-                                className="bg-gray-50"
-                                autoComplete="current-password"
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <Button 
-                        type="submit" 
-                        className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                        disabled={isLoading}
-                      >
-                        <LockKeyhole className="mr-2 h-4 w-4" />
-                        {isLoading ? 'Authenticating...' : 'Sign In with OTP'}
-                      </Button>
-                    </form>
-                  </Form>
-                </TabsContent>
-              </Tabs>
+                {/* Forgot Password Link */}
+                <div className="mt-4 text-center">
+                  <button 
+                    onClick={() => {
+                      setLoginState('FORGOT_PASSWORD');
+                      setError(null);
+                      forgotPasswordEmailForm.reset();
+                    }}
+                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline"
+                  >
+                    Forgot your password?
+                  </button>
+                </div>
+              </>
             )}
             
             {/* OTP Verification Form */}
@@ -683,6 +783,249 @@ const LoginPage = () => {
                     disabled={isLoading || passwordStrength <= 33}
                   >
                     {isLoading ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </form>
+              </Form>
+            )}
+            
+            {/* Forgot Password Email Form */}
+            {loginState === 'FORGOT_PASSWORD' && (
+              <Form {...forgotPasswordEmailForm}>
+                <form onSubmit={forgotPasswordEmailForm.handleSubmit(onForgotPasswordEmailSubmit)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <Mail className="h-4 w-4" />
+                      <AlertTitle>Password Reset</AlertTitle>
+                      <AlertDescription>
+                        Enter your email address and we'll send you a verification code to reset your password.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={forgotPasswordEmailForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="pt-2 space-y-3">
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                      disabled={isLoading}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      {isLoading ? 'Sending...' : 'Send Reset Code'}
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setLoginState('LOGIN');
+                        forgotPasswordEmailForm.reset();
+                      }}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Login
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
+            {/* Forgot Password OTP Verification Form */}
+            {loginState === 'FORGOT_PASSWORD_OTP' && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-center mb-4">{`We've sent a verification code to ${email}`}</p>
+                  
+                  <Form {...otpForm}>
+                    <form onSubmit={otpForm.handleSubmit(onVerifyForgotPasswordOtp)} className="space-y-5">
+                      <FormField
+                        control={otpForm.control}
+                        name="otp"
+                        render={({ field }) => (
+                          <FormItem className="space-y-4">
+                            <FormLabel className="text-gray-700">Verification Code</FormLabel>
+                            <FormControl>
+                              <div className="flex justify-center">
+                                <InputOTP maxLength={6} {...field}>
+                                  <InputOTPGroup>
+                                    <InputOTPSlot index={0} />
+                                    <InputOTPSlot index={1} />
+                                    <InputOTPSlot index={2} />
+                                    <InputOTPSlot index={3} />
+                                    <InputOTPSlot index={4} />
+                                    <InputOTPSlot index={5} />
+                                  </InputOTPGroup>
+                                </InputOTP>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="pt-2 space-y-3">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                          disabled={isLoading}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" />
+                          {isLoading ? 'Verifying...' : 'Verify Code'}
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setLoginState('FORGOT_PASSWORD');
+                            otpForm.reset();
+                          }}
+                        >
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+                
+                <div className="text-center">
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      const success = await requestOtp(email);
+                      if (success) {
+                        toast({
+                          title: 'Code Sent',
+                          description: `A verification code has been sent to ${email}`,
+                          variant: 'default',
+                        });
+                      }
+                    }}
+                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Sending...' : "Didn't receive a code? Send again"}
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Forgot Password Reset Form */}
+            {loginState === 'FORGOT_PASSWORD_RESET' && (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(onForgotPasswordReset)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <Shield className="h-4 w-4" />
+                      <AlertTitle>Set New Password</AlertTitle>
+                      <AlertDescription>
+                        Create a new strong password for your account.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            readOnly
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">New Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Confirm your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                    disabled={isLoading || passwordStrength <= 33}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Updating Password...' : 'Reset Password & Login'}
                   </Button>
                 </form>
               </Form>

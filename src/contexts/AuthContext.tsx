@@ -3,7 +3,7 @@ import { createContext, useContext, useState, ReactNode, useEffect } from 'react
 import { User, UserRole } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { sendOtpEmail } from '@/utils/aws-ses';
-import { generateStrongPassword, sendWelcomeEmail } from '@/utils/auth-helpers';
+import { generateStrongPassword, sendWelcomeEmail, sendPasswordResetEmail } from '@/utils/auth-helpers';
 
 // Extended user type with password expiry and first login flag
 interface ExtendedUser extends User {
@@ -126,9 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           u.id === foundUser.id ? { ...u, lastOtp: otp } : u
         ));
         
-        // Send email with Amazon SES
+        // Send email with OTP
         try {
-          await sendOtpEmail(email, otp, foundUser.name);
+          // Try to send password reset email if context suggests it's for password reset
+          await sendPasswordResetEmail(email, foundUser.name, otp);
           
           toast({
             title: "OTP Sent",
@@ -139,14 +140,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (emailError) {
           console.error('Email Error:', emailError);
           
-          // For demo purposes, we'll consider it successful even if email fails
-          // In production, you'd want to handle this error appropriately
-          toast({
-            title: "OTP Generated",
-            description: `For demo purposes, check the console for the OTP code.`,
-          });
-          setIsLoading(false);
-          return true;
+          // Fall back to standard OTP email if password reset email fails
+          try {
+            await sendOtpEmail(email, otp, foundUser.name);
+            toast({
+              title: "OTP Sent",
+              description: `A verification code has been sent to ${email}`,
+            });
+            setIsLoading(false);
+            return true;
+          } catch (standardEmailError) {
+            console.error('Standard Email Error:', standardEmailError);
+            
+            // For demo purposes, we'll consider it successful even if email fails
+            toast({
+              title: "OTP Generated",
+              description: `For demo purposes, check the console for the OTP code.`,
+            });
+            setIsLoading(false);
+            return true;
+          }
         }
       } catch (error) {
         console.error('Error in requestOtp:', error);
@@ -326,12 +339,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         u.id === foundUser.id ? updatedUser : u
       ));
       
-      // Log in the user
-      setUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      // If this was initiated from forgot password flow, don't log in the user
+      if (isPasswordExpired || isFirstLogin) {
+        // Log in the user
+        setUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+        
+        setIsPasswordExpired(false);
+        setIsFirstLogin(false);
+      }
       
-      setIsPasswordExpired(false);
-      setIsFirstLogin(false);
       setIsLoading(false);
       
       toast({
