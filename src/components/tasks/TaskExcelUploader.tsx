@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { parseExcelFile, generateExcelTemplate, TaskExcelRow, convertRowToTask } from "@/utils/excel-import";
 import { useTask } from "@/contexts/TaskContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Download, Upload } from "lucide-react";
 
@@ -27,6 +28,7 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
   onOpenChange 
 }) => {
   const { addTask } = useTask();
+  const { users, getUserById } = useAuth();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -53,7 +55,7 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
       setProgress(10);
       setStatus('processing');
       
-      const result = await parseExcelFile(file);
+      const result = await parseExcelFile(file, users);
       setProgress(50);
       
       if (result.errors.length > 0) {
@@ -87,7 +89,7 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
       
       // Process each task with a small delay to avoid UI freezing
       for (const row of parsedData) {
-        const taskData = convertRowToTask(row);
+        const taskData = convertRowToTask(row, users);
         addTask(taskData);
         completed++;
         setProgress(Math.floor((completed / total) * 100));
@@ -119,7 +121,7 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
   
   const handleDownloadTemplate = () => {
     try {
-      const templateBlob = generateExcelTemplate();
+      const templateBlob = generateExcelTemplate(users);
       const url = window.URL.createObjectURL(templateBlob);
       
       const a = document.createElement('a');
@@ -142,6 +144,15 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
         variant: "destructive"
       });
     }
+  };
+  
+  // Helper to get user name from email or ID
+  const getUserDisplayName = (emailOrId: string) => {
+    const userByEmail = users.find(u => u.email.toLowerCase() === emailOrId.toLowerCase());
+    if (userByEmail) return userByEmail.name;
+    
+    const userById = getUserById(emailOrId);
+    return userById ? userById.name : emailOrId;
   };
   
   const renderContent = () => {
@@ -198,7 +209,7 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
                   {parsedData.slice(0, 10).map((task, index) => (
                     <tr key={index}>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">{task.name || 'N/A'}</td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm">{task.assignedTo || 'N/A'}</td>
+                      <td className="px-4 py-2 whitespace-nowrap text-sm">{getUserDisplayName(task.assignedTo)}</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">{task.priority || 'N/A'}</td>
                       <td className="px-4 py-2 whitespace-nowrap text-sm">{task.dueDate || 'N/A'}</td>
                     </tr>
@@ -273,12 +284,19 @@ export const TaskExcelUploader: React.FC<TaskExcelUploaderProps> = ({
                   </Button>
                 </div>
               )}
+              
+              {/* Add help text about user email requirements */}
+              <div className="text-sm text-muted-foreground p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="font-medium text-blue-700 mb-1">Important:</p>
+                <p>Use valid user email addresses for Assigned To, Checker1, and Checker2 fields.</p>
+                <p>Download the template for reference of available users.</p>
+              </div>
             </TabsContent>
             
             <TabsContent value="template" className="py-4 space-y-4">
               <p className="text-sm text-muted-foreground">
                 Download our Excel template to ensure your data is formatted correctly for import. 
-                The template includes sample data and instructions.
+                The template includes sample data, instructions, and a list of all users.
               </p>
               
               <Button

@@ -1,15 +1,16 @@
 
 import * as XLSX from 'xlsx';
 import { Task, TaskFrequency, TaskPriority, ObservationStatus } from '@/types';
+import { User } from '@/types';
 
 // Define the structure of Excel data rows
 export interface TaskExcelRow {
   name: string;
   description: string;
   category: string;
-  assignedTo: string;
-  checker1: string;
-  checker2: string;
+  assignedTo: string; // Now expects email address
+  checker1: string; // Now expects email address
+  checker2: string; // Now expects email address
   priority: string;
   frequency: string;
   isRecurring: string;
@@ -27,9 +28,9 @@ export const getSampleTaskRow = (): TaskExcelRow => {
     name: "Sample Task Name",
     description: "Sample task description",
     category: "Compliance",
-    assignedTo: "maker1", // User ID
-    checker1: "checker1", // User ID
-    checker2: "checker2", // User ID
+    assignedTo: "maker@example.com", // Email format
+    checker1: "checker1@example.com", // Email format
+    checker2: "checker2@example.com", // Email format
     priority: "medium", // low, medium, high
     frequency: "monthly", // daily, weekly, fortnightly, monthly, quarterly, annually, one-time
     isRecurring: "yes", // yes, no
@@ -40,6 +41,11 @@ export const getSampleTaskRow = (): TaskExcelRow => {
     enablePostNotifications: "yes", // yes, no
     postNotificationFrequency: "daily", // daily, weekly
   };
+};
+
+// Find a user by email address
+export const findUserByEmail = (email: string, users: User[]): User | undefined => {
+  return users.find(user => user.email.toLowerCase() === email.toLowerCase());
 };
 
 // Convert a priority string to TaskPriority type
@@ -97,16 +103,44 @@ const parseDateToISO = (value: string): string => {
 };
 
 // Validate a task row
-export const validateTaskRow = (row: TaskExcelRow, rowIndex: number): { valid: boolean; errors: string[] } => {
+export const validateTaskRow = (row: TaskExcelRow, rowIndex: number, users: User[] = []): { valid: boolean; errors: string[] } => {
   const errors: string[] = [];
   
   // Check required fields
   if (!row.name) errors.push(`Row ${rowIndex}: Task name is required`);
   if (!row.description) errors.push(`Row ${rowIndex}: Description is required`);
   if (!row.category) errors.push(`Row ${rowIndex}: Category is required`);
-  if (!row.assignedTo) errors.push(`Row ${rowIndex}: Assigned To (User ID) is required`);
-  if (!row.checker1) errors.push(`Row ${rowIndex}: Checker 1 (User ID) is required`);
-  if (!row.checker2) errors.push(`Row ${rowIndex}: Checker 2 (User ID) is required`);
+  
+  // Validate assignedTo user email
+  if (!row.assignedTo) {
+    errors.push(`Row ${rowIndex}: Assigned To (email) is required`);
+  } else if (users.length > 0) {
+    const makerUser = findUserByEmail(row.assignedTo, users);
+    if (!makerUser) {
+      errors.push(`Row ${rowIndex}: User with email "${row.assignedTo}" not found for Assigned To`);
+    }
+  }
+  
+  // Validate checker1 user email
+  if (!row.checker1) {
+    errors.push(`Row ${rowIndex}: Checker 1 (email) is required`);
+  } else if (users.length > 0) {
+    const checker1User = findUserByEmail(row.checker1, users);
+    if (!checker1User) {
+      errors.push(`Row ${rowIndex}: User with email "${row.checker1}" not found for Checker 1`);
+    }
+  }
+  
+  // Validate checker2 user email
+  if (!row.checker2) {
+    errors.push(`Row ${rowIndex}: Checker 2 (email) is required`);
+  } else if (users.length > 0) {
+    const checker2User = findUserByEmail(row.checker2, users);
+    if (!checker2User) {
+      errors.push(`Row ${rowIndex}: User with email "${row.checker2}" not found for Checker 2`);
+    }
+  }
+  
   if (!row.priority) errors.push(`Row ${rowIndex}: Priority is required (low, medium, high)`);
   if (!row.frequency) errors.push(`Row ${rowIndex}: Frequency is required (daily, weekly, fortnightly, monthly, quarterly, annually, one-time)`);
   if (!row.isRecurring) errors.push(`Row ${rowIndex}: Is Recurring is required (yes, no)`);
@@ -119,16 +153,32 @@ export const validateTaskRow = (row: TaskExcelRow, rowIndex: number): { valid: b
 };
 
 // Convert Excel row to task object
-export const convertRowToTask = (row: TaskExcelRow): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> => {
+export const convertRowToTask = (row: TaskExcelRow, users: User[] = []): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> => {
   const isRecurring = parseBoolean(row.isRecurring);
+  
+  // Convert emails to user IDs
+  let assignedToId = row.assignedTo;
+  let checker1Id = row.checker1;
+  let checker2Id = row.checker2;
+  
+  if (users.length > 0) {
+    const makerUser = findUserByEmail(row.assignedTo, users);
+    if (makerUser) assignedToId = makerUser.id;
+    
+    const checker1User = findUserByEmail(row.checker1, users);
+    if (checker1User) checker1Id = checker1User.id;
+    
+    const checker2User = findUserByEmail(row.checker2, users);
+    if (checker2User) checker2Id = checker2User.id;
+  }
   
   return {
     name: row.name,
     description: row.description,
     category: row.category,
-    assignedTo: row.assignedTo,
-    checker1: row.checker1,
-    checker2: row.checker2,
+    assignedTo: assignedToId,
+    checker1: checker1Id,
+    checker2: checker2Id,
     priority: parsePriority(row.priority),
     frequency: parseFrequency(row.frequency),
     isRecurring: isRecurring,
@@ -149,7 +199,7 @@ export const convertRowToTask = (row: TaskExcelRow): Omit<Task, 'id' | 'createdA
 };
 
 // Parse Excel file
-export const parseExcelFile = (file: File): Promise<{
+export const parseExcelFile = (file: File, users: User[] = []): Promise<{
   data: TaskExcelRow[];
   errors: string[];
 }> => {
@@ -188,9 +238,9 @@ export const parseExcelFile = (file: File): Promise<{
               if (normalizedHeader === 'name' || normalizedHeader === 'task name') mappedRow.name = row[key];
               else if (normalizedHeader === 'description' || normalizedHeader === 'task description') mappedRow.description = row[key];
               else if (normalizedHeader === 'category') mappedRow.category = row[key];
-              else if (normalizedHeader === 'assignedto' || normalizedHeader === 'assigned to' || normalizedHeader === 'maker') mappedRow.assignedTo = row[key];
-              else if (normalizedHeader === 'checker1' || normalizedHeader === 'first checker') mappedRow.checker1 = row[key];
-              else if (normalizedHeader === 'checker2' || normalizedHeader === 'second checker') mappedRow.checker2 = row[key];
+              else if (normalizedHeader === 'assignedto' || normalizedHeader === 'assigned to' || normalizedHeader === 'maker' || normalizedHeader === 'maker email') mappedRow.assignedTo = row[key];
+              else if (normalizedHeader === 'checker1' || normalizedHeader === 'first checker' || normalizedHeader === 'checker1 email') mappedRow.checker1 = row[key];
+              else if (normalizedHeader === 'checker2' || normalizedHeader === 'second checker' || normalizedHeader === 'checker2 email') mappedRow.checker2 = row[key];
               else if (normalizedHeader === 'priority') mappedRow.priority = row[key];
               else if (normalizedHeader === 'frequency') mappedRow.frequency = row[key];
               else if (normalizedHeader === 'isrecurring' || normalizedHeader === 'is recurring' || normalizedHeader === 'recurring') mappedRow.isRecurring = row[key];
@@ -209,7 +259,7 @@ export const parseExcelFile = (file: File): Promise<{
         // Validate rows
         const errors: string[] = [];
         mappedData.forEach((row, index) => {
-          const validation = validateTaskRow(row, index + 2); // +2 because index is 0-based and we skipped header row
+          const validation = validateTaskRow(row, index + 2, users); // +2 because index is 0-based and we skipped header row
           if (!validation.valid) {
             errors.push(...validation.errors);
           }
@@ -233,12 +283,12 @@ export const parseExcelFile = (file: File): Promise<{
 };
 
 // Generate an Excel template file
-export const generateExcelTemplate = (): Blob => {
+export const generateExcelTemplate = (users: User[] = []): Blob => {
   const sampleRow = getSampleTaskRow();
   
-  // Create headers
+  // Create headers with email guidance
   const headers = [
-    'Name', 'Description', 'Category', 'AssignedTo', 'Checker1', 'Checker2',
+    'Name', 'Description', 'Category', 'AssignedTo (Email)', 'Checker1 (Email)', 'Checker2 (Email)',
     'Priority', 'Frequency', 'IsRecurring', 'DueDate', 'ObservationStatus',
     'EnablePreNotifications', 'PreDays', 'EnablePostNotifications', 'PostNotificationFrequency'
   ];
@@ -252,12 +302,41 @@ export const generateExcelTemplate = (): Blob => {
     sampleRow.postNotificationFrequency
   ];
   
-  // Create worksheet
-  const ws = XLSX.utils.aoa_to_sheet([headers, sampleData]);
+  // Create instructions worksheet
+  const instructionsData = [
+    ["Task Import Template Instructions"],
+    [""],
+    ["1. Fill in all required fields in the Tasks sheet"],
+    ["2. Use valid email addresses for AssignedTo, Checker1, and Checker2 fields"],
+    ["3. Priority should be one of: low, medium, high"],
+    ["4. Frequency should be one of: daily, weekly, fortnightly, monthly, quarterly, annually, one-time"],
+    ["5. IsRecurring should be: yes or no"],
+    ["6. DueDate should be in YYYY-MM-DD format"],
+    ["7. ObservationStatus should be one of: yes, no, mixed"],
+    [""],
+    ["Available Users:"]
+  ];
+  
+  // Add user list to instructions
+  if (users.length > 0) {
+    instructionsData.push(["Name", "Email"]);
+    users.forEach(user => {
+      instructionsData.push([user.name, user.email]);
+    });
+  } else {
+    instructionsData.push(["No users available"]);
+  }
   
   // Create workbook
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Tasks Template");
+  
+  // Create tasks template worksheet
+  const tasksWs = XLSX.utils.aoa_to_sheet([headers, sampleData]);
+  XLSX.utils.book_append_sheet(wb, tasksWs, "Tasks");
+  
+  // Create instructions worksheet
+  const instructionsWs = XLSX.utils.aoa_to_sheet(instructionsData);
+  XLSX.utils.book_append_sheet(wb, instructionsWs, "Instructions");
   
   // Generate Excel file
   const wbout = XLSX.write(wb, { type: 'binary', bookType: 'xlsx' });
