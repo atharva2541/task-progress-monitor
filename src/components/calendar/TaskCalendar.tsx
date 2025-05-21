@@ -7,6 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { Task } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 
 interface TaskCalendarProps {
   tasks: Task[];
@@ -78,6 +85,29 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
     );
   };
   
+  // Handle date selection with task navigation
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    if (!selectedDate) return;
+    
+    setDate(selectedDate);
+    
+    // Get tasks for this date
+    const dateKey = new Date(
+      selectedDate.getFullYear(), 
+      selectedDate.getMonth(), 
+      selectedDate.getDate()
+    ).getTime();
+    
+    const dateTasks = tasksPerDay.get(dateKey) || [];
+    
+    // If there's exactly one task, navigate directly
+    if (dateTasks.length === 1) {
+      navigate(`/tasks/${dateTasks[0].id}`);
+    }
+    // If there are more than one tasks, dropdown is shown automatically
+    // via the selectedDateTasks in the UI
+  };
+  
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
@@ -95,6 +125,11 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
     }
   };
   
+  // Navigate to a specific task
+  const navigateToTask = (taskId: string) => {
+    navigate(`/tasks/${taskId}`);
+  };
+  
   return (
     <div className="flex flex-col space-y-6">
       <div>
@@ -108,7 +143,7 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
             <Calendar
               mode="single"
               selected={date}
-              onSelect={setDate}
+              onSelect={handleDateSelect}
               className="p-3 pointer-events-auto"
               components={{
                 DayContent: ({ date }) => (
@@ -145,13 +180,35 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => navigate(`/tasks/${task.id}`)}
+                            onClick={() => navigateToTask(task.id)}
                           >
                             View
                           </Button>
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Task selection dropdown for multiple tasks */}
+                    {selectedDateTasks.length > 1 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button className="w-full mt-2">
+                            Select Task to View <ChevronDown className="h-4 w-4 ml-2" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-full bg-white">
+                          {selectedDateTasks.map((task) => (
+                            <DropdownMenuItem 
+                              key={task.id}
+                              onClick={() => navigateToTask(task.id)}
+                              className="cursor-pointer"
+                            >
+                              {task.name} - {task.status}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 ) : (
                   <p className="text-center text-muted-foreground py-8">
