@@ -1,8 +1,8 @@
 
 import { AdminLog } from "@/types";
 
-export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view' | 'export' | 'import';
-export type AdminLogEntityType = 'user' | 'task' | 'system' | 'file' | 'setting' | 'report' | 'auth';
+export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view' | 'export' | 'import' | 'settings_change' | 'system_event';
+export type AdminLogEntityType = 'user' | 'task' | 'system' | 'file' | 'setting' | 'report' | 'auth' | 'settings';
 
 export interface AdminLogFilter {
   startDate?: string;
