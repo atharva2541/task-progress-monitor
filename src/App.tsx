@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { AuthProvider } from "@/contexts/AuthContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { AdminLogProvider } from "@/contexts/AdminLogContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
@@ -18,6 +18,7 @@ import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
 import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
 import ProductivityAnalyticsPage from "@/pages/admin/ProductivityAnalyticsPage";
+import AdminLogsPage from "@/pages/admin/AdminLogsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import Login from "@/pages/Login";
 import Index from "@/pages/Index";
@@ -48,173 +49,185 @@ function App() {
             <AuthProvider>
               <NotificationProvider>
                 <TaskProvider>
-                  <Toaster />
-                  <Sonner />
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/login" element={<Login />} />
-                    
-                    {/* Root route that redirects based on auth status */}
-                    <Route path="/" element={
-                      <ProtectedRoute>
-                        <AppLayout>
-                          <Dashboard />
-                        </AppLayout>
-                      </ProtectedRoute>
-                    } />
-                    
-                    {/* Protected routes */}
-                    <Route
-                      path="/tasks"
-                      element={
+                  <AdminLogProvider>
+                    <Toaster />
+                    <Sonner />
+                    <Routes>
+                      {/* Public routes */}
+                      <Route path="/login" element={<Login />} />
+                      
+                      {/* Root route that redirects based on auth status */}
+                      <Route path="/" element={
                         <ProtectedRoute>
                           <AppLayout>
-                            <TaskList />
+                            <Dashboard />
                           </AppLayout>
                         </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/tasks/:taskId"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <TaskDetail />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    {/* New route for task history */}
-                    <Route
-                      path="/tasks/:taskId/history"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <TaskHistoryPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/my-tasks"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <MyTasksPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/tasks-to-review"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <TasksToReviewPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/team-dashboard"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <TeamDashboardPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/escalations"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <EscalationsPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/admin/tasks"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <AdminTasksPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/admin/users"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <UserManagementPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/admin/productivity"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <ProductivityAnalyticsPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    <Route
-                      path="/calendar"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <CalendarPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
+                      } />
+                      
+                      {/* Protected routes */}
+                      <Route
+                        path="/tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskList />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/tasks/:taskId"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskDetail />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/tasks/:taskId/history"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskHistoryPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/my-tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <MyTasksPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/tasks-to-review"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TasksToReviewPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/team-dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TeamDashboardPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/escalations"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <EscalationsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <AdminTasksPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/users"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <UserManagementPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/productivity"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <ProductivityAnalyticsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/logs"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <AdminLogsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/calendar"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <CalendarPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
 
-                    {/* Settings routes */}
-                    <Route
-                      path="/settings"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <SettingsPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
+                      {/* Settings routes */}
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <SettingsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
 
-                    <Route
-                      path="/system-settings"
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>
-                            <SystemSettingsPage />
-                          </AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    
-                    {/* Catch-all route */}
-                    <Route path="*" element={<NotFound />} />
-                    
-                    {/* User settings route */}
-                    <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
-                  </Routes>
+                      <Route
+                        path="/system-settings"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <SystemSettingsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      {/* Catch-all route */}
+                      <Route path="*" element={<NotFound />} />
+                      
+                      {/* User settings route */}
+                      <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
+                    </Routes>
+                  </AdminLogProvider>
                 </TaskProvider>
               </NotificationProvider>
             </AuthProvider>

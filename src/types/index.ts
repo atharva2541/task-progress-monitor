@@ -1,4 +1,3 @@
-
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -143,4 +142,30 @@ export interface TaskNotificationSettings {
   notifyMaker: boolean; // Whether to notify the maker
   notifyChecker1: boolean; // Whether to notify checker1
   notifyChecker2: boolean; // Whether to notify checker2
+}
+
+// Admin log types
+export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'settings_change' | 'system_event';
+export type AdminLogEntityType = 'task' | 'user' | 'settings' | 'system' | 'file';
+
+export interface AdminLog {
+  id: string;
+  timestamp: string; // ISO date string
+  userId: string;
+  userName: string;
+  action: AdminLogActionType;
+  entityType: AdminLogEntityType;
+  entityId?: string;
+  details: string;
+  beforeState?: string; // JSON stringified
+  afterState?: string; // JSON stringified
+}
+
+export interface AdminLogFilter {
+  startDate?: string;
+  endDate?: string;
+  userId?: string;
+  action?: AdminLogActionType;
+  entityType?: AdminLogEntityType;
+  searchQuery?: string;
 }
