@@ -9,11 +9,11 @@ const AlertDialog = AlertDialogPrimitive.Root
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
 
-// Fix: Remove className prop as it's not supported by AlertDialogPortalProps
 const AlertDialogPortal = ({
+  className,
   ...props
 }: AlertDialogPrimitive.AlertDialogPortalProps) => (
-  <AlertDialogPrimitive.Portal {...props} />
+  <AlertDialogPrimitive.Portal className={cn(className)} {...props} />
 )
 AlertDialogPortal.displayName = AlertDialogPrimitive.Portal.displayName
 
