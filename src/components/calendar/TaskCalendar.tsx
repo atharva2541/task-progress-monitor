@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -85,17 +84,21 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
     );
   };
   
-  // Handle date selection with task navigation
+  // Handle date selection - now only setting the date without navigation
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!selectedDate) return;
-    
     setDate(selectedDate);
+  };
+  
+  // Handle double-click on a date
+  const handleDateDoubleClick = () => {
+    if (!date) return;
     
     // Get tasks for this date
     const dateKey = new Date(
-      selectedDate.getFullYear(), 
-      selectedDate.getMonth(), 
-      selectedDate.getDate()
+      date.getFullYear(), 
+      date.getMonth(), 
+      date.getDate()
     ).getTime();
     
     const dateTasks = tasksPerDay.get(dateKey) || [];
@@ -147,7 +150,10 @@ export const TaskCalendar = ({ tasks, title, description }: TaskCalendarProps) =
               className="p-3 pointer-events-auto"
               components={{
                 DayContent: ({ date }) => (
-                  <div className="relative w-full h-full flex items-center justify-center">
+                  <div 
+                    className="relative w-full h-full flex items-center justify-center"
+                    onDoubleClick={handleDateDoubleClick}
+                  >
                     {date.getDate()}
                     {dayContent(date)}
                   </div>
