@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Task } from "@/types";
 import { useTask } from "@/contexts/TaskContext";
@@ -17,14 +18,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import { EditTaskDialog } from "@/components/tasks/EditTaskDialog";
+import { TaskExcelUploader } from "@/components/tasks/TaskExcelUploader";
 import { TaskFormManager, TaskFormValues } from "@/utils/TaskFormManager";
 import { cn } from "@/lib/utils";
+import { Download, Upload } from "lucide-react";
 
 const AdminTasksPage = () => {
   const { tasks, addTask, updateTask, getUserById } = useTask();
   const { users, user } = useAuth();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isExcelUploaderOpen, setIsExcelUploaderOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const handleEditDialogOpen = (task: Task) => {
@@ -95,7 +99,19 @@ const AdminTasksPage = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Task Management</h1>
         {user?.role === 'admin' && (
-          <Button onClick={() => setIsCreateDialogOpen(true)}>Create Task</Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline"
+              onClick={() => setIsExcelUploaderOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="h-4 w-4" />
+              Import Tasks
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              Create Task
+            </Button>
+          </div>
         )}
       </div>
       
@@ -161,6 +177,11 @@ const AdminTasksPage = () => {
           <EditTaskDialog task={selectedTask} onUpdateTask={handleUpdateTask} />
         )}
       </Dialog>
+      
+      <TaskExcelUploader 
+        open={isExcelUploaderOpen}
+        onOpenChange={setIsExcelUploaderOpen}
+      />
     </div>
   );
 };
