@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
@@ -19,7 +18,8 @@ import {
   Users, 
   Calendar, 
   Settings, 
-  BarChart4 
+  BarChart4,
+  FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -39,6 +39,7 @@ export function AppSidebar() {
         { title: 'User Management', icon: Users, path: '/admin/users' },
         { title: 'Task Management', icon: ClipboardCheck, path: '/admin/tasks' },
         { title: 'Productivity Analytics', icon: BarChart4, path: '/admin/productivity' },
+        { title: 'Activity Logs', icon: FileText, path: '/admin/logs' },
         { title: 'Settings', icon: Settings, path: '/settings' },
       ],
       maker: [],
