@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
 
 export interface User {
@@ -145,8 +146,8 @@ export interface TaskNotificationSettings {
 }
 
 // Admin log types
-export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'settings_change' | 'system_event';
-export type AdminLogEntityType = 'task' | 'user' | 'settings' | 'system' | 'file';
+export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view' | 'export' | 'import' | 'settings_change' | 'system_event';
+export type AdminLogEntityType = 'user' | 'task' | 'system' | 'file' | 'setting' | 'report' | 'auth' | 'settings';
 
 export interface AdminLog {
   id: string;
