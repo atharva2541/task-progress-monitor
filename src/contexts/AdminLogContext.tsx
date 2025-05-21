@@ -20,7 +20,7 @@ interface AdminLogContextType {
 export interface AdminLogFilter {
   dateRange?: { start: Date; end: Date };
   userId?: string;
-  actionType?: ActivityLogActionType | '';
+  actionType?: ActivityLogActionType | string;
   taskId?: string;
   searchQuery?: string;
 }
@@ -129,12 +129,12 @@ export function AdminLogProvider({ children }: { children: ReactNode }) {
       }
       
       // Filter by user
-      if (filters.userId && log.userId !== filters.userId) {
+      if (filters.userId && filters.userId !== 'none' && log.userId !== filters.userId) {
         return false;
       }
       
       // Filter by action type
-      if (filters.actionType && log.actionType !== filters.actionType) {
+      if (filters.actionType && filters.actionType !== 'none' && log.actionType !== filters.actionType) {
         return false;
       }
       
