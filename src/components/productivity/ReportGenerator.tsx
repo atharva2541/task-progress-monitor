@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { UserSelector } from './UserSelector';
-import { Download, FileText, ChevronDown } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { ReportPreview } from './ReportPreview';
 import { generateReportPreviewData } from '@/utils/productivity-utils';
 import { Badge } from '@/components/ui/badge';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 
 export function ReportGenerator({ tasks, users }) {
   const [selectedUser, setSelectedUser] = useState('all');
@@ -19,9 +21,72 @@ export function ReportGenerator({ tasks, users }) {
   const reportPreviewData = generateReportPreviewData(tasks, users, selectedUser, reportType, timeRange);
   
   const handleExport = (format) => {
-    // In a real app, this would generate and download the report in the specified format
     console.log(`Exporting ${reportType} report for ${selectedUser} in ${format} format`);
-    // Add actual export logic here
+    
+    if (!reportPreviewData || !reportPreviewData.data || reportPreviewData.data.length === 0) {
+      toast.error('No data available to export');
+      return;
+    }
+    
+    try {
+      if (format === 'excel') {
+        // Create a new workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        
+        // Convert the data to a format that XLSX can use
+        const wsData = [
+          // Headers
+          reportPreviewData.columns.map(col => col.label),
+          // Data rows
+          ...reportPreviewData.data.map(row => 
+            reportPreviewData.columns.map(col => {
+              const value = row[col.key];
+              if (value === undefined || value === null) return '';
+              return value;
+            })
+          )
+        ];
+        
+        // Create the worksheet and add it to the workbook
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "Report");
+        
+        // Generate the file and trigger download
+        XLSX.writeFile(wb, `${reportType}-report-${new Date().toISOString().split('T')[0]}.xlsx`);
+        toast.success('Excel report downloaded successfully');
+      } else if (format === 'csv') {
+        // Create CSV content
+        const headers = reportPreviewData.columns.map(col => col.label).join(',');
+        const rows = reportPreviewData.data.map(row => 
+          reportPreviewData.columns.map(col => {
+            const value = row[col.key];
+            if (value === undefined || value === null) return '';
+            // Handle quotes in CSV values
+            return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+          }).join(',')
+        ).join('\n');
+        
+        const csvContent = `${headers}\n${rows}`;
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        
+        // Create a link and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${reportType}-report-${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('CSV report downloaded successfully');
+      } else if (format === 'pdf') {
+        // For PDF, we'll show a message since browser-based PDF generation requires additional libraries
+        toast.info('PDF export functionality will be available soon');
+        // In a real implementation, this would use a library like jsPDF or trigger a server-side PDF generation
+      }
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast.error('Error exporting report');
+    }
   };
   
   return (
@@ -70,7 +135,18 @@ export function ReportGenerator({ tasks, users }) {
                 className="flex items-center gap-2"
               >
                 {previewVisible ? 'Hide Preview' : 'Show Preview'} 
-                <ChevronDown className={`h-4 w-4 transition-transform ${previewVisible ? 'transform rotate-180' : ''}`} />
+                <svg 
+                  className={`h-4 w-4 transition-transform ${previewVisible ? 'transform rotate-180' : ''}`}
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
               </Button>
               
               <div className="flex gap-2">
