@@ -19,8 +19,7 @@ import {
   Users, 
   Calendar, 
   Settings, 
-  BarChart4,
-  FileText
+  BarChart4 
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -40,7 +39,6 @@ export function AppSidebar() {
         { title: 'User Management', icon: Users, path: '/admin/users' },
         { title: 'Task Management', icon: ClipboardCheck, path: '/admin/tasks' },
         { title: 'Productivity Analytics', icon: BarChart4, path: '/admin/productivity' },
-        { title: 'Admin Logs', icon: FileText, path: '/admin/logs' },
         { title: 'Settings', icon: Settings, path: '/settings' },
       ],
       maker: [],

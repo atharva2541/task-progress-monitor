@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +11,6 @@ import * as z from "zod";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/use-toast";
-import { AdminLogProvider } from "@/contexts/AdminLogContext";
-import { useNavigate } from "react-router-dom";
-import { FileText } from "lucide-react";
 
 // Form schema
 const monitoringSchema = z.object({
@@ -28,12 +26,9 @@ const monitoringSchema = z.object({
   alertThresholdDisk: z.number().min(50).max(99),
   notifyAdminOnErrors: z.boolean(),
   enablePerformanceAlerts: z.boolean(),
-  enableAdminLogs: z.boolean(),
 });
 
 export function SystemMonitoringSettings() {
-  const navigate = useNavigate();
-  
   const form = useForm<z.infer<typeof monitoringSchema>>({
     resolver: zodResolver(monitoringSchema),
     defaultValues: {
@@ -49,7 +44,6 @@ export function SystemMonitoringSettings() {
       alertThresholdDisk: 85,
       notifyAdminOnErrors: true,
       enablePerformanceAlerts: true,
-      enableAdminLogs: true,
     },
   });
 
@@ -59,10 +53,6 @@ export function SystemMonitoringSettings() {
       title: "Monitoring settings updated",
       description: "System monitoring settings have been saved successfully.",
     });
-  }
-  
-  function goToAdminLogs() {
-    navigate('/admin/logs');
   }
 
   return (
@@ -375,45 +365,6 @@ export function SystemMonitoringSettings() {
                   </div>
                 </div>
               )}
-              
-              {/* Admin logs section */}
-              <div className="border-t pt-4">
-                <h3 className="text-lg font-medium mb-3">Admin Activity Logging</h3>
-                <FormField
-                  control={form.control}
-                  name="enableAdminLogs"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mb-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          Enable Admin Activity Logs
-                        </FormLabel>
-                        <FormDescription>
-                          Track and record all administrative actions in the system
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch("enableAdminLogs") && (
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={goToAdminLogs} 
-                    className="flex items-center gap-2"
-                  >
-                    <FileText className="h-4 w-4" />
-                    Manage Admin Logs
-                  </Button>
-                )}
-              </div>
 
               <Button type="submit">Save Monitoring Settings</Button>
             </form>

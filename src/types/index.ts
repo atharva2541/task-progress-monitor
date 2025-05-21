@@ -144,29 +144,3 @@ export interface TaskNotificationSettings {
   notifyChecker1: boolean; // Whether to notify checker1
   notifyChecker2: boolean; // Whether to notify checker2
 }
-
-// Admin log types
-export type AdminLogActionType = 'create' | 'update' | 'delete' | 'login' | 'logout' | 'view' | 'export' | 'import' | 'settings_change' | 'system_event';
-export type AdminLogEntityType = 'user' | 'task' | 'system' | 'file' | 'setting' | 'report' | 'auth' | 'settings';
-
-export interface AdminLog {
-  id: string;
-  timestamp: string; // ISO date string
-  userId: string;
-  userName: string;
-  action: AdminLogActionType;
-  entityType: AdminLogEntityType;
-  entityId?: string;
-  details: string;
-  beforeState?: string; // JSON stringified
-  afterState?: string; // JSON stringified
-}
-
-export interface AdminLogFilter {
-  startDate?: string;
-  endDate?: string;
-  userId?: string;
-  action?: AdminLogActionType;
-  entityType?: AdminLogEntityType;
-  searchQuery?: string;
-}
