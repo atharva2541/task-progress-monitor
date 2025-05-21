@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -29,7 +30,7 @@ import TasksToReviewPage from './pages/tasks/TasksToReviewPage';
 import TeamDashboardPage from './pages/dashboard/TeamDashboardPage';
 import EscalationsPage from './pages/escalations/EscalationsPage';
 import AdminLogsPage from './pages/admin/AdminLogsPage';
-import AdminLogProvider from './contexts/AdminLogContext';
+import { AdminLogProvider } from './contexts/AdminLogContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
