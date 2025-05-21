@@ -9,24 +9,42 @@ import { checkTasksForNotifications } from '@/utils/notification-scheduler';
 const TaskContext = createContext<TaskServiceProps | undefined>(undefined);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
-  const taskService = useTaskService();
-  const { addNotification } = useNotification();
-  const { user } = useAuth();
+  let taskService;
   
-  // Check for task notifications periodically
-  useEffect(() => {
-    if (!user || !taskService.tasks || taskService.tasks.length === 0) return;
+  try {
+    // This might fail if AuthProvider is not available
+    taskService = useTaskService();
+    const { addNotification } = useNotification();
+    const { user } = useAuth();
     
-    // Initial check
-    checkTasksForNotifications(taskService.tasks, taskService.getUserById);
-    
-    // Set up periodic checks
-    const interval = setInterval(() => {
+    // Check for task notifications periodically
+    useEffect(() => {
+      if (!user || !taskService.tasks || taskService.tasks.length === 0) return;
+      
+      // Initial check
       checkTasksForNotifications(taskService.tasks, taskService.getUserById);
-    }, 3600000); // Check every hour
-    
-    return () => clearInterval(interval);
-  }, [taskService.tasks, user]);
+      
+      // Set up periodic checks
+      const interval = setInterval(() => {
+        checkTasksForNotifications(taskService.tasks, taskService.getUserById);
+      }, 3600000); // Check every hour
+      
+      return () => clearInterval(interval);
+    }, [taskService.tasks, user]);
+  } catch (error) {
+    console.error("Error in TaskProvider:", error);
+    // Provide fallback taskService with empty values
+    taskService = {
+      tasks: [],
+      isLoading: false,
+      addTask: () => {},
+      updateTask: () => {},
+      deleteTask: () => {},
+      getTaskById: () => undefined,
+      getUserAccessibleTasks: () => [],
+      getUserById: () => undefined
+    };
+  }
   
   return (
     <TaskContext.Provider value={taskService}>
@@ -47,9 +65,17 @@ export function useTask() {
 // Properly spreads all properties from the original context
 export function useAuthorizedTasks() {
   const taskContext = useTask();
-  const { user } = useAuth();
+  let user;
   
-  if (!user) return { tasks: [] };
+  try {
+    const authContext = useAuth();
+    user = authContext.user;
+  } catch (error) {
+    console.error("Error accessing auth context in useAuthorizedTasks:", error);
+    return { ...taskContext, tasks: [] };
+  }
+  
+  if (!user) return { ...taskContext, tasks: [] };
   
   // Filter tasks based on user role and involvement
   const authorizedTasks = taskContext.getUserAccessibleTasks(user.id, user.role);

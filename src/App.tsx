@@ -12,7 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
-import TaskHistoryPage from "@/pages/TaskHistoryPage"; // Import the new page
+import TaskHistoryPage from "@/pages/TaskHistoryPage"; 
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
@@ -44,12 +44,12 @@ function App() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <AuthProvider>
-            <NotificationProvider>
-              <TaskProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
+          <BrowserRouter>
+            <AuthProvider>
+              <NotificationProvider>
+                <TaskProvider>
+                  <Toaster />
+                  <Sonner />
                   <Routes>
                     {/* Public routes */}
                     <Route path="/login" element={<Login />} />
@@ -215,10 +215,10 @@ function App() {
                     {/* User settings route */}
                     <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
                   </Routes>
-                </BrowserRouter>
-              </TaskProvider>
-            </NotificationProvider>
-          </AuthProvider>
+                </TaskProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
