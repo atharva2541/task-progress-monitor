@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import TaskList from "@/pages/TaskList";
 import TaskDetail from "@/pages/TaskDetail";
+import TaskHistoryPage from "@/pages/TaskHistoryPage"; // Import the new page
 import AdminTasksPage from "@/pages/admin/AdminTasksPage";
 import UserManagementPage from "@/pages/admin/UserManagementPage";
 import SettingsPage from "@/pages/admin/SettingsPage";
@@ -79,6 +81,18 @@ function App() {
                         <ProtectedRoute>
                           <AppLayout>
                             <TaskDetail />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    
+                    {/* New route for task history */}
+                    <Route
+                      path="/tasks/:taskId/history"
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <TaskHistoryPage />
                           </AppLayout>
                         </ProtectedRoute>
                       }

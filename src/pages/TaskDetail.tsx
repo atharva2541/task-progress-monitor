@@ -17,9 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { TaskAttachments } from '@/components/tasks/TaskAttachments';
 import { ObservationStatusDropdown } from '@/components/tasks/ObservationStatusDropdown';
 import { DaysPastDueCounter } from '@/components/tasks/DaysPastDueCounter';
-import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle, AlertTriangle, History } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TaskHistoryExplorer } from '@/components/tasks/TaskHistoryExplorer';
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -136,17 +137,34 @@ const TaskDetail = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={() => navigate('/tasks')}
-          className="mr-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Tasks
-        </Button>
-        <h1 className="text-2xl font-bold">{task.name}</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/tasks')}
+            className="mr-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Tasks
+          </Button>
+          <h1 className="text-2xl font-bold">{task.name}</h1>
+        </div>
+        
+        {/* Add View History button for recurring tasks */}
+        {task.isRecurring && (
+          <div className="flex space-x-2">
+            <TaskHistoryExplorer task={task} />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate(`/tasks/${task.id}/history`)}
+            >
+              <History className="h-4 w-4 mr-2" />
+              View Full History
+            </Button>
+          </div>
+        )}
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
