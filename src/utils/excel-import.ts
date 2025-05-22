@@ -1,276 +1,220 @@
+
 import * as XLSX from 'xlsx';
-import { Task, TaskFrequency, TaskPriority, ObservationStatus } from '@/types';
-import { User } from '@/types';
+import { Task, TaskFrequency } from '@/types';
+import { z } from 'zod';
 
-// Define the structure of Excel data rows
-export interface TaskExcelRow {
-  name: string;
-  description: string;
-  category: string;
-  assignedTo: string; // Now expects email address
-  checker1: string; // Now expects email address
-  checker2: string; // Now expects email address
-  priority: string;
-  frequency: string;
-  isRecurring: string;
-  dueDate: string;
-  observationStatus: string;
-  enablePreNotifications?: string;
-  preDays?: string;
-  enablePostNotifications?: string;
-  postNotificationFrequency?: string;
-}
+// Schema for validating imported task data
+const taskImportSchema = z.object({
+  name: z.string().min(3, "Task name must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().min(1, "Category is required"),
+  assignedTo: z.string().min(1, "Assigned To is required"),
+  checker1: z.string().min(1, "Checker 1 is required"),
+  checker2: z.string().min(1, "Checker 2 is required"),
+  priority: z.enum(["low", "medium", "high"]),
+  frequency: z.enum(["once", "daily", "weekly", "bi-weekly", "monthly", "quarterly", "yearly"]),
+  isRecurring: z.boolean(),
+  dueDate: z.string().min(1, "Due date is required"),
+  observationStatus: z.enum(["yes", "no", "mixed"]).default("no"),
+});
 
-// Get a sample task row for template generation
-export const getSampleTaskRow = (): TaskExcelRow => {
-  return {
-    name: "Sample Task Name",
-    description: "Sample task description",
-    category: "Compliance",
-    assignedTo: "maker@example.com", // Email format
-    checker1: "checker1@example.com", // Email format
-    checker2: "checker2@example.com", // Email format
-    priority: "medium", // low, medium, high
-    frequency: "monthly", // daily, weekly, fortnightly, monthly, quarterly, annually, one-time
-    isRecurring: "yes", // yes, no
-    dueDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-    observationStatus: "no", // yes, no, mixed
-    enablePreNotifications: "yes", // yes, no
-    preDays: "1,3,7", // comma separated days before due date
-    enablePostNotifications: "yes", // yes, no
-    postNotificationFrequency: "daily", // daily, weekly
-  };
-};
+export type TaskImportData = z.infer<typeof taskImportSchema>;
 
-// Find a user by email address
-export const findUserByEmail = (email: string, users: User[]): User | undefined => {
-  return users.find(user => user.email.toLowerCase() === email.toLowerCase());
-};
-
-// Convert a priority string to TaskPriority type
-const parsePriority = (value: string): TaskPriority => {
-  const normalizedValue = value.toLowerCase().trim();
-  if (['low', 'medium', 'high'].includes(normalizedValue)) {
-    return normalizedValue as TaskPriority;
+// Helper function to parse date from Excel serial number or string
+const parseExcelDate = (excelDate: any): string => {
+  // If it's already a date string in ISO format, return as is
+  if (typeof excelDate === 'string' && excelDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+    return excelDate;
   }
-  return 'medium'; // Default
-};
-
-// Convert a frequency string to TaskFrequency type
-const parseFrequency = (value: string): TaskFrequency => {
-  const normalizedValue = value.toLowerCase().trim();
-  if (['daily', 'weekly', 'fortnightly', 'monthly', 'quarterly', 'annually', 'one-time'].includes(normalizedValue)) {
-    return normalizedValue as TaskFrequency;
+  
+  // If it's a number (Excel serial date)
+  if (typeof excelDate === 'number') {
+    // Excel dates are number of days since 1900-01-01
+    // Excel has a leap year bug where it thinks 1900 was a leap year
+    const date = new Date(Math.round((excelDate - (excelDate > 59 ? 1 : 0) - 25569) * 86400 * 1000));
+    return date.toISOString().split('T')[0];
   }
-  return 'one-time'; // Default
-};
-
-// Convert a boolean string to boolean
-const parseBoolean = (value: string): boolean => {
-  const normalizedValue = value.toLowerCase().trim();
-  return normalizedValue === 'yes' || normalizedValue === 'true' || normalizedValue === '1';
-};
-
-// Convert a string to ObservationStatus type
-const parseObservationStatus = (value: string): ObservationStatus => {
-  const normalizedValue = value.toLowerCase().trim();
-  if (['yes', 'no', 'mixed'].includes(normalizedValue)) {
-    return normalizedValue as ObservationStatus;
+  
+  // If it's a date object
+  if (excelDate instanceof Date) {
+    return excelDate.toISOString().split('T')[0];
   }
-  return 'no'; // Default
-};
-
-// Parse a comma-separated string of numbers to array
-const parseNumberArray = (value: string): number[] => {
-  return value.split(',').map(num => parseInt(num.trim())).filter(num => !isNaN(num));
-};
-
-// Parse date string to ISO format
-const parseDateToISO = (value: string): string => {
+  
+  // If it's a string in another format, try to parse it
   try {
-    // Try to parse the date value
-    const date = new Date(value);
-    if (isNaN(date.getTime())) {
-      // If invalid, use current date
-      return new Date().toISOString();
+    const date = new Date(excelDate);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
     }
-    return date.toISOString();
-  } catch (error) {
-    // If parsing fails, use current date
-    return new Date().toISOString();
+  } catch (e) {
+    // Invalid date format
   }
+  
+  // Return today's date as fallback
+  return new Date().toISOString().split('T')[0];
 };
 
-// Validate a task row
-export const validateTaskRow = (row: TaskExcelRow, rowIndex: number, users: User[] = []): { valid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-  
-  // Check required fields
-  if (!row.name) errors.push(`Row ${rowIndex}: Task name is required`);
-  if (!row.description) errors.push(`Row ${rowIndex}: Description is required`);
-  if (!row.category) errors.push(`Row ${rowIndex}: Category is required`);
-  
-  // Validate assignedTo user email
-  if (!row.assignedTo) {
-    errors.push(`Row ${rowIndex}: Assigned To (email) is required`);
-  } else if (users.length > 0) {
-    const makerUser = findUserByEmail(row.assignedTo, users);
-    if (!makerUser) {
-      errors.push(`Row ${rowIndex}: User with email "${row.assignedTo}" not found for Assigned To`);
-    }
+// Helper to convert recurring string to boolean
+const parseBoolean = (value: any): boolean => {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    const lowerVal = value.toLowerCase();
+    return lowerVal === 'yes' || lowerVal === 'true' || lowerVal === '1';
   }
-  
-  // Validate checker1 user email
-  if (!row.checker1) {
-    errors.push(`Row ${rowIndex}: Checker 1 (email) is required`);
-  } else if (users.length > 0) {
-    const checker1User = findUserByEmail(row.checker1, users);
-    if (!checker1User) {
-      errors.push(`Row ${rowIndex}: User with email "${row.checker1}" not found for Checker 1`);
-    }
-  }
-  
-  // Validate checker2 user email
-  if (!row.checker2) {
-    errors.push(`Row ${rowIndex}: Checker 2 (email) is required`);
-  } else if (users.length > 0) {
-    const checker2User = findUserByEmail(row.checker2, users);
-    if (!checker2User) {
-      errors.push(`Row ${rowIndex}: User with email "${row.checker2}" not found for Checker 2`);
-    }
-  }
-  
-  if (!row.priority) errors.push(`Row ${rowIndex}: Priority is required (low, medium, high)`);
-  if (!row.frequency) errors.push(`Row ${rowIndex}: Frequency is required (daily, weekly, fortnightly, monthly, quarterly, annually, one-time)`);
-  if (!row.isRecurring) errors.push(`Row ${rowIndex}: Is Recurring is required (yes, no)`);
-  if (!row.dueDate) errors.push(`Row ${rowIndex}: Due Date is required (YYYY-MM-DD)`);
-  
-  return { 
-    valid: errors.length === 0,
-    errors 
-  };
+  if (typeof value === 'number') return value !== 0;
+  return false;
 };
 
-// Convert Excel row to task object
-export const convertRowToTask = (row: TaskExcelRow, users: User[] = []): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> => {
-  const isRecurring = parseBoolean(row.isRecurring);
+// Helper to normalize priority
+const normalizePriority = (value: any): "low" | "medium" | "high" => {
+  if (!value) return "medium";
   
-  // Convert emails to user IDs
-  let assignedToId = row.assignedTo;
-  let checker1Id = row.checker1;
-  let checker2Id = row.checker2;
+  const strValue = String(value).toLowerCase();
   
-  if (users.length > 0) {
-    const makerUser = findUserByEmail(row.assignedTo, users);
-    if (makerUser) assignedToId = makerUser.id;
-    
-    const checker1User = findUserByEmail(row.checker1, users);
-    if (checker1User) checker1Id = checker1User.id;
-    
-    const checker2User = findUserByEmail(row.checker2, users);
-    if (checker2User) checker2Id = checker2User.id;
+  if (strValue.includes('high') || strValue.includes('critical') || strValue === '3') {
+    return "high";
   }
   
-  return {
-    name: row.name,
-    description: row.description,
-    category: row.category,
-    assignedTo: assignedToId,
-    checker1: checker1Id,
-    checker2: checker2Id,
-    priority: parsePriority(row.priority),
-    frequency: parseFrequency(row.frequency),
-    isRecurring: isRecurring,
-    dueDate: parseDateToISO(row.dueDate),
-    status: 'pending',
-    observationStatus: parseObservationStatus(row.observationStatus),
-    notificationSettings: {
-      enablePreNotifications: row.enablePreNotifications ? parseBoolean(row.enablePreNotifications) : true,
-      preDays: row.preDays ? parseNumberArray(row.preDays) : [1, 3, 7],
-      enablePostNotifications: true, // Always mandatory
-      postNotificationFrequency: (row.postNotificationFrequency?.toLowerCase().trim() === 'weekly') ? 'weekly' : 'daily',
-      sendEmails: true, // Always mandatory
-      notifyMaker: true, // Always mandatory
-      notifyChecker1: true, // Always mandatory
-      notifyChecker2: true, // Always mandatory
-    },
-    comments: [], // Add empty comments array
-    attachments: [] // Add empty attachments array
-  };
+  if (strValue.includes('low') || strValue === '1') {
+    return "low";
+  }
+  
+  return "medium";
 };
 
-// Parse Excel file
-export const parseExcelFile = (file: File, users: User[] = []): Promise<{
-  data: TaskExcelRow[];
-  errors: string[];
-}> => {
+// Helper to normalize frequency
+const normalizeFrequency = (value: any): TaskFrequency => {
+  if (!value) return "monthly";
+  
+  const strValue = String(value).toLowerCase();
+  
+  if (strValue.includes('daily')) return "daily";
+  if (strValue.includes('weekly') && !strValue.includes('bi')) return "weekly";
+  if (strValue.includes('bi-weekly') || strValue.includes('biweekly') || strValue.includes('fortnight')) return "bi-weekly";
+  if (strValue.includes('month')) return "monthly";
+  if (strValue.includes('quarter')) return "quarterly";
+  if (strValue.includes('year') || strValue.includes('annual')) return "yearly";
+  if (strValue.includes('once') || strValue.includes('one time') || strValue.includes('one-time')) return "once";
+  
+  // Default to monthly if no match
+  return "monthly";
+};
+
+// Helper to normalize observation status
+const normalizeObservationStatus = (value: any): "yes" | "no" | "mixed" => {
+  if (!value) return "no";
+  
+  const strValue = String(value).toLowerCase();
+  
+  if (strValue.includes('yes') || strValue.includes('true') || strValue === '1') {
+    return "yes";
+  }
+  
+  if (strValue.includes('mixed') || strValue.includes('partial')) {
+    return "mixed";
+  }
+  
+  return "no";
+};
+
+// Map Excel column names to our task properties
+const columnMap = {
+  "Task Name": "name",
+  "Description": "description",
+  "Category": "category",
+  "Assigned To": "assignedTo",
+  "Checker 1": "checker1",
+  "Checker 2": "checker2",
+  "Priority": "priority",
+  "Frequency": "frequency",
+  "Recurring": "isRecurring",
+  "Due Date": "dueDate",
+  "Observation Status": "observationStatus",
+  // Add other mappings as needed
+};
+
+export const parseExcelTasks = (file: File): Promise<TaskImportData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        if (!data) {
-          reject(new Error("Failed to read file"));
-          return;
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Get the first worksheet
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON with header row as keys
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        if (rawRows.length < 2) {
+          throw new Error("Excel file must contain a header row and at least one data row");
         }
         
-        // Parse workbook
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        // First row is header
+        const headers = rawRows[0] as string[];
         
-        // Convert to JSON
-        const rows = XLSX.utils.sheet_to_json<TaskExcelRow>(firstSheet, { header: "A" });
+        // Process each data row
+        const parsedTasks: TaskImportData[] = [];
         
-        // Get header row and remove it from rows
-        const headerRow = rows[0];
-        const dataRows = rows.slice(1);
-        
-        // Map header keys to our expected format
-        const mappedData: TaskExcelRow[] = dataRows.map((row: any) => {
-          const mappedRow: any = {};
+        for (let i = 1; i < rawRows.length; i++) {
+          const row = rawRows[i] as any[];
           
-          Object.keys(row).forEach(key => {
-            const headerValue = (headerRow as any)[key];
-            if (headerValue) {
-              const normalizedHeader = headerValue.toLowerCase().trim();
+          // Skip empty rows
+          if (!row || row.length === 0 || row.every(cell => !cell)) continue;
+          
+          const taskData: Record<string, any> = {};
+          
+          // Map Excel columns to task properties
+          headers.forEach((header, index) => {
+            const propertyName = columnMap[header] || header.toLowerCase().replace(/\s+/g, '');
+            
+            if (index < row.length) {
+              const value = row[index];
               
-              // Map headers to our expected properties
-              if (normalizedHeader === 'name' || normalizedHeader === 'task name') mappedRow.name = row[key];
-              else if (normalizedHeader === 'description' || normalizedHeader === 'task description') mappedRow.description = row[key];
-              else if (normalizedHeader === 'category') mappedRow.category = row[key];
-              else if (normalizedHeader === 'assignedto' || normalizedHeader === 'assigned to' || normalizedHeader === 'maker' || normalizedHeader === 'maker email') mappedRow.assignedTo = row[key];
-              else if (normalizedHeader === 'checker1' || normalizedHeader === 'first checker' || normalizedHeader === 'checker1 email') mappedRow.checker1 = row[key];
-              else if (normalizedHeader === 'checker2' || normalizedHeader === 'second checker' || normalizedHeader === 'checker2 email') mappedRow.checker2 = row[key];
-              else if (normalizedHeader === 'priority') mappedRow.priority = row[key];
-              else if (normalizedHeader === 'frequency') mappedRow.frequency = row[key];
-              else if (normalizedHeader === 'isrecurring' || normalizedHeader === 'is recurring' || normalizedHeader === 'recurring') mappedRow.isRecurring = row[key];
-              else if (normalizedHeader === 'duedate' || normalizedHeader === 'due date') mappedRow.dueDate = row[key];
-              else if (normalizedHeader === 'observationstatus' || normalizedHeader === 'observation status') mappedRow.observationStatus = row[key];
-              else if (normalizedHeader === 'enableprenotifications' || normalizedHeader === 'enable pre notifications') mappedRow.enablePreNotifications = row[key];
-              else if (normalizedHeader === 'predays' || normalizedHeader === 'pre days') mappedRow.preDays = row[key];
-              else if (normalizedHeader === 'enablepostnotifications' || normalizedHeader === 'enable post notifications') mappedRow.enablePostNotifications = row[key];
-              else if (normalizedHeader === 'postnotificationfrequency' || normalizedHeader === 'post notification frequency') mappedRow.postNotificationFrequency = row[key];
+              // Special handling for certain fields
+              if (propertyName === 'dueDate') {
+                taskData[propertyName] = parseExcelDate(value);
+              }
+              else if (propertyName === 'isRecurring') {
+                taskData[propertyName] = parseBoolean(value);
+              }
+              else if (propertyName === 'priority') {
+                taskData[propertyName] = normalizePriority(value);
+              }
+              else if (propertyName === 'frequency') {
+                taskData[propertyName] = normalizeFrequency(value);
+              }
+              else if (propertyName === 'observationStatus') {
+                taskData[propertyName] = normalizeObservationStatus(value);
+              }
+              else {
+                taskData[propertyName] = value;
+              }
             }
           });
           
-          return mappedRow as TaskExcelRow;
-        });
-        
-        // Validate rows
-        const errors: string[] = [];
-        mappedData.forEach((row, index) => {
-          const validation = validateTaskRow(row, index + 2, users); // +2 because index is 0-based and we skipped header row
-          if (!validation.valid) {
-            errors.push(...validation.errors);
+          // Add default values for missing fields
+          if (!taskData.isRecurring) taskData.isRecurring = false;
+          if (!taskData.priority) taskData.priority = "medium";
+          if (!taskData.frequency) taskData.frequency = "monthly";
+          if (!taskData.observationStatus) taskData.observationStatus = "no";
+          
+          // Validate using Zod schema
+          try {
+            const validTask = taskImportSchema.parse(taskData);
+            parsedTasks.push(validTask);
+          } catch (validationError) {
+            console.error(`Row ${i+1} validation error:`, validationError);
+            // Continue with other rows, could also choose to reject here
           }
-        });
+        }
         
-        resolve({
-          data: mappedData,
-          errors
-        });
+        resolve(parsedTasks);
       } catch (error) {
+        console.error("Excel parsing error:", error);
         reject(error);
       }
     };
@@ -279,75 +223,46 @@ export const parseExcelFile = (file: File, users: User[] = []): Promise<{
       reject(error);
     };
     
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   });
 };
 
-// Generate an Excel template file
-export const generateExcelTemplate = (users: User[] = []): Blob => {
-  const sampleRow = getSampleTaskRow();
-  
-  // Create headers with email guidance
-  const headers = [
-    'Name', 'Description', 'Category', 'AssignedTo (Email)', 'Checker1 (Email)', 'Checker2 (Email)',
-    'Priority', 'Frequency', 'IsRecurring', 'DueDate', 'ObservationStatus',
-    'EnablePreNotifications', 'PreDays', 'EnablePostNotifications', 'PostNotificationFrequency'
-  ];
-  
-  // Create sample data
-  const sampleData = [
-    sampleRow.name, sampleRow.description, sampleRow.category, sampleRow.assignedTo,
-    sampleRow.checker1, sampleRow.checker2, sampleRow.priority, sampleRow.frequency,
-    sampleRow.isRecurring, sampleRow.dueDate, sampleRow.observationStatus,
-    sampleRow.enablePreNotifications, sampleRow.preDays, sampleRow.enablePostNotifications,
-    sampleRow.postNotificationFrequency
-  ];
-  
-  // Create instructions worksheet
-  const instructionsData = [
-    ["Task Import Template Instructions"],
-    [""],
-    ["1. Fill in all required fields in the Tasks sheet"],
-    ["2. Use valid email addresses for AssignedTo, Checker1, and Checker2 fields"],
-    ["3. Priority should be one of: low, medium, high"],
-    ["4. Frequency should be one of: daily, weekly, fortnightly, monthly, quarterly, annually, one-time"],
-    ["5. IsRecurring should be: yes or no"],
-    ["6. DueDate should be in YYYY-MM-DD format"],
-    ["7. ObservationStatus should be one of: yes, no, mixed"],
-    [""],
-    ["Available Users:"]
-  ];
-  
-  // Add user list to instructions
-  if (users.length > 0) {
-    instructionsData.push(["Name", "Email"]);
-    users.forEach(user => {
-      instructionsData.push([user.name, user.email]);
-    });
-  } else {
-    instructionsData.push(["No users available"]);
-  }
-  
-  // Create workbook
-  const wb = XLSX.utils.book_new();
-  
-  // Create tasks template worksheet
-  const tasksWs = XLSX.utils.aoa_to_sheet([headers, sampleData]);
-  XLSX.utils.book_append_sheet(wb, tasksWs, "Tasks");
-  
-  // Create instructions worksheet
-  const instructionsWs = XLSX.utils.aoa_to_sheet(instructionsData);
-  XLSX.utils.book_append_sheet(wb, instructionsWs, "Instructions");
-  
-  // Generate Excel file
-  const wbout = XLSX.write(wb, { type: 'binary', bookType: 'xlsx' });
-  
-  // Convert binary string to blob
-  const buf = new ArrayBuffer(wbout.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < wbout.length; i++) {
-    view[i] = wbout.charCodeAt(i) & 0xFF;
-  }
-  
-  return new Blob([buf], { type: 'application/octet-stream' });
+export const createTasksFromImport = (importedTasks: TaskImportData[], userIdMap: Record<string, string>): Omit<Task, 'id' | 'createdAt' | 'updatedAt'>[] => {
+  return importedTasks.map(task => {
+    // Map user emails to IDs if provided
+    const assignedTo = userIdMap[task.assignedTo] || task.assignedTo;
+    const checker1 = userIdMap[task.checker1] || task.checker1;
+    const checker2 = userIdMap[task.checker2] || task.checker2;
+    
+    return {
+      name: task.name,
+      description: task.description,
+      category: task.category,
+      assignedTo,
+      checker1,
+      checker2,
+      priority: task.priority,
+      frequency: task.frequency,
+      isRecurring: task.isRecurring,
+      dueDate: task.dueDate,
+      status: 'pending',
+      observationStatus: task.observationStatus,
+      comments: [],
+      attachments: [],
+      isEscalated: false,
+      isTemplate: task.isRecurring,
+      notificationSettings: {
+        taskId: 'temp-id', // Will be replaced with actual ID when task is created
+        notifyCheckers: true,
+        enablePreNotifications: true,
+        preDays: [1, 3, 7],
+        enablePostNotifications: true,
+        postNotificationFrequency: "daily",
+        sendEmails: true,
+        notifyMaker: true,
+        notifyChecker1: true,
+        notifyChecker2: true
+      }
+    };
+  });
 };

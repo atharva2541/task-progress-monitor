@@ -126,7 +126,7 @@ const LogsTable = ({ logs }) => {
                       </span>
                     </td>
                     <td className="p-2 text-sm">{log.category}</td>
-                    <td className="p-2 text-sm">{log.message}</td>
+                    <td className="p-2 text-sm">{log.details || log.message}</td>
                     <td className="p-2 text-sm">{log.user || 'System'}</td>
                   </tr>
                 ))}

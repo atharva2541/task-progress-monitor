@@ -64,6 +64,13 @@ export interface ActivityLog {
   action: ActivityLogActionType;
   userId: string;
   details: string;
+  // Added required properties
+  taskId?: string;
+  actionType?: string;
+  category?: string;
+  level?: string;
+  taskName?: string;
+  comment?: string;
   metadata?: Record<string, any>;
 }
 
@@ -125,9 +132,13 @@ export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'checker1-app
 
 export type TaskPriority = 'low' | 'medium' | 'high';
 
+// Updated to match required values
+export type TaskFrequency = 'once' | 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'yearly';
+
 export type EscalationPriority = 'low' | 'medium' | 'high' | 'critical';
 
-export type ObservationStatus = 'yes' | 'no' | 'mixed' | 'clean' | 'observation-noted' | 'observation-resolved';
+// Normalized ObservationStatus to include only the values specified
+export type ObservationStatus = 'yes' | 'no' | 'mixed';
 
 export interface TaskEscalation {
   isEscalated: boolean;
@@ -166,6 +177,22 @@ export interface TaskApproval {
   timestamp: string;
 }
 
+// Updated TaskNotificationSettings to include required properties
+export interface TaskNotificationSettings {
+  taskId: string;
+  remindBefore?: number;
+  escalateAfter?: number;
+  notifyCheckers: boolean;
+  enablePreNotifications: boolean;
+  preDays: number[];
+  enablePostNotifications: boolean;
+  postNotificationFrequency?: 'daily' | 'weekly';
+  sendEmails: boolean;
+  notifyMaker: boolean;
+  notifyChecker1: boolean;
+  notifyChecker2: boolean;
+}
+
 export interface Task {
   id: string;
   name: string;
@@ -177,7 +204,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   submittedAt?: string;
-  frequency: 'once' | 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'yearly';
+  frequency: TaskFrequency;
   isRecurring: boolean;
   assignedTo: string;
   checker1: string;
@@ -192,15 +219,16 @@ export interface Task {
   isTemplate: boolean;
   currentInstanceId?: string;
   nextInstanceDate?: string;
-  // New fields to help with calendar display
+  // Additional fields for calendar display
   isInstance?: boolean;
   baseTaskId?: string;
   instanceReference?: string;
   periodStart?: string;
   periodEnd?: string;
-  // Additional fields
+  // Required additional fields
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
+  notificationSettings?: TaskNotificationSettings;
 }
 
 export interface TaskInstance {
@@ -223,7 +251,7 @@ export interface TaskInstance {
   name?: string; // Inherited from base task
   description?: string; // Inherited from base task
   category?: string; // Inherited from base task
-  // Additional fields
+  // Required additional fields
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
   approvals?: TaskApproval[];

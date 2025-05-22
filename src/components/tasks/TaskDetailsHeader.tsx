@@ -46,6 +46,22 @@ export const TaskDetailsHeader: React.FC<TaskDetailsHeaderProps> = ({ task }) =>
     }
   };
   
+  // Helper to get observation status badge based on our updated ObservationStatus type
+  const getObservationBadge = (status?: ObservationStatus) => {
+    if (!status) return null;
+    
+    switch (status) {
+      case 'yes': 
+        return <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200">Observation: Yes</Badge>;
+      case 'mixed':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">Observation: Mixed</Badge>;
+      case 'no':
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800">Observation: No</Badge>;
+      default:
+        return null;
+    }
+  };
+  
   return (
     <div className="mb-6 space-y-2">
       <h1 className="text-3xl font-bold">{task.name}</h1>
@@ -83,20 +99,7 @@ export const TaskDetailsHeader: React.FC<TaskDetailsHeaderProps> = ({ task }) =>
         )}
         
         {/* Observation status badge */}
-        <Badge variant="outline" className={
-          task.observationStatus === 'yes' 
-            ? 'bg-orange-100 text-orange-800 border-orange-200' 
-            : task.observationStatus === 'mixed'
-            ? 'bg-purple-100 text-purple-800 border-purple-200'
-            : 'bg-gray-100 text-gray-800'
-        }>
-          {task.observationStatus === 'yes' 
-            ? 'Observation: Yes' 
-            : task.observationStatus === 'mixed'
-            ? 'Observation: Mixed'
-            : 'Observation: No'
-          }
-        </Badge>
+        {getObservationBadge(task.observationStatus)}
         
         {/* Escalation badge if applicable - Using direct properties or escalation object */}
         {((task.isEscalated || (task.escalation && task.escalation.isEscalated)) && (

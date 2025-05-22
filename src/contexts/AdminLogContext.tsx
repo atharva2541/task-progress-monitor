@@ -1,207 +1,173 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { ActivityLog, ActivityLogActionType, User, Task } from '@/types';
+import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import { ActivityLog, ActivityLogActionType } from '@/types';
 import { useAuth } from './AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
-interface AdminLogContextType {
+// Initial mock activity logs
+const initialLogs: ActivityLog[] = [
+  {
+    id: '1',
+    timestamp: new Date(Date.now() - 3600000).toISOString(),
+    action: 'login',
+    userId: '1',
+    details: 'Admin user logged in',
+    category: 'user',
+    level: 'info'
+  },
+  {
+    id: '2',
+    timestamp: new Date(Date.now() - 7200000).toISOString(),
+    action: 'create_task',
+    userId: '1',
+    taskId: '123',
+    taskName: 'Monthly Financial Report',
+    details: 'Created task "Monthly Financial Report"',
+    category: 'task',
+    level: 'info'
+  },
+  {
+    id: '3',
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
+    action: 'system',
+    userId: 'system',
+    details: 'System backup completed successfully',
+    category: 'system',
+    level: 'info'
+  },
+  {
+    id: '4',
+    timestamp: new Date(Date.now() - 172800000).toISOString(),
+    action: 'delete_task',
+    userId: '1',
+    taskId: '456',
+    taskName: 'Outdated Task',
+    details: 'Deleted task "Outdated Task"',
+    category: 'task',
+    level: 'warning'
+  }
+];
+
+interface AdminLogContextProps {
   logs: ActivityLog[];
   addLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
   clearLogs: () => void;
-  refreshLogs: () => void; // Added the refreshLogs function
-  getLogsByUserId: (userId: string) => ActivityLog[];
-  getLogsByTaskId: (taskId: string) => ActivityLog[];
-  getLogsByDate: (startDate: string, endDate: string) => ActivityLog[];
-  getLogsByType: (actionType: ActivityLogActionType) => ActivityLog[];
-  getFilteredLogs: (filters: AdminLogFilter) => ActivityLog[];
-  exportLogs: (logs: ActivityLog[]) => void;
-  logRetentionDays: number;
-  setLogRetentionDays: (days: number) => void;
+  refreshLogs: () => void;
 }
 
-export interface AdminLogFilter {
-  dateRange?: { start: Date; end: Date };
-  userId?: string;
-  actionType?: ActivityLogActionType | string;
-  taskId?: string;
-  searchQuery?: string;
-}
+const AdminLogContext = createContext<AdminLogContextProps | undefined>(undefined);
 
-const AdminLogContext = createContext<AdminLogContextType | undefined>(undefined);
-
-export function AdminLogProvider({ children }: { children: ReactNode }) {
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [logRetentionDays, setLogRetentionDays] = useState<number>(90); // Default 90 days
+export const AdminLogProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [logs, setLogs] = useState<ActivityLog[]>(initialLogs);
   const { user } = useAuth();
-  
-  // Load logs from localStorage on init
+  const { toast } = useToast();
+
+  // Load logs from API on mount
   useEffect(() => {
-    const savedLogs = localStorage.getItem('adminLogs');
-    if (savedLogs) {
-      try {
-        setLogs(JSON.parse(savedLogs));
-      } catch (error) {
-        console.error('Failed to parse saved logs:', error);
-      }
+    if (user?.role === 'admin') {
+      fetchLogs();
     }
-    
-    const savedRetention = localStorage.getItem('logRetentionDays');
-    if (savedRetention) {
-      setLogRetentionDays(parseInt(savedRetention, 10));
-    }
-  }, []);
-  
-  // Save logs to localStorage on change
-  useEffect(() => {
-    localStorage.setItem('adminLogs', JSON.stringify(logs));
-  }, [logs]);
-  
-  // Save retention setting to localStorage
-  useEffect(() => {
-    localStorage.setItem('logRetentionDays', logRetentionDays.toString());
-  }, [logRetentionDays]);
-  
-  // Clean up old logs based on retention period
-  useEffect(() => {
-    const cleanUpLogs = () => {
-      const retentionDate = new Date();
-      retentionDate.setDate(retentionDate.getDate() - logRetentionDays);
-      
-      const filteredLogs = logs.filter(log => {
-        const logDate = new Date(log.timestamp);
-        return logDate >= retentionDate;
-      });
-      
-      if (filteredLogs.length !== logs.length) {
-        setLogs(filteredLogs);
-        console.log(`Cleaned up ${logs.length - filteredLogs.length} logs older than ${logRetentionDays} days`);
+  }, [user]);
+
+  const fetchLogs = async () => {
+    try {
+      const response = await axios.get('/api/logs');
+      if (response.data && Array.isArray(response.data)) {
+        setLogs(response.data);
       }
-    };
-    
-    cleanUpLogs();
-    // Run cleanup daily
-    const interval = setInterval(cleanUpLogs, 86400000);
-    return () => clearInterval(interval);
-  }, [logs, logRetentionDays]);
-  
-  const addLog = (logData: Omit<ActivityLog, 'id' | 'timestamp'>) => {
-    const newLog: ActivityLog = {
-      ...logData,
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+      // Keep using mock logs on error
+    }
+  };
+
+  const addLog = (newLog: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+    const log: ActivityLog = {
+      ...newLog,
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
     };
-    
-    setLogs(currentLogs => [newLog, ...currentLogs]);
+
+    setLogs((prevLogs) => [log, ...prevLogs]);
+
+    // For certain important logs, also show a toast notification
+    if (
+      newLog.level === 'error' ||
+      newLog.action === 'escalate_task' ||
+      newLog.action === 'user_deleted'
+    ) {
+      toast({
+        title: `${newLog.level === 'error' ? 'Error' : 'Alert'}: ${formatActionType(newLog.action)}`,
+        description: newLog.details,
+        variant: newLog.level === 'error' ? 'destructive' : 'default',
+      });
+    }
+
+    // In a real app, we would also send this to the server
+    try {
+      axios.post('/api/logs', log);
+    } catch (error) {
+      console.error('Error saving log:', error);
+    }
   };
-  
+
+  // Helper function to format action types for display
+  const formatActionType = (actionType: ActivityLogActionType): string => {
+    switch (actionType) {
+      case 'login':
+        return 'User Login';
+      case 'logout':
+        return 'User Logout';
+      case 'create_task':
+        return 'Task Created';
+      case 'update_task':
+        return 'Task Updated';
+      case 'delete_task':
+        return 'Task Deleted';
+      case 'submit_task':
+        return 'Task Submitted';
+      case 'approve_task':
+        return 'Task Approved';
+      case 'reject_task':
+        return 'Task Rejected';
+      case 'escalate_task':
+        return 'Task Escalated';
+      case 'user_created':
+        return 'User Created';
+      case 'user_updated':
+        return 'User Updated';
+      case 'user_deleted':
+        return 'User Deleted';
+      case 'system':
+        return 'System Event';
+      default:
+        return actionType;
+    }
+  };
+
   const clearLogs = () => {
     setLogs([]);
   };
-  
-  // Add the refreshLogs function implementation
+
   const refreshLogs = () => {
-    // This function would typically fetch logs from an API
-    // For now, we'll just refresh from localStorage
-    const savedLogs = localStorage.getItem('adminLogs');
-    if (savedLogs) {
-      try {
-        setLogs(JSON.parse(savedLogs));
-      } catch (error) {
-        console.error('Failed to refresh logs:', error);
-      }
-    }
-  };
-  
-  const getLogsByUserId = (userId: string) => {
-    return logs.filter(log => log.userId === userId);
-  };
-  
-  const getLogsByTaskId = (taskId: string) => {
-    return logs.filter(log => log.taskId === taskId);
-  };
-  
-  const getLogsByDate = (startDate: string, endDate: string) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    return logs.filter(log => {
-      const logDate = new Date(log.timestamp);
-      return logDate >= start && logDate <= end;
+    fetchLogs();
+    toast({
+      title: 'Logs Refreshed',
+      description: 'The activity logs have been refreshed.',
     });
   };
-  
-  const getLogsByType = (actionType: ActivityLogActionType) => {
-    return logs.filter(log => log.actionType === actionType);
-  };
-  
-  const getFilteredLogs = (filters: AdminLogFilter) => {
-    return logs.filter(log => {
-      // Filter by date range
-      if (filters.dateRange) {
-        const logDate = new Date(log.timestamp);
-        if (logDate < filters.dateRange.start || logDate > filters.dateRange.end) {
-          return false;
-        }
-      }
-      
-      // Filter by user
-      if (filters.userId && filters.userId !== 'none' && log.userId !== filters.userId) {
-        return false;
-      }
-      
-      // Filter by action type
-      if (filters.actionType && filters.actionType !== 'none' && log.actionType !== filters.actionType) {
-        return false;
-      }
-      
-      // Filter by task
-      if (filters.taskId && log.taskId !== filters.taskId) {
-        return false;
-      }
-      
-      // Search query (search in task name, user name, and details)
-      if (filters.searchQuery) {
-        const query = filters.searchQuery.toLowerCase();
-        const matchesTaskName = log.details.taskName.toLowerCase().includes(query);
-        const matchesComment = log.details.comment?.toLowerCase().includes(query) || false;
-        
-        if (!matchesTaskName && !matchesComment) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  };
-  
-  const exportLogs = (logsToExport: ActivityLog[]) => {
-    // Implementation for exporting logs to CSV/Excel will go here
-    console.log('Exporting logs:', logsToExport);
-    alert('Export functionality will be implemented in a future update.');
-  };
-  
+
   return (
-    <AdminLogContext.Provider value={{
-      logs,
-      addLog,
-      clearLogs,
-      refreshLogs, // Added the refreshLogs function to the context value
-      getLogsByUserId,
-      getLogsByTaskId,
-      getLogsByDate,
-      getLogsByType,
-      getFilteredLogs,
-      exportLogs,
-      logRetentionDays,
-      setLogRetentionDays
-    }}>
+    <AdminLogContext.Provider value={{ logs, addLog, clearLogs, refreshLogs }}>
       {children}
     </AdminLogContext.Provider>
   );
-}
+};
 
-export function useAdminLog() {
+export const useAdminLog = () => {
   const context = useContext(AdminLogContext);
   if (context === undefined) {
     throw new Error('useAdminLog must be used within an AdminLogProvider');
   }
   return context;
-}
+};

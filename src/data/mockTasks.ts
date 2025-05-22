@@ -1,5 +1,5 @@
 
-import { Task } from '@/types';
+import { Task, TaskNotificationSettings } from '@/types';
 
 // Mock tasks for demonstration
 export const mockTasks: Task[] = [
@@ -20,7 +20,11 @@ export const mockTasks: Task[] = [
     updatedAt: new Date().toISOString(),
     comments: [],
     attachments: [], // Initialize empty attachments array
+    observationStatus: 'no',
+    isEscalated: false, // Added required field
+    isTemplate: true,  // Added required field
     notificationSettings: {
+      taskId: '1',
       remindBefore: 2,
       escalateAfter: 1,
       notifyCheckers: true,
@@ -32,8 +36,7 @@ export const mockTasks: Task[] = [
       notifyMaker: true,
       notifyChecker1: true,
       notifyChecker2: true
-    },
-    observationStatus: 'no' // Added missing required property
+    }
   },
   {
     id: '2',
@@ -51,8 +54,21 @@ export const mockTasks: Task[] = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     updatedAt: new Date().toISOString(),
     comments: [],
-    attachments: [], // Initialize empty attachments array
-    observationStatus: 'no' // Added missing required property
+    attachments: [], 
+    observationStatus: 'no',
+    isEscalated: false, // Added required field
+    isTemplate: true,  // Added required field
+    notificationSettings: {
+      taskId: '2',
+      notifyCheckers: true,
+      enablePreNotifications: true,
+      preDays: [1],
+      enablePostNotifications: false,
+      sendEmails: true,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    }
   },
   {
     id: '3',
@@ -70,8 +86,22 @@ export const mockTasks: Task[] = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
     updatedAt: new Date().toISOString(),
     comments: [],
-    attachments: [], // Initialize empty attachments array
-    observationStatus: 'yes' // Added missing required property
+    attachments: [],
+    observationStatus: 'yes',
+    isEscalated: false, // Added required field
+    isTemplate: true,  // Added required field
+    notificationSettings: {
+      taskId: '3',
+      notifyCheckers: true,
+      enablePreNotifications: true,
+      preDays: [1, 7, 14],
+      enablePostNotifications: true,
+      postNotificationFrequency: 'daily',
+      sendEmails: true,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    }
   },
   {
     id: '4',
@@ -89,8 +119,21 @@ export const mockTasks: Task[] = [
     createdAt: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
     updatedAt: new Date().toISOString(),
     comments: [],
-    attachments: [], // Initialize empty attachments array
-    observationStatus: 'no' // Added missing required property
+    attachments: [],
+    observationStatus: 'no',
+    isEscalated: false, // Added required field
+    isTemplate: true,  // Added required field
+    notificationSettings: {
+      taskId: '4',
+      notifyCheckers: true,
+      enablePreNotifications: true,
+      preDays: [1],
+      enablePostNotifications: false,
+      sendEmails: true,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    }
   },
   {
     id: '5',
@@ -116,7 +159,21 @@ export const mockTasks: Task[] = [
         createdAt: new Date().toISOString()
       }
     ],
-    attachments: [], // Initialize empty attachments array
-    observationStatus: 'mixed' // Added missing required property
+    attachments: [],
+    observationStatus: 'mixed',
+    isEscalated: false, // Added required field
+    isTemplate: false,  // Added required field
+    notificationSettings: {
+      taskId: '5',
+      notifyCheckers: true,
+      enablePreNotifications: true,
+      preDays: [1, 3],
+      enablePostNotifications: true,
+      postNotificationFrequency: 'daily',
+      sendEmails: true,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    }
   }
 ];

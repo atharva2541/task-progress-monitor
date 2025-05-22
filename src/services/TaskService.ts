@@ -40,7 +40,7 @@ export function useTaskService() {
       case 'weekly':
         nextDate = addWeeks(date, 1);
         break;
-      case 'fortnightly':
+      case 'bi-weekly':
         nextDate = addWeeks(date, 2);
         break;
       case 'monthly':
@@ -49,7 +49,7 @@ export function useTaskService() {
       case 'quarterly':
         nextDate = addMonths(date, 3);
         break;
-      case 'annually':
+      case 'yearly':
         nextDate = addMonths(date, 12);
         break;
       default:
@@ -73,7 +73,7 @@ export function useTaskService() {
         startDate = new Date(date);
         startDate.setDate(date.getDate() - 7);
         break;
-      case 'fortnightly':
+      case 'bi-weekly':
         startDate = new Date(date);
         startDate.setDate(date.getDate() - 14);
         break;
@@ -85,7 +85,7 @@ export function useTaskService() {
         startDate = new Date(date);
         startDate.setMonth(date.getMonth() - 3);
         break;
-      case 'annually':
+      case 'yearly':
         startDate = new Date(date);
         startDate.setFullYear(date.getFullYear() - 1);
         break;
@@ -123,18 +123,8 @@ export function useTaskService() {
       updatedAt: now,
       comments: [],
       attachments: [], // Initialize empty attachments array
-      notificationSettings: {
-        enablePreNotifications: task.notificationSettings?.enablePreNotifications ?? true,
-        preDays: task.notificationSettings?.preDays ?? [1, 3, 7],
-        enablePostNotifications: true, // Always mandatory
-        postNotificationFrequency: task.notificationSettings?.postNotificationFrequency ?? 'daily',
-        sendEmails: true, // Always mandatory
-        notifyMaker: true, // Always mandatory
-        notifyChecker1: true, // Always mandatory
-        notifyChecker2: true // Always mandatory
-      },
-      instances: [],
-      isTemplate: task.isRecurring // If recurring, this is a template
+      isEscalated: task.isEscalated || false,
+      isTemplate: task.isTemplate || task.isRecurring // If recurring, this is a template
     };
     
     // If it's a recurring task, create the first instance
@@ -215,21 +205,14 @@ export function useTaskService() {
   const updateTask = (taskId: string, updates: Partial<Task>) => {
     setTasks(tasks.map(task => {
       if (task.id === taskId) {
-        // Ensure mandatory notification settings are preserved
-        const updatedNotificationSettings = updates.notificationSettings ? {
-          ...updates.notificationSettings,
-          enablePostNotifications: true, // Always mandatory
-          sendEmails: true, // Always mandatory
-          notifyMaker: true, // Always mandatory
-          notifyChecker1: true, // Always mandatory
-          notifyChecker2: true, // Always mandatory
-        } : task.notificationSettings;
-
+        // Ensure all required fields are preserved
         return {
           ...task,
           ...updates,
-          notificationSettings: updatedNotificationSettings,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          // Make sure these fields are preserved or have defaults
+          isEscalated: updates.isEscalated !== undefined ? updates.isEscalated : task.isEscalated,
+          isTemplate: updates.isTemplate !== undefined ? updates.isTemplate : task.isTemplate
         };
       }
       return task;

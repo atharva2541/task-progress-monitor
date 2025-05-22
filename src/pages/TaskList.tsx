@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
 import { TaskTable } from '@/components/tasks/review/TaskTable';
-import { Task } from '@/types';
+import { Task, TaskFrequency } from '@/types';
 import { TaskFormValues } from '@/utils/TaskFormManager';
 import { useTask } from '@/contexts/TaskContext';
 import { useToast } from '@/hooks/use-toast';
@@ -32,13 +32,15 @@ const TaskList: React.FC = () => {
         checker1: formData.checker1,
         checker2: formData.checker2,
         priority: formData.priority,
-        frequency: formData.frequency,
+        frequency: formData.frequency as TaskFrequency, // Cast to proper TaskFrequency
         isRecurring: formData.isRecurring,
         dueDate: formData.dueDate,
         status: 'pending', // Set the default status to 'pending'
-        observationStatus: formData.observationStatus || 'no', // Ensure observationStatus is set
+        observationStatus: formData.observationStatus, // Ensure observationStatus is set
         attachments: [], // Initialize empty attachments array
         comments: [], // Initialize empty comments array
+        isEscalated: false, // Added required field
+        isTemplate: formData.isRecurring, // Added required field
       });
       
       setIsCreateDialogOpen(false);
@@ -59,7 +61,13 @@ const TaskList: React.FC = () => {
   const handleEditTask = (formData: TaskFormValues) => {
     if (!selectedTask || !isAdmin) return; // Ensure only admin can edit
     try {
-      updateTask(selectedTask.id, formData);
+      // Cast frequency to proper TaskFrequency type
+      const updatedTask = {
+        ...formData,
+        frequency: formData.frequency as TaskFrequency
+      };
+      
+      updateTask(selectedTask.id, updatedTask);
       setIsEditDialogOpen(false);
       setSelectedTask(null);
       toast({
