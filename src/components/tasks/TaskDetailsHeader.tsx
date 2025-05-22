@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Task } from '@/types';
+import { Task, ObservationStatus, EscalationPriority } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Calendar, Clock } from 'lucide-react';
