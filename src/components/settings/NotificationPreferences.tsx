@@ -13,7 +13,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import axios from 'axios';
-import { NotificationPreferences } from '@/types';
+import type { NotificationPreferences as NotificationPreferencesType } from '@/types';
 
 const formSchema = z.object({
   emailEnabled: z.boolean(),
@@ -52,7 +52,7 @@ export function NotificationPreferences() {
       
       try {
         setIsLoading(true);
-        const response = await axios.get<NotificationPreferences>('/api/notifications/preferences');
+        const response = await axios.get<NotificationPreferencesType>('/api/notifications/preferences');
         
         form.reset({
           emailEnabled: response.data.emailEnabled,

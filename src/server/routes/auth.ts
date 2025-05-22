@@ -3,7 +3,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { query, queryOne } from '../../utils/db-connection';
 import { generateToken, authenticateToken } from '../middleware/auth';
-import { DbUser } from '../../types/database';
+import type { DbUser } from '../../types/database';
 import crypto from 'crypto';
 
 const router = express.Router();

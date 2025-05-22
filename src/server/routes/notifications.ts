@@ -2,7 +2,7 @@
 import express from 'express';
 import { query, queryOne } from '../../utils/db-connection';
 import { authenticateToken } from '../middleware/auth';
-import { DbNotification } from '../../types/database';
+import type { DbNotification, DbNotificationPreferences } from '../../types/database';
 
 const router = express.Router();
 
