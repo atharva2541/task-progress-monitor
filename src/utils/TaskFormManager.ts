@@ -72,7 +72,7 @@ export class TaskFormManager {
     };
   }
 
-  static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Task {
+  static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
     const now = new Date().toISOString();
     
     // Create full notification settings with all mandatory settings enabled
@@ -108,15 +108,12 @@ export class TaskFormManager {
       dueDate: data.dueDate,
       status: 'pending',
       notificationSettings,
-      createdAt: now,
-      updatedAt: now,
       comments: [],
       attachments: [],
       // Always include observation status with default value if not provided
       observationStatus: data.observationStatus || 'no',
       // For recurring tasks, add additional fields
       isTemplate: data.isRecurring,
-      instances: [],
     };
   }
 

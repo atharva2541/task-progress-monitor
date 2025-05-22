@@ -551,7 +551,7 @@ export function useTaskService() {
       fileUrl: attachmentData.fileUrl,
       fileType: attachmentData.fileType,
       s3Key: attachmentData.s3Key,
-      uploadedBy: user?.id || '1',
+      userId: user?.id || '1',
       uploadedAt: new Date().toISOString()
     };
     

@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { Task, TaskFrequency, TaskPriority, ObservationStatus } from '@/types';
 import { User } from '@/types';
@@ -194,7 +193,9 @@ export const convertRowToTask = (row: TaskExcelRow, users: User[] = []): Omit<Ta
       notifyMaker: true, // Always mandatory
       notifyChecker1: true, // Always mandatory
       notifyChecker2: true, // Always mandatory
-    }
+    },
+    comments: [], // Add empty comments array
+    attachments: [] // Add empty attachments array
   };
 };
 
