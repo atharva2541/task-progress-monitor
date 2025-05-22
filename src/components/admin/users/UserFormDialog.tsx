@@ -57,8 +57,10 @@ const UserFormDialog = ({
     defaultValues: {
       name: user?.name || '',
       email: user?.email || '',
-      role: user?.role || 'maker',
-      roles: user?.roles || ['maker']
+      role: (user?.role as UserRole) || 'maker',
+      roles: (user?.roles?.filter(role => 
+        role === 'admin' || role === 'maker' || role === 'checker1' || role === 'checker2'
+      ) as UserRole[]) || ['maker']
     }
   });
 
