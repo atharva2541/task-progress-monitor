@@ -10,10 +10,10 @@ const router = express.Router();
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const tasks = await query<DbTask>('SELECT * FROM tasks');
-    return res.status(200).json(tasks);
+    res.status(200).json(tasks);
   } catch (error) {
     console.error('Get tasks error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -28,13 +28,14 @@ router.get('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
 
-    return res.status(200).json(task);
+    res.status(200).json(task);
   } catch (error) {
     console.error('Get task error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -57,7 +58,8 @@ router.post('/', authenticateToken, async (req, res) => {
     } = req.body;
 
     if (!name || !category || !status || !priority || !dueDate || !assignedTo) {
-      return res.status(400).json({ error: 'Required fields missing' });
+      res.status(400).json({ error: 'Required fields missing' });
+      return;
     }
 
     // Generate a unique ID
@@ -105,10 +107,10 @@ router.post('/', authenticateToken, async (req, res) => {
       [id]
     );
 
-    return res.status(201).json(createdTask);
+    res.status(201).json(createdTask);
   } catch (error) {
     console.error('Create task error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -125,7 +127,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
 
     // Build update query dynamically
@@ -200,10 +203,10 @@ router.put('/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    return res.status(200).json(updatedTask);
+    res.status(200).json(updatedTask);
   } catch (error) {
     console.error('Update task error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -219,7 +222,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+      res.status(404).json({ error: 'Task not found' });
+      return;
     }
 
     // Delete associated task instances
@@ -252,10 +256,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    return res.status(200).json({ message: 'Task deleted successfully' });
+    res.status(200).json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Delete task error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -269,10 +273,10 @@ router.get('/:id/instances', authenticateToken, async (req, res) => {
       [id]
     );
 
-    return res.status(200).json(instances);
+    res.status(200).json(instances);
   } catch (error) {
     console.error('Get task instances error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

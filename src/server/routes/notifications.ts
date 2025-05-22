@@ -12,7 +12,8 @@ router.get('/', authenticateToken, async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     const notifications = await query<DbNotification>(
@@ -34,7 +35,8 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     // Check if notification exists and belongs to the user
@@ -44,7 +46,8 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
     );
 
     if (!notification) {
-      return res.status(404).json({ error: 'Notification not found' });
+      res.status(404).json({ error: 'Notification not found' });
+      return;
     }
 
     // Update notification
@@ -67,7 +70,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     // Check if notification exists and belongs to the user
@@ -77,7 +81,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!notification) {
-      return res.status(404).json({ error: 'Notification not found' });
+      res.status(404).json({ error: 'Notification not found' });
+      return;
     }
 
     // Delete notification
