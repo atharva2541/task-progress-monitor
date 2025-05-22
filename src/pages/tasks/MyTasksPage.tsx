@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -56,7 +57,8 @@ const MyTasksPage = () => {
           title: `Task Due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}`,
           message: `Your task "${task.name}" is due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}.`,
           type: 'warning',
-          read: false
+          isRead: false, // Changed from read to isRead
+          timestamp: new Date().toISOString() // Added timestamp
         });
         
         // In a real app, we would also send an email here
@@ -71,7 +73,8 @@ const MyTasksPage = () => {
           title: 'Task Overdue',
           message: `Your task "${task.name}" is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
           type: 'error',
-          read: false
+          isRead: false, // Changed from read to isRead
+          timestamp: new Date().toISOString() // Added timestamp
         });
         
         // Check if we can access the correct checker users through the task context
@@ -81,7 +84,8 @@ const MyTasksPage = () => {
             title: 'Task Overdue',
             message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
             type: 'error',
-            read: false
+            isRead: false, // Changed from read to isRead
+            timestamp: new Date().toISOString() // Added timestamp
           });
           
           // After one day overdue, also notify checker2
@@ -91,7 +95,8 @@ const MyTasksPage = () => {
               title: 'Task Overdue',
               message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
               type: 'error',
-              read: false
+              isRead: false, // Changed from read to isRead
+              timestamp: new Date().toISOString() // Added timestamp
             });
           }
         }

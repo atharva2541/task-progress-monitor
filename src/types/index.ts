@@ -28,7 +28,7 @@ export type TaskStatus =
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type ObservationStatus = 'yes' | 'no' | 'mixed';
 export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
-export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time';
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time' | 'fortnightly' | 'annually';
 
 export interface TaskComment {
   id: string;
@@ -47,6 +47,15 @@ export interface TaskAttachment {
   fileUrl: string;
   s3Key?: string;
   uploadedAt: string;
+  // No uploadedBy property, use userId instead
+}
+
+export interface TaskEscalation {
+  isEscalated: boolean;
+  priority: EscalationPriority;
+  reason?: string;
+  escalatedAt?: string;
+  escalatedBy?: string;
 }
 
 export interface TaskApproval {
@@ -73,6 +82,10 @@ export interface TaskInstance {
   approvals: TaskApproval[];
   attachments: TaskAttachment[];
   comments: TaskComment[];
+  // Additional properties needed by components
+  instanceReference?: string;
+  periodStart?: string;
+  periodEnd?: string;
 }
 
 export interface Task {
@@ -100,6 +113,16 @@ export interface Task {
   attachments: TaskAttachment[];
   comments: TaskComment[];
   instances?: TaskInstance[];
+  // Added fields for escalation as a separate object
+  escalation?: TaskEscalation;
+  // Added fields for recurring task management
+  currentInstanceId?: string;
+  nextInstanceDate?: string;
+  notificationSettings?: {
+    remindBefore?: number;
+    escalateAfter?: number;
+    notifyCheckers?: boolean;
+  };
 }
 
 // Notification types
@@ -109,13 +132,14 @@ export interface Notification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   timestamp: string;
-  isRead: boolean;
+  isRead: boolean; // Changed from read to isRead to match usage
   userId: string;
   link?: string;
   taskId?: string;
+  createdAt: string; // Added createdAt field
 }
 
-// Activity Log types (already existing)
+// Activity Log types
 export type ActivityLogActionType = 
   | 'task-created'
   | 'task-updated'

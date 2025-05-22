@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Task } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -98,16 +97,18 @@ export const TaskDetailsHeader: React.FC<TaskDetailsHeaderProps> = ({ task }) =>
           }
         </Badge>
         
-        {/* Escalation badge if applicable */}
-        {task.escalation?.isEscalated && (
+        {/* Escalation badge if applicable - Using direct properties or escalation object */}
+        {((task.isEscalated || (task.escalation && task.escalation.isEscalated)) && (
           <Badge variant="outline" className={
-            task.escalation.priority === 'critical' || task.escalation.priority === 'high'
+            (task.escalationPriority === 'critical' || task.escalationPriority === 'high' || 
+             (task.escalation && (task.escalation.priority === 'critical' || task.escalation.priority === 'high')))
               ? 'bg-red-100 text-red-800 border-red-200'
               : 'bg-amber-100 text-amber-800 border-amber-200'
           }>
-            Escalated: {task.escalation.priority.charAt(0).toUpperCase() + task.escalation.priority.slice(1)}
+            Escalated: {(task.escalation?.priority || task.escalationPriority || 'medium').charAt(0).toUpperCase() + 
+                       (task.escalation?.priority || task.escalationPriority || 'medium').slice(1)}
           </Badge>
-        )}
+        ))}
       </div>
     </div>
   );

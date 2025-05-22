@@ -10,8 +10,9 @@ const mockNotifications: Notification[] = [
     title: 'Task Due Today',
     message: 'The "Daily System Check" task is due today.',
     type: 'warning',
-    read: false,
-    createdAt: new Date().toISOString()
+    isRead: false, // Changed from read to isRead
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   },
   {
     id: '2',
@@ -19,8 +20,9 @@ const mockNotifications: Notification[] = [
     title: 'New Task Submitted',
     message: 'A task "Quarterly Compliance Audit" has been submitted for your review.',
     type: 'info',
-    read: false,
-    createdAt: new Date().toISOString()
+    isRead: false, // Changed from read to isRead
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   },
   {
     id: '3',
@@ -28,8 +30,9 @@ const mockNotifications: Notification[] = [
     title: 'Task Escalation',
     message: 'The task "System Security Review" was rejected and needs your attention.',
     type: 'error',
-    read: false,
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString()
+    isRead: false, // Changed from read to isRead
+    createdAt: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString(),
+    timestamp: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString()
   },
   {
     id: '4',
@@ -37,8 +40,9 @@ const mockNotifications: Notification[] = [
     title: 'Critical Escalation',
     message: 'The task "Monthly Fraud Monitoring" is severely overdue and requires immediate attention.',
     type: 'error',
-    read: false,
-    createdAt: new Date().toISOString()
+    isRead: false, // Changed from read to isRead
+    createdAt: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   }
 ];
 
@@ -57,13 +61,14 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
 
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  const unreadCount = notifications.filter(notification => !notification.isRead).length; // Changed to isRead
 
   const addNotification = (notification: Omit<Notification, 'id' | 'createdAt'>) => {
     const newNotification: Notification = {
       ...notification,
       id: Date.now().toString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      timestamp: notification.timestamp || new Date().toISOString() // Ensure timestamp is set
     };
     
     setNotifications([newNotification, ...notifications]);
@@ -72,7 +77,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const markAsRead = (id: string) => {
     setNotifications(notifications.map(notification => {
       if (notification.id === id) {
-        return { ...notification, read: true };
+        return { ...notification, isRead: true }; // Changed to isRead
       }
       return notification;
     }));
@@ -81,7 +86,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const markAllAsRead = () => {
     setNotifications(notifications.map(notification => ({
       ...notification,
-      read: true
+      isRead: true // Changed to isRead
     })));
   };
 

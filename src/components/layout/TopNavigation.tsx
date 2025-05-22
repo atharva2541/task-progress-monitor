@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
@@ -55,7 +56,7 @@ export function TopNavigation() {
   };
 
   const userNotifications = user ? notifications.filter(n => n.userId === user.id) : [];
-  const userUnreadCount = userNotifications.filter(n => !n.read).length;
+  const userUnreadCount = userNotifications.filter(n => !n.isRead).length; // Changed from read to isRead
   
   return <nav className="bg-white border-b px-4 py-2 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -92,17 +93,17 @@ export function TopNavigation() {
               </div>
             </SheetHeader>
             <div className="mt-4 space-y-4">
-              {userNotifications.length > 0 ? userNotifications.map(notification => <div key={notification.id} className={`p-3 rounded-md ${!notification.read ? 'bg-muted' : ''}`}>
+              {userNotifications.length > 0 ? userNotifications.map(notification => <div key={notification.id} className={`p-3 rounded-md ${!notification.isRead ? 'bg-muted' : ''}`}> {/* Changed from read to isRead */}
                     <div className="flex gap-3">
                       {getNotificationIcon(notification.type)}
                       <div className="flex-1">
                         <h4 className="text-sm font-medium">{notification.title}</h4>
                         <p className="text-sm text-muted-foreground">{notification.message}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(notification.createdAt).toLocaleString()}
+                          {new Date(notification.timestamp).toLocaleString()} {/* Changed from createdAt to timestamp */}
                         </p>
                       </div>
-                      {!notification.read && <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}>
+                      {!notification.isRead && <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}> {/* Changed from read to isRead */}
                           Mark read
                         </Button>}
                     </div>
