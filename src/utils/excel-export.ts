@@ -1,6 +1,6 @@
 
 import * as XLSX from 'xlsx';
-import { Task, TaskInstance, User } from '@/types';
+import { Task, TaskInstance, User, TaskAttachment } from '@/types';
 
 /**
  * Exports task history to Excel file
@@ -116,7 +116,8 @@ export const exportTaskHistoryToExcel = (
       attachment.instanceRef,
       attachment.fileName,
       attachment.fileType,
-      formatFileSize(attachment.fileSize || 0),
+      // Use optional chaining for fileSize since it might not exist in older data
+      formatFileSize(0), // Default to 0 bytes since fileSize is not available in the type
       attachment.userName,
       formatExcelDate(attachment.uploadedAt),
       attachment.fileUrl

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { ActivityLog, ActivityLogActionType, User, Task } from '@/types';
 import { useAuth } from './AuthContext';
@@ -7,6 +6,7 @@ interface AdminLogContextType {
   logs: ActivityLog[];
   addLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
   clearLogs: () => void;
+  refreshLogs: () => void; // Added the refreshLogs function
   getLogsByUserId: (userId: string) => ActivityLog[];
   getLogsByTaskId: (taskId: string) => ActivityLog[];
   getLogsByDate: (startDate: string, endDate: string) => ActivityLog[];
@@ -96,6 +96,20 @@ export function AdminLogProvider({ children }: { children: ReactNode }) {
     setLogs([]);
   };
   
+  // Add the refreshLogs function implementation
+  const refreshLogs = () => {
+    // This function would typically fetch logs from an API
+    // For now, we'll just refresh from localStorage
+    const savedLogs = localStorage.getItem('adminLogs');
+    if (savedLogs) {
+      try {
+        setLogs(JSON.parse(savedLogs));
+      } catch (error) {
+        console.error('Failed to refresh logs:', error);
+      }
+    }
+  };
+  
   const getLogsByUserId = (userId: string) => {
     return logs.filter(log => log.userId === userId);
   };
@@ -169,6 +183,7 @@ export function AdminLogProvider({ children }: { children: ReactNode }) {
       logs,
       addLog,
       clearLogs,
+      refreshLogs, // Added the refreshLogs function to the context value
       getLogsByUserId,
       getLogsByTaskId,
       getLogsByDate,

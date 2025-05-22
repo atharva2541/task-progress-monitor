@@ -1,4 +1,3 @@
-
 import { ReactNode } from "react";
 
 // User types
@@ -175,6 +174,8 @@ export interface ActivityLog {
   userRole: UserRole; // Role of the user at the time of action
   taskId: string; // Related task ID
   instanceId?: string; // Optional task instance ID
+  category: string; // Added category property (system, user, task)
+  level: string; // Added level property (info, warning, error)
   details: {
     taskName: string;
     taskCategory: string;
