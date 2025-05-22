@@ -21,6 +21,9 @@ export const mockTasks: Task[] = [
     comments: [],
     attachments: [], // Initialize empty attachments array
     notificationSettings: {
+      remindBefore: 2,
+      escalateAfter: 1,
+      notifyCheckers: true,
       enablePreNotifications: true,
       preDays: [1, 3, 7],
       enablePostNotifications: true,

@@ -37,6 +37,8 @@ const TaskList: React.FC = () => {
         dueDate: formData.dueDate,
         status: 'pending', // Set the default status to 'pending'
         observationStatus: formData.observationStatus || 'no', // Ensure observationStatus is set
+        attachments: [], // Initialize empty attachments array
+        comments: [], // Initialize empty comments array
       });
       
       setIsCreateDialogOpen(false);

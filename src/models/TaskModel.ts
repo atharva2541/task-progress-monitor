@@ -3,7 +3,7 @@ import { Task, TaskStatus, EscalationPriority, ObservationStatus, TaskInstance, 
 
 export type TaskServiceProps = {
   tasks: Task[];
-  getUserAccessibleTasks: (userId: string, userRole: string) => Task[]; // Add new method to type
+  getUserAccessibleTasks: (userId: string, userRole: string) => Task[]; 
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'submittedAt'>) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;
   deleteTask: (taskId: string) => void;
@@ -20,6 +20,8 @@ export type TaskServiceProps = {
     s3Key: string;
   }) => Promise<void>;
   removeTaskAttachment: (taskId: string, attachmentId: string) => void;
+  uploadTaskAttachment: (taskId: string, file: File) => Promise<void>;
+  deleteTaskAttachment: (taskId: string, attachmentId: string) => void;
   // New methods for observations status
   updateObservationStatus: (taskId: string, status: ObservationStatus, userId: string) => void;
   // Existing methods for escalations

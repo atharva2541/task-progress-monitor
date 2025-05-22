@@ -86,6 +86,21 @@ export interface TaskInstance {
   instanceReference?: string;
   periodStart?: string;
   periodEnd?: string;
+  createdAt?: string;
+}
+
+export interface TaskNotificationSettings {
+  remindBefore?: number;
+  escalateAfter?: number;
+  notifyCheckers?: boolean;
+  enablePreNotifications?: boolean;
+  preDays?: number[];
+  enablePostNotifications?: boolean;
+  postNotificationFrequency?: 'daily' | 'weekly';
+  sendEmails?: boolean;
+  notifyMaker?: boolean;
+  notifyChecker1?: boolean;
+  notifyChecker2?: boolean;
 }
 
 export interface Task {
@@ -118,11 +133,8 @@ export interface Task {
   // Added fields for recurring task management
   currentInstanceId?: string;
   nextInstanceDate?: string;
-  notificationSettings?: {
-    remindBefore?: number;
-    escalateAfter?: number;
-    notifyCheckers?: boolean;
-  };
+  notificationSettings?: TaskNotificationSettings;
+  isTemplate?: boolean;
 }
 
 // Notification types
@@ -132,11 +144,11 @@ export interface Notification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   timestamp: string;
-  isRead: boolean; // Changed from read to isRead to match usage
+  isRead: boolean; 
   userId: string;
   link?: string;
   taskId?: string;
-  createdAt: string; // Added createdAt field
+  createdAt: string;
 }
 
 // Activity Log types

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TaskAttachment } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,7 @@ export const TaskAttachments: React.FC<TaskAttachmentsProps> = ({
       {attachments.length > 0 ? (
         <div className="space-y-2">
           {attachments.map((attachment) => {
-            // Get user name from userId instead of uploadedBy
+            // Get user name from userId
             const uploader = getUserById(attachment.userId);
             
             return (
