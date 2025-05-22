@@ -13,7 +13,7 @@ interface Toast {
   variant?: "default" | "destructive";
 }
 
-// Initialize the toast state with an empty array to prevent undefined
+// Initialize the toast state with an empty array
 const toastState = {
   toasts: [] as Toast[],
   listeners: new Set<() => void>(),
@@ -25,7 +25,7 @@ export type ToastProps = {
   variant?: "default" | "destructive";
 };
 
-// Helper function to create a toast object
+// Helper function to create a toast object - this doesn't use hooks
 const createToast = ({ title, description, variant = "default" }: ToastProps) => {
   const id = Math.random().toString(36).substring(2, 9);
   const toast: Toast = {
@@ -48,7 +48,7 @@ const createToast = ({ title, description, variant = "default" }: ToastProps) =>
   return toast;
 };
 
-// Hook to subscribe to toast updates
+// Hook to subscribe to toast updates - can only be used inside components
 export const useToast = () => {
   const [toasts, setToasts] = React.useState<Toast[]>(toastState.toasts);
 
@@ -63,17 +63,13 @@ export const useToast = () => {
     };
   }, []);
 
-  const toast = (props: ToastProps) => {
-    return createToast(props);
-  };
-
   return {
-    toast,
+    toast: (props: ToastProps) => createToast(props),
     toasts: toasts || [], // Ensure toasts is never undefined
   };
 };
 
-// Direct access to toast function
+// Direct access to toast function - doesn't use hooks so can be called anywhere
 export const toast = (props: ToastProps) => {
   return createToast(props);
 };

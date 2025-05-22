@@ -1,7 +1,6 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { sendOtpEmail } from '@/utils/aws-ses';
 import { generateStrongPassword, sendWelcomeEmail, sendPasswordResetEmail } from '@/utils/auth-helpers';
 
@@ -85,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading until we check localStorage
   const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
   const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
-  const { toast } = useToast();
+  
+  // Don't use the useToast hook here, just use the toast function directly
 
   // Function to check password strength
   const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
