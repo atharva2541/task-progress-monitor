@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Task, TaskInstance } from '@/types';
 import { useTask } from '@/contexts/TaskContext';
@@ -11,6 +10,8 @@ import { TaskAttachments } from './TaskAttachments';
 import { History, FileText, Check, X, Download, Calendar, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { exportTaskHistoryToExcel } from '@/utils/excel-export';
+import { toast } from '@/hooks/use-toast';
 
 interface TaskHistoryViewProps {
   task: Task;
@@ -85,9 +86,33 @@ export const TaskHistoryView: React.FC<TaskHistoryViewProps> = ({ task }) => {
   
   // Function to handle exporting task history
   const handleExportHistory = () => {
-    // Placeholder for export functionality
-    console.log("Exporting history for task:", task.id);
-    alert("Export functionality will be implemented in a future update.");
+    try {
+      // If no instances match the filter, show a warning
+      if (filteredInstances.length === 0) {
+        toast({
+          title: "No data to export",
+          description: "There are no task instances matching your current filters.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Export the filtered instances to Excel
+      const filename = `task_history_${task.id}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      exportTaskHistoryToExcel(task, filteredInstances, filename, getUserById);
+      
+      toast({
+        title: "Export successful",
+        description: `Task history exported to ${filename}`
+      });
+    } catch (error) {
+      console.error("Error exporting task history:", error);
+      toast({
+        title: "Export failed",
+        description: "An error occurred while exporting the task history.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
