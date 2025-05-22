@@ -1,16 +1,8 @@
 
-// AWS Configuration
-// These values will be loaded from environment variables
+import { awsApi } from '../services/api-client';
 
 // Define default values for local development only
 const defaultRegion = "us-east-1";
-
-// Export configured values with fallbacks for development
-export const AWS_REGION = import.meta.env.VITE_AWS_REGION || defaultRegion;
-export const AWS_ACCESS_KEY_ID = import.meta.env.VITE_AWS_ACCESS_KEY_ID || "";
-export const AWS_SECRET_ACCESS_KEY = import.meta.env.VITE_AWS_SECRET_ACCESS_KEY || "";
-export const S3_BUCKET_NAME = import.meta.env.VITE_S3_BUCKET_NAME || "";
-export const SES_FROM_EMAIL = import.meta.env.VITE_SES_FROM_EMAIL || "";
 
 // AWS regions list - comprehensive list of all AWS regions
 export const AWS_REGIONS = [
@@ -43,12 +35,123 @@ export const AWS_REGIONS = [
   { value: "us-gov-west-1", label: "AWS GovCloud (US-West)" },
 ];
 
+// Cached credentials to avoid unnecessary API calls
+let cachedCredentials: {
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  s3BucketName: string;
+  sesFromEmail: string;
+  timestamp: number;
+} | null = null;
+
+// Cache expiration time (5 minutes)
+const CACHE_EXPIRATION = 5 * 60 * 1000;
+
+// Function to get AWS settings from the API
+export const getAwsSettings = async () => {
+  try {
+    // Check if we have cached settings that aren't expired
+    if (
+      cachedCredentials &&
+      Date.now() - cachedCredentials.timestamp < CACHE_EXPIRATION
+    ) {
+      return {
+        region: cachedCredentials.region,
+        s3BucketName: cachedCredentials.s3BucketName,
+        sesFromEmail: cachedCredentials.sesFromEmail,
+      };
+    }
+
+    // Fetch settings from API
+    const response = await awsApi.getSettings();
+    
+    if (response.data) {
+      // Update cache with settings (not credentials yet)
+      cachedCredentials = {
+        ...cachedCredentials,
+        region: response.data.region || defaultRegion,
+        s3BucketName: response.data.s3BucketName || "",
+        sesFromEmail: response.data.sesFromEmail || "",
+        timestamp: Date.now(),
+      };
+
+      return {
+        region: cachedCredentials.region,
+        s3BucketName: cachedCredentials.s3BucketName,
+        sesFromEmail: cachedCredentials.sesFromEmail,
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get AWS settings:', error);
+  }
+
+  // Return defaults if API request fails
+  return {
+    region: defaultRegion,
+    s3BucketName: "",
+    sesFromEmail: "",
+  };
+};
+
+// Function to get AWS credentials from the API
+export const getAwsCredentials = async () => {
+  try {
+    // Check if we have cached credentials that aren't expired
+    if (
+      cachedCredentials &&
+      cachedCredentials.accessKeyId && 
+      cachedCredentials.secretAccessKey &&
+      Date.now() - cachedCredentials.timestamp < CACHE_EXPIRATION
+    ) {
+      return {
+        accessKeyId: cachedCredentials.accessKeyId,
+        secretAccessKey: cachedCredentials.secretAccessKey,
+      };
+    }
+
+    // Fetch credentials from API
+    const response = await awsApi.getCredentials();
+    
+    if (response.data) {
+      // Update cache with credentials
+      cachedCredentials = {
+        ...cachedCredentials,
+        accessKeyId: response.data.accessKeyId || "",
+        secretAccessKey: response.data.secretAccessKey || "",
+        timestamp: Date.now(),
+      };
+
+      return {
+        accessKeyId: cachedCredentials.accessKeyId,
+        secretAccessKey: cachedCredentials.secretAccessKey,
+      };
+    }
+  } catch (error) {
+    console.error('Failed to get AWS credentials:', error);
+  }
+
+  // Return empty credentials if API request fails
+  return {
+    accessKeyId: "",
+    secretAccessKey: "",
+  };
+};
+
 // Helper function to check if credentials are properly configured
-export const isAwsConfigured = (): boolean => {
-  return Boolean(
-    AWS_ACCESS_KEY_ID &&
-    AWS_SECRET_ACCESS_KEY &&
-    S3_BUCKET_NAME &&
-    SES_FROM_EMAIL
-  );
+export const isAwsConfigured = async (): Promise<boolean> => {
+  try {
+    const settings = await getAwsSettings();
+    const credentials = await getAwsCredentials();
+    
+    return Boolean(
+      credentials.accessKeyId &&
+      credentials.secretAccessKey &&
+      settings.s3BucketName &&
+      settings.sesFromEmail
+    );
+  } catch (error) {
+    console.error('Error checking AWS configuration:', error);
+    return false;
+  }
 };
