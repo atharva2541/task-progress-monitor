@@ -1,6 +1,9 @@
+
 import React from 'react';
 import { User, UserRole } from '@/types';
 import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { 
   Dialog, 
   DialogContent, 
@@ -48,6 +51,17 @@ const UserFormDialog = ({
   onSubmit, 
   emailError 
 }: UserFormDialogProps) => {
+  // Initialize the form with default values
+  const form = useForm<UserFormValues>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      name: user?.name || '',
+      email: user?.email || '',
+      role: user?.role || 'maker',
+      roles: user?.roles || ['maker']
+    }
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -61,6 +75,7 @@ const UserFormDialog = ({
         </DialogHeader>
         
         <UserForm 
+          form={form}
           user={user} 
           emailError={emailError}
           onSubmit={onSubmit}

@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { Task, TaskFrequency } from '@/types';
 import { z } from 'zod';
@@ -183,11 +184,11 @@ export const parseExcelFile = async (file: File, users: any[] = []): Promise<{ d
         
         // Only add task if it passes user validation
         if (assignedUserExists && checker1Exists && checker2Exists) {
-          validTasks.push(task);
+          validTasks.push(task as TaskExcelRow); // Safe cast now that we've validated required fields
         }
       } else {
         // If no user validation is required, add all tasks
-        validTasks.push(task);
+        validTasks.push(task as TaskExcelRow); // Safe cast now that we've validated required fields
       }
     });
     
