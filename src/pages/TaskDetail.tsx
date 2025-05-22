@@ -21,6 +21,7 @@ import { ArrowLeft, Calendar, CheckCircle2, Clock, XCircle, AlertTriangle, Histo
 import { toast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TaskHistoryExplorer } from '@/components/tasks/TaskHistoryExplorer';
+import { TaskStatus } from '@/types';
 
 const TaskDetail = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -124,13 +125,13 @@ const TaskDetail = () => {
 
     // If checker1 is approving, change status to 'checker1-approved'
     if (isChecker1 && newStatus === 'approved') {
-      updateTaskStatus(task.id, 'checker1-approved', comment);
+      updateTaskStatus(task.id, 'checker1-approved' as TaskStatus, comment);
       toast({
         title: "Task approved by Checker 1",
         description: "The task has been approved and forwarded to Checker 2 for final approval."
       });
     } else {
-      updateTaskStatus(task.id, newStatus, comment);
+      updateTaskStatus(task.id, newStatus as TaskStatus, comment);
     }
     setComment('');
   };

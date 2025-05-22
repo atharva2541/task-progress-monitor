@@ -1,6 +1,121 @@
+
 import { ReactNode } from "react";
 
-// Append to the existing types file
+// User types
+export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  roles: UserRole[];
+  avatar?: string;
+}
+
+// Task types
+export type TaskStatus = 
+  | 'draft' 
+  | 'pending'
+  | 'in-progress'
+  | 'submitted' 
+  | 'in_review' 
+  | 'checker1-approved' 
+  | 'approved' 
+  | 'rejected' 
+  | 'escalated';
+
+export type TaskPriority = 'low' | 'medium' | 'high';
+export type ObservationStatus = 'yes' | 'no' | 'mixed';
+export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
+export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time';
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  taskId: string;
+  userId: string;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  s3Key?: string;
+  uploadedAt: string;
+}
+
+export interface TaskApproval {
+  id: string;
+  instanceId: string;
+  userId: string;
+  userRole: UserRole;
+  status: 'approved' | 'rejected';
+  comment?: string;
+  timestamp: string;
+}
+
+export interface TaskInstance {
+  id: string;
+  baseTaskId: string;
+  status: TaskStatus;
+  dueDate: string;
+  submittedAt?: string;
+  completedAt?: string;
+  assignedTo: string;
+  checker1: string;
+  checker2: string;
+  observationStatus?: ObservationStatus;
+  approvals: TaskApproval[];
+  attachments: TaskAttachment[];
+  comments: TaskComment[];
+}
+
+export interface Task {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  frequency: TaskFrequency;
+  isRecurring: boolean;
+  assignedTo: string;
+  checker1: string;
+  checker2: string;
+  observationStatus?: ObservationStatus;
+  isEscalated?: boolean;
+  escalationPriority?: EscalationPriority;
+  escalationReason?: string;
+  escalatedAt?: string;
+  escalatedBy?: string;
+  attachments: TaskAttachment[];
+  comments: TaskComment[];
+  instances?: TaskInstance[];
+}
+
+// Notification types
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: string;
+  isRead: boolean;
+  userId: string;
+  link?: string;
+  taskId?: string;
+}
+
+// Activity Log types (already existing)
 export type ActivityLogActionType = 
   | 'task-created'
   | 'task-updated'
@@ -39,6 +154,3 @@ export interface ActivityLog {
     newValue?: string; // New value (for updates)
   };
 }
-
-export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
-export type TaskStatus = 'draft' | 'submitted' | 'in_review' | 'approved' | 'rejected' | 'escalated';
