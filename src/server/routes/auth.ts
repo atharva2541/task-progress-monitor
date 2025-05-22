@@ -9,7 +9,7 @@ import crypto from 'crypto';
 const router = express.Router();
 
 // Request OTP endpoint
-router.post('/request-otp', async (req, res) => {
+router.post('/request-otp', async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { email } = req.body;
 
@@ -52,7 +52,7 @@ router.post('/request-otp', async (req, res) => {
 });
 
 // Verify OTP endpoint
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { email, otp } = req.body;
 
@@ -110,7 +110,7 @@ router.post('/verify-otp', async (req, res) => {
 });
 
 // Reset password endpoint
-router.post('/reset-password', authenticateToken, async (req, res) => {
+router.post('/reset-password', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { newPassword } = req.body;
     const userId = req.user?.id;
@@ -142,7 +142,7 @@ router.post('/reset-password', authenticateToken, async (req, res) => {
 });
 
 // Get current user profile endpoint
-router.get('/me', authenticateToken, async (req, res) => {
+router.get('/me', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const userId = req.user?.id;
 

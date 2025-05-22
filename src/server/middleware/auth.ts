@@ -19,17 +19,19 @@ declare global {
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware to verify JWT token
-export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateToken = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required' });
+    return;
   }
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+      res.status(403).json({ error: 'Invalid or expired token' });
+      return;
     }
 
     req.user = decoded as { id: string; role: string; roles: string[] };
@@ -38,13 +40,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 };
 
 // Middleware to check if user has admin role
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const isAdmin = (req: Request, res: Response, next: NextFunction): void => {
   if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required' });
+    return;
   }
 
   if (req.user.role !== 'admin' && !req.user.roles.includes('admin')) {
-    return res.status(403).json({ error: 'Admin privileges required' });
+    res.status(403).json({ error: 'Admin privileges required' });
+    return;
   }
 
   next();

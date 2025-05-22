@@ -7,7 +7,7 @@ import { DbTask, DbTaskInstance } from '../../types/database';
 const router = express.Router();
 
 // Get all tasks
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const tasks = await query<DbTask>('SELECT * FROM tasks');
     res.status(200).json(tasks);
@@ -18,7 +18,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Get task by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
     
@@ -40,7 +40,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // Create a new task
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const {
       name,
@@ -115,7 +115,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Update a task
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
     const updatedFields = req.body;
@@ -211,7 +211,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete a task
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -264,7 +264,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 // Get task instances for a specific task
-router.get('/:id/instances', authenticateToken, async (req, res) => {
+router.get('/:id/instances', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
     

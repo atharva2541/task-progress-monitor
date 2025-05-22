@@ -7,7 +7,7 @@ import { DbActivityLog } from '../../types/database';
 const router = express.Router();
 
 // Get all logs (with optional filtering)
-router.get('/', authenticateToken, isAdmin, async (req, res) => {
+router.get('/', authenticateToken, isAdmin, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { 
       userId, taskId, actionType, 
@@ -92,7 +92,7 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // Create a new log entry
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const {
       actionType,
@@ -149,7 +149,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Get log metrics
-router.get('/metrics', authenticateToken, isAdmin, async (req, res) => {
+router.get('/metrics', authenticateToken, isAdmin, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     // Get counts by level
     const levelCountsQuery = 'SELECT level, COUNT(*) as count FROM activity_logs GROUP BY level';

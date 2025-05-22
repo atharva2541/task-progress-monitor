@@ -32,7 +32,7 @@ const decrypt = (text: string): string => {
 };
 
 // Get AWS settings (non-sensitive)
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const settings = await queryOne<DbAwsSettings>(
       'SELECT id, region, s3_bucket_name, ses_from_email, created_at, updated_at FROM aws_settings LIMIT 1'
@@ -55,7 +55,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Update AWS settings
-router.post('/', authenticateToken, isAdmin, async (req, res) => {
+router.post('/', authenticateToken, isAdmin, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { region, s3BucketName, sesFromEmail, accessKeyId, secretAccessKey } = req.body;
 
@@ -113,7 +113,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
 });
 
 // Get AWS credentials (for internal use only)
-router.get('/credentials', authenticateToken, async (req, res) => {
+router.get('/credentials', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     // This endpoint should be highly restricted
     // In production, you might want to implement additional security measures
@@ -142,7 +142,7 @@ router.get('/credentials', authenticateToken, async (req, res) => {
 });
 
 // Test AWS connection
-router.post('/test', authenticateToken, isAdmin, async (req, res) => {
+router.post('/test', authenticateToken, isAdmin, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { region, accessKeyId, secretAccessKey, s3BucketName, sesFromEmail } = req.body;
 

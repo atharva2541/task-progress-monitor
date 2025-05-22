@@ -7,7 +7,7 @@ import { DbNotification } from '../../types/database';
 const router = express.Router();
 
 // Get all notifications for the current user
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const userId = req.user?.id;
 
@@ -29,7 +29,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // Mark a notification as read
-router.put('/:id/read', authenticateToken, async (req, res) => {
+router.put('/:id/read', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
@@ -64,7 +64,7 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
 });
 
 // Delete a notification
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
   try {
     const { id } = req.params;
     const userId = req.user?.id;
