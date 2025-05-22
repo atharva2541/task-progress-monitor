@@ -19,10 +19,10 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
       roles: JSON.parse(user.roles)
     }));
 
-    return res.status(200).json(formattedUsers);
+    res.status(200).json(formattedUsers);
   } catch (error) {
     console.error('Get users error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -33,7 +33,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     
     // Check if user is admin or requesting their own data
     if (req.user?.role !== 'admin' && req.user?.id !== id) {
-      return res.status(403).json({ error: 'Access denied' });
+      res.status(403).json({ error: 'Access denied' });
+      return;
     }
 
     const user = await queryOne<DbUser>(
@@ -42,7 +43,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Parse roles from JSON string
@@ -51,10 +53,10 @@ router.get('/:id', authenticateToken, async (req, res) => {
       roles: JSON.parse(user.roles)
     };
 
-    return res.status(200).json(formattedUser);
+    res.status(200).json(formattedUser);
   } catch (error) {
     console.error('Get user error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -64,7 +66,8 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const { name, email, role, roles } = req.body;
 
     if (!name || !email || !role) {
-      return res.status(400).json({ error: 'Name, email, and role are required' });
+      res.status(400).json({ error: 'Name, email, and role are required' });
+      return;
     }
 
     // Check if email is already in use
@@ -74,7 +77,8 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     );
 
     if (existingUser) {
-      return res.status(409).json({ error: 'Email already in use' });
+      res.status(409).json({ error: 'Email already in use' });
+      return;
     }
 
     // Generate a unique ID
@@ -93,7 +97,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       [id, name, email, role, rolesJson, passwordExpiryDate.toISOString(), true, new Date().toISOString(), new Date().toISOString()]
     );
 
-    return res.status(201).json({
+    res.status(201).json({
       id,
       name,
       email,
@@ -104,7 +108,7 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Create user error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -116,7 +120,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Check if user is admin or updating their own data
     if (req.user?.role !== 'admin' && req.user?.id !== id) {
-      return res.status(403).json({ error: 'Access denied' });
+      res.status(403).json({ error: 'Access denied' });
+      return;
     }
 
     // Check if user exists
@@ -126,7 +131,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Only allow role changes if admin
@@ -184,7 +190,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Update user
     await query(updateQuery, queryParams);
 
-    return res.status(200).json({
+    res.status(200).json({
       id,
       name,
       email,
@@ -194,7 +200,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Update user error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -210,7 +216,8 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Delete user
@@ -219,10 +226,10 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
       [id]
     );
 
-    return res.status(200).json({ message: 'User deleted successfully' });
+    res.status(200).json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
