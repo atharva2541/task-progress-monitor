@@ -86,7 +86,8 @@ export interface TaskInstance {
   instanceReference?: string;
   periodStart?: string;
   periodEnd?: string;
-  createdAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface TaskNotificationSettings {

@@ -11,7 +11,7 @@ export const taskFormSchema = z.object({
   checker1: z.string().min(1, "Please select a first checker"),
   checker2: z.string().min(1, "Please select a second checker"),
   priority: z.enum(["low", "medium", "high"]),
-  frequency: z.enum(["daily", "weekly", "fortnightly", "monthly", "quarterly", "annually", "one-time"]),
+  frequency: z.enum(["daily", "weekly", "fortnightly", "monthly", "quarterly", "annually", "one-time", "yearly"]),
   isRecurring: z.boolean().default(false),
   dueDate: z.string().min(1, "Due date is required"),
   notifications: z.object({
@@ -73,8 +73,6 @@ export class TaskFormManager {
   }
 
   static prepareTaskFromFormData(data: TaskFormValues, taskId?: string): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> {
-    const now = new Date().toISOString();
-    
     // Create full notification settings with all mandatory settings enabled
     const notificationSettings: TaskNotificationSettings = {
       // Pre-notifications settings
@@ -95,7 +93,6 @@ export class TaskFormManager {
     };
     
     return {
-      id: taskId || Date.now().toString(),
       name: data.name,
       description: data.description,
       category: data.category,
@@ -118,7 +115,7 @@ export class TaskFormManager {
   }
 
   static populateFormFromTask(form: UseFormReturn<TaskFormValues>, task: Task): void {
-    const formData = {
+    const formData: TaskFormValues = {
       name: task.name,
       description: task.description,
       category: task.category,
@@ -133,7 +130,7 @@ export class TaskFormManager {
         preDays: [1, 3, 7], // Always set mandatory days
         customDays: task.notificationSettings?.preDays?.filter(day => ![1, 3, 7].includes(day)) || [],
       },
-      observationStatus: task.observationStatus, // Include observation status
+      observationStatus: task.observationStatus || 'no', // Include observation status
     };
     form.reset(formData);
   }
