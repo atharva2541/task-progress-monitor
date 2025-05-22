@@ -1,15 +1,42 @@
 
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, SES_FROM_EMAIL } from "./aws-config";
+import {
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  SES_FROM_EMAIL,
+  getAwsSettings,
+  getAwsCredentials
+} from "./aws-config";
 
-// Configure SES client
-const sesClient = new SESClient({
+// Initialize SES client with empty credentials (will be updated before use)
+let sesClient = new SESClient({
   region: AWS_REGION,
   credentials: {
     accessKeyId: AWS_ACCESS_KEY_ID,
     secretAccessKey: AWS_SECRET_ACCESS_KEY,
   }
 });
+
+// Function to initialize/update the SES client with the latest credentials
+const initializeSesClient = async () => {
+  try {
+    // Get latest settings and credentials
+    const settings = await getAwsSettings();
+    const credentials = await getAwsCredentials();
+    
+    // Update SES client with the latest credentials
+    sesClient = new SESClient({
+      region: settings.region,
+      credentials: {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+      }
+    });
+  } catch (error) {
+    console.error("Error initializing SES client:", error);
+  }
+};
 
 /**
  * Send an email using Amazon SES
@@ -19,6 +46,13 @@ const sesClient = new SESClient({
  * @returns Promise resolving to the SendEmailCommand result
  */
 export const sendEmail = async (to: string, subject: string, htmlBody: string): Promise<any> => {
+  // Initialize SES client with latest credentials
+  await initializeSesClient();
+  
+  // Get the latest FROM email address
+  const settings = await getAwsSettings();
+  const fromEmail = settings.sesFromEmail || SES_FROM_EMAIL;
+  
   const params = {
     Destination: {
       ToAddresses: [to],
@@ -33,7 +67,7 @@ export const sendEmail = async (to: string, subject: string, htmlBody: string): 
         Data: subject,
       },
     },
-    Source: SES_FROM_EMAIL,
+    Source: fromEmail,
   };
 
   try {

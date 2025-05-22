@@ -75,6 +75,7 @@ export const awsApi = {
   getSettings: () => api.get('/aws'),
   updateSettings: (settings: any) => api.post('/aws', settings),
   testConnection: (credentials: any) => api.post('/aws/test', credentials),
+  getCredentials: () => api.get('/aws/credentials'),
 };
 
 // Logs API

@@ -7,16 +7,43 @@ import {
   ListObjectsV2Command
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET_NAME } from "./aws-config";
+import {
+  AWS_REGION,
+  AWS_ACCESS_KEY_ID,
+  AWS_SECRET_ACCESS_KEY,
+  S3_BUCKET_NAME,
+  getAwsSettings,
+  getAwsCredentials
+} from "./aws-config";
 
-// Configure S3 client
-const s3Client = new S3Client({
+// Initialize S3 client with empty credentials (will be updated before use)
+let s3Client = new S3Client({
   region: AWS_REGION,
   credentials: {
     accessKeyId: AWS_ACCESS_KEY_ID,
     secretAccessKey: AWS_SECRET_ACCESS_KEY,
   }
 });
+
+// Function to initialize/update the S3 client with the latest credentials
+const initializeS3Client = async () => {
+  try {
+    // Get latest settings and credentials
+    const settings = await getAwsSettings();
+    const credentials = await getAwsCredentials();
+    
+    // Update S3 client with the latest credentials
+    s3Client = new S3Client({
+      region: settings.region,
+      credentials: {
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+      }
+    });
+  } catch (error) {
+    console.error("Error initializing S3 client:", error);
+  }
+};
 
 /**
  * Upload a file to S3
@@ -25,6 +52,9 @@ const s3Client = new S3Client({
  * @returns Promise with the uploaded object URL
  */
 export const uploadFileToS3 = async (file: File, key: string): Promise<string> => {
+  // Initialize S3 client with latest credentials
+  await initializeS3Client();
+  
   let fileBuffer: ArrayBuffer;
   
   try {
@@ -67,6 +97,9 @@ export const uploadFileToS3 = async (file: File, key: string): Promise<string> =
  * @returns Promise with the signed URL
  */
 export const getSignedFileUrl = async (key: string): Promise<string> => {
+  // Initialize S3 client with latest credentials
+  await initializeS3Client();
+  
   const command = new GetObjectCommand({
     Bucket: S3_BUCKET_NAME,
     Key: key,
@@ -87,6 +120,9 @@ export const getSignedFileUrl = async (key: string): Promise<string> => {
  * @returns Promise that resolves when deletion is complete
  */
 export const deleteFileFromS3 = async (key: string): Promise<void> => {
+  // Initialize S3 client with latest credentials
+  await initializeS3Client();
+  
   const command = new DeleteObjectCommand({
     Bucket: S3_BUCKET_NAME,
     Key: key,
@@ -107,6 +143,9 @@ export const deleteFileFromS3 = async (key: string): Promise<void> => {
  * @returns Promise with array of object keys
  */
 export const listFilesInS3 = async (prefix: string): Promise<string[]> => {
+  // Initialize S3 client with latest credentials
+  await initializeS3Client();
+  
   const command = new ListObjectsV2Command({
     Bucket: S3_BUCKET_NAME,
     Prefix: prefix,

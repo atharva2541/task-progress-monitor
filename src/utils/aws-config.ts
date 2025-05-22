@@ -35,6 +35,13 @@ export const AWS_REGIONS = [
   { value: "us-gov-west-1", label: "AWS GovCloud (US-West)" },
 ];
 
+// Current AWS configuration - these will be updated with values from the backend
+export let AWS_REGION = defaultRegion;
+export let AWS_ACCESS_KEY_ID = "";
+export let AWS_SECRET_ACCESS_KEY = "";
+export let S3_BUCKET_NAME = "";
+export let SES_FROM_EMAIL = "";
+
 // Cached credentials to avoid unnecessary API calls
 let cachedCredentials: {
   region: string;
@@ -76,6 +83,11 @@ export const getAwsSettings = async () => {
         timestamp: Date.now(),
       };
 
+      // Update exported variables
+      AWS_REGION = response.data.region || defaultRegion;
+      S3_BUCKET_NAME = response.data.s3BucketName || "";
+      SES_FROM_EMAIL = response.data.sesFromEmail || "";
+
       return {
         region: cachedCredentials.region,
         s3BucketName: cachedCredentials.s3BucketName,
@@ -111,16 +123,26 @@ export const getAwsCredentials = async () => {
     }
 
     // Fetch credentials from API
-    const response = await awsApi.getCredentials();
+    const response = await awsApi.testConnection({
+      // This is a workaround since getCredentials is not yet implemented
+      // In a real implementation, we would use a dedicated endpoint
+      region: AWS_REGION,
+      accessKeyId: "",
+      secretAccessKey: ""
+    });
     
-    if (response.data) {
+    if (response.data && response.data.credentials) {
       // Update cache with credentials
       cachedCredentials = {
         ...cachedCredentials,
-        accessKeyId: response.data.accessKeyId || "",
-        secretAccessKey: response.data.secretAccessKey || "",
+        accessKeyId: response.data.credentials.accessKeyId || "",
+        secretAccessKey: response.data.credentials.secretAccessKey || "",
         timestamp: Date.now(),
       };
+
+      // Update exported variables
+      AWS_ACCESS_KEY_ID = response.data.credentials.accessKeyId || "";
+      AWS_SECRET_ACCESS_KEY = response.data.credentials.secretAccessKey || "";
 
       return {
         accessKeyId: cachedCredentials.accessKeyId,
