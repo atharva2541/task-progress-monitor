@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { toast } from '@/components/ui/use-toast';
@@ -65,9 +66,6 @@ interface AuthContextType {
   isLoading: boolean;
   isPasswordExpired: boolean;
   isFirstLogin: boolean;
-  
-  // Direct login method for testing
-  directLogin: (email: string) => Promise<boolean>;
   
   // User management methods
   addUser: (newUser: Omit<User, 'id'>) => void;
@@ -206,99 +204,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
     return { success: false, passwordExpired: false, isFirstLogin: false };
   };
-  
-  // Function for direct login (bypass OTP for testing)
-  const directLogin = async (email: string): Promise<boolean> => {
-    setIsLoading(true);
-    console.log(`Attempting direct login for: ${email}`);
-    
-    // Find user by email
-    const foundUser = users.find(u => u.email === email);
-    
-    if (foundUser) {
-      console.log(`User found: ${foundUser.name}`);
-      // Check if password has expired or if it's first login
-      const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
-      const isFirstTimeLogin = foundUser.isFirstLogin === true;
-      
-      console.log(`Password expired: ${passwordExpired}, First login: ${isFirstTimeLogin}`);
-      
-      if (!passwordExpired && !isFirstTimeLogin) {
-        // If not expired and not first login, log the user in
-        setUser(foundUser);
-        localStorage.setItem('currentUser', JSON.stringify(foundUser));
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome, ${foundUser.name}! (Testing mode)`,
-        });
-        
-        setIsLoading(false);
-        console.log(`Login successful for ${foundUser.name}`);
-        return true;
-      } else if (isFirstTimeLogin) {
-        // If it's first login, handle mandatory password change
-        // For testing, we'll just update the user and log them in
-        const updatedUser = {
-          ...foundUser,
-          isFirstLogin: false,
-          passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        };
-        
-        // Update user in state
-        setUsers(users.map(u => 
-          u.id === foundUser.id ? updatedUser : u
-        ));
-        
-        // Log in with updated user
-        setUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome, ${foundUser.name}! Password has been reset. (Testing mode)`,
-        });
-        
-        setIsLoading(false);
-        console.log(`First login completed for ${foundUser.name}`);
-        return true;
-      } else {
-        // For testing, reset the password expiry date
-        const updatedUser = {
-          ...foundUser,
-          passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-        };
-        
-        // Update user in state
-        setUsers(users.map(u => 
-          u.id === foundUser.id ? updatedUser : u
-        ));
-        
-        // Log in with updated user
-        setUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
-        toast({
-          title: "Login Successful",
-          description: `Welcome, ${foundUser.name}! Password has been reset. (Testing mode)`,
-        });
-        
-        setIsLoading(false);
-        console.log(`Password reset completed for ${foundUser.name}`);
-        return true;
-      }
-    }
-    
-    toast({
-      title: "Login Failed",
-      description: "User not found",
-      variant: "destructive"
-    });
-    
-    console.log("Login failed: User not found");
-    setIsLoading(false);
-    return false;
-  };
 
   // Function to reset password with strong password validation
   const resetPassword = async (email: string, newPassword: string): Promise<boolean> => {
@@ -356,26 +261,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: `Your password has been successfully updated and will expire in 30 days.`,
       });
       
-      return true;
-    }
-    
-    setIsLoading(false);
-    return false;
-  };
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = users.find(u => u.email === email);
-    
-    // Simple mock authentication - in a real app would validate password too
-    if (foundUser && password === 'password') {
-      setUser(foundUser);
-      localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      setIsLoading(false);
       return true;
     }
     
@@ -562,7 +447,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isPasswordExpired,
       isFirstLogin,
-      directLogin,
       addUser,
       updateUser,
       deleteUser,
