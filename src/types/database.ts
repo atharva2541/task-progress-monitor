@@ -1,4 +1,3 @@
-
 // Database model types for MySQL integration
 
 // AWS Settings table
@@ -81,6 +80,9 @@ export interface DbTaskInstance {
   period_end?: string;
   created_at: string;
   updated_at: string;
+  name?: string;
+  description?: string;
+  category?: string;
 }
 
 // Task approval table

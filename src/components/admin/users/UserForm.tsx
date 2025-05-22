@@ -26,10 +26,11 @@ interface UserFormProps {
   form: UseFormReturn<UserFormValues>;
   onSubmit: (data: UserFormValues) => void;
   emailError: string | null;
-  user?: User; // Add user prop to match what's passed in UserFormDialog
+  user?: User;
+  onCancel?: () => void; // Add this prop to fix the error
 }
 
-const UserForm: React.FC<UserFormProps> = ({ form, onSubmit, emailError, user }) => {
+const UserForm: React.FC<UserFormProps> = ({ form, onSubmit, emailError, user, onCancel }) => {
   const roles = [
     { id: 'admin', label: 'Admin' },
     { id: 'maker', label: 'Maker' },
@@ -143,7 +144,12 @@ const UserForm: React.FC<UserFormProps> = ({ form, onSubmit, emailError, user })
           )}
         />
         
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end gap-2 pt-4">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
           <Button type="submit">Save User</Button>
         </div>
       </form>

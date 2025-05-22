@@ -279,7 +279,7 @@ export const convertRowToTask = (row: TaskExcelRow, users: any[] = []): Omit<Tas
   };
 };
 
-export const parseExcelTasks = (file: File): Promise<TaskImportData[]> => {
+export const parseExcelTasks = async (file: File): Promise<TaskImportData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
@@ -348,6 +348,14 @@ export const parseExcelTasks = (file: File): Promise<TaskImportData[]> => {
           if (!taskData.frequency) taskData.frequency = "monthly";
           if (!taskData.observationStatus) taskData.observationStatus = "no";
           
+          // Ensure all required fields are present for TaskExcelRow
+          taskData.name = taskData.name || ""; // Set empty string if not present
+          taskData.description = taskData.description || "";
+          taskData.category = taskData.category || "";
+          taskData.assignedTo = taskData.assignedTo || "";
+          taskData.checker1 = taskData.checker1 || "";
+          taskData.checker2 = taskData.checker2 || "";
+          
           // Validate using Zod schema
           try {
             const validTask = taskImportSchema.parse(taskData);
@@ -408,7 +416,8 @@ export const createTasksFromImport = (importedTasks: TaskImportData[], userIdMap
         notifyMaker: true,
         notifyChecker1: true,
         notifyChecker2: true
-      }
+      },
+      escalation: null
     };
   });
 };
