@@ -17,7 +17,7 @@ import { Shield } from 'lucide-react';
 const AdminCalendarPage = () => {
   // Use regular tasks for admin, authorized tasks for non-admin
   const { user } = useAuth();
-  const { tasks } = user?.role === 'admin' ? useTask() : useAuthorizedTasks();
+  const { calendarTasks, isCalendarLoading } = user?.role === 'admin' ? useTask() : useAuthorizedTasks();
   const { users } = useAuth();
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   
@@ -37,7 +37,7 @@ const AdminCalendarPage = () => {
   }
   
   // Filter tasks based on selected user
-  const filteredTasks = tasks.filter(task => {
+  const filteredTasks = calendarTasks.filter(task => {
     // Filter by selected user if not "all"
     if (selectedUserId !== 'all' && 
         task.assignedTo !== selectedUserId && 
@@ -83,6 +83,7 @@ const AdminCalendarPage = () => {
             ? 'Viewing all tasks across the organization'
             : `Viewing tasks for ${users.find(u => u.id === selectedUserId)?.name || 'selected user'}`
         }
+        isLoading={isCalendarLoading}
       />
     </div>
   );

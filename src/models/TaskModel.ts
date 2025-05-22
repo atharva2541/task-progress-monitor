@@ -3,6 +3,9 @@ import { Task, TaskStatus, EscalationPriority, ObservationStatus, TaskInstance, 
 
 export type TaskServiceProps = {
   tasks: Task[];
+  calendarTasks: Task[]; // Added calendarTasks to include recurring instances
+  isLoading: boolean;
+  isCalendarLoading: boolean; // Loading state for calendar tasks
   getUserAccessibleTasks: (userId: string, userRole: string) => Task[]; 
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'submittedAt'>) => void;
   updateTask: (taskId: string, updates: Partial<Task>) => void;

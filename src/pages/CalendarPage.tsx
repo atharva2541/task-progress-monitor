@@ -5,9 +5,11 @@ import AdminCalendarPage from '@/pages/calendar/AdminCalendarPage';
 import MakerCalendarPage from '@/pages/calendar/MakerCalendarPage';
 import Checker1CalendarPage from '@/pages/calendar/Checker1CalendarPage';
 import Checker2CalendarPage from '@/pages/calendar/Checker2CalendarPage';
+import { useAuthorizedTasks } from '@/contexts/TaskContext';
 
 const CalendarPage = () => {
   const { user } = useAuth();
+  const { isCalendarLoading } = useAuthorizedTasks();
 
   if (!user) return null;
 

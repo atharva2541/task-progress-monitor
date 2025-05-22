@@ -1,33 +1,154 @@
-import { ReactNode } from "react";
-
-// User types
-export type UserRole = 'admin' | 'maker' | 'checker1' | 'checker2';
-
-export interface User {
+// Auth types
+export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
-  roles: UserRole[];
+  role: string;
+  roles: string[];
   avatar?: string;
+  passwordExpiryDate: string;
+  isFirstLogin: boolean;
+}
+
+export interface AuthContextProps {
+  user: AuthUser | null;
+  users: AuthUser[];
+  isLoading: boolean;
+  login: (user: AuthUser, token: string) => void;
+  logout: () => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
+}
+
+// AWS types
+export interface AWSSettings {
+  region: string;
+  s3BucketName: string;
+  sesFromEmail: string;
+}
+
+// Logs types
+export interface Log {
+  id: string;
+  timestamp: string;
+  actionType: string;
+  userId: string;
+  userRole: string;
+  taskId: string;
+  instanceId?: string;
+  category: string;
+  level: string;
+  details: string;
+}
+
+export interface LogFilters {
+  level?: string;
+  category?: string;
+  user?: string;
+  task?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+// Notification types
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  timestamp: string;
+  isRead: boolean;
+  userId: string;
+  link?: string;
+  taskId?: string;
+  createdAt: string;
+  notificationType?: string;
+  referenceId?: string;
+  priority?: string;
+  deliveryStatus?: string;
+  actionUrl?: string;
+}
+
+export interface NotificationContextProps {
+  notifications: Notification[];
+  unreadCount: number;
+  isLoading: boolean;
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'isRead'>) => void;
+  markAsRead: (id: string) => void;
+  deleteNotification: (id: string) => void;
+  markAllAsRead: () => void;
 }
 
 // Task types
-export type TaskStatus = 
-  | 'draft' 
-  | 'pending'
-  | 'in-progress'
-  | 'submitted' 
-  | 'in_review' 
-  | 'checker1-approved' 
-  | 'approved' 
-  | 'rejected' 
-  | 'escalated';
+export type TaskStatus = 'pending' | 'in-progress' | 'submitted' | 'checker1-approved' | 'approved' | 'rejected';
 
-export type TaskPriority = 'low' | 'medium' | 'high';
-export type ObservationStatus = 'yes' | 'no' | 'mixed';
-export type EscalationPriority = 'critical' | 'high' | 'medium' | 'low';
-export type TaskFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'one-time' | 'fortnightly' | 'annually';
+export type EscalationPriority = 'low' | 'medium' | 'high';
+
+export type ObservationStatus = 'clean' | 'observation-noted' | 'observation-resolved';
+
+export interface Task {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  status: TaskStatus;
+  priority: 'low' | 'medium' | 'high';
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
+  submittedAt?: string;
+  frequency: 'once' | 'daily' | 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'yearly';
+  isRecurring: boolean;
+  assignedTo: string;
+  checker1: string;
+  checker2: string;
+  observationStatus?: ObservationStatus;
+  isEscalated: boolean;
+  escalationPriority?: EscalationPriority;
+  escalationReason?: string;
+  escalatedAt?: string;
+  escalatedBy?: string;
+  isTemplate: boolean;
+  currentInstanceId?: string;
+  nextInstanceDate?: string;
+  // New fields to help with calendar display
+  isInstance?: boolean;
+  baseTaskId?: string;
+  instanceReference?: string;
+  periodStart?: string;
+  periodEnd?: string;
+}
+
+export interface TaskInstance {
+  id: string;
+  baseTaskId: string;
+  status: TaskStatus;
+  dueDate: string;
+  submittedAt?: string;
+  completedAt?: string;
+  assignedTo: string;
+  checker1: string;
+  checker2: string;
+  observationStatus?: ObservationStatus;
+  instanceReference?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Display properties
+  name?: string; // Inherited from base task
+  description?: string; // Inherited from base task
+  category?: string; // Inherited from base task
+}
+
+export interface TaskApproval {
+  id: string;
+  instanceId: string;
+  userId: string;
+  userRole: string;
+  status: 'approved' | 'rejected' | 'pending';
+  comment?: string;
+  timestamp: string;
+}
 
 export interface TaskComment {
   id: string;
@@ -46,114 +167,21 @@ export interface TaskAttachment {
   fileUrl: string;
   s3Key?: string;
   uploadedAt: string;
-  // No uploadedBy property, use userId instead
-}
-
-export interface TaskEscalation {
-  isEscalated: boolean;
-  priority: EscalationPriority;
-  reason?: string;
-  escalatedAt?: string;
-  escalatedBy?: string;
-}
-
-export interface TaskApproval {
-  id: string;
-  instanceId: string;
-  userId: string;
-  userRole: UserRole;
-  status: 'approved' | 'rejected';
-  comment?: string;
-  timestamp: string;
-}
-
-export interface TaskInstance {
-  id: string;
-  baseTaskId: string;
-  status: TaskStatus;
-  dueDate: string;
-  submittedAt?: string;
-  completedAt?: string;
-  assignedTo: string;
-  checker1: string;
-  checker2: string;
-  observationStatus?: ObservationStatus;
-  approvals: TaskApproval[];
-  attachments: TaskAttachment[];
-  comments: TaskComment[];
-  // Additional properties needed by components
-  instanceReference?: string;
-  periodStart?: string;
-  periodEnd?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface TaskNotificationSettings {
+  taskId: string;
   remindBefore?: number;
   escalateAfter?: number;
-  notifyCheckers?: boolean;
-  enablePreNotifications?: boolean;
-  preDays?: number[];
-  enablePostNotifications?: boolean;
+  notifyCheckers: boolean;
+  enablePreNotifications: boolean;
+  preDays: number[];
+  enablePostNotifications: boolean;
   postNotificationFrequency?: 'daily' | 'weekly';
-  sendEmails?: boolean;
-  notifyMaker?: boolean;
-  notifyChecker1?: boolean;
-  notifyChecker2?: boolean;
-}
-
-export interface Task {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  dueDate: string;
-  createdAt: string;
-  updatedAt: string;
-  submittedAt?: string;
-  frequency: TaskFrequency;
-  isRecurring: boolean;
-  assignedTo: string;
-  checker1: string;
-  checker2: string;
-  observationStatus?: ObservationStatus;
-  isEscalated?: boolean;
-  escalationPriority?: EscalationPriority;
-  escalationReason?: string;
-  escalatedAt?: string;
-  escalatedBy?: string;
-  attachments: TaskAttachment[];
-  comments: TaskComment[];
-  instances?: TaskInstance[];
-  // Added fields for escalation as a separate object
-  escalation?: TaskEscalation;
-  // Added fields for recurring task management
-  currentInstanceId?: string;
-  nextInstanceDate?: string;
-  notificationSettings?: TaskNotificationSettings;
-  isTemplate?: boolean;
-}
-
-// Notification types
-export interface Notification {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  isRead: boolean;
-  createdAt: string;
-  timestamp: string;
-  link?: string;
-  taskId?: string;
-  notificationType?: 'task_assignment' | 'due_date_reminder' | 'status_change' | 'system' | 'general';
-  referenceId?: string;
-  priority?: 'high' | 'normal' | 'low';
-  deliveryStatus?: 'pending' | 'sent' | 'delivered' | 'failed';
-  actionUrl?: string;
+  sendEmails: boolean;
+  notifyMaker: boolean;
+  notifyChecker1: boolean;
+  notifyChecker2: boolean;
 }
 
 export interface NotificationPreferences {
@@ -169,44 +197,15 @@ export interface NotificationPreferences {
   quietHoursEnd?: string;
 }
 
-// Activity Log types
-export type ActivityLogActionType = 
-  | 'task-created'
-  | 'task-updated'
-  | 'task-submitted'
-  | 'task-approved' 
-  | 'task-rejected'
-  | 'task-escalated'
-  | 'task-deescalated'
-  | 'file-attached'
-  | 'file-removed'
-  | 'observation-updated'
-  | 'instance-created'
-  | 'comment-added';
-
-export interface ActivityLog {
-  id: string;
-  timestamp: string; // ISO date string
-  actionType: ActivityLogActionType;
-  userId: string; // User who performed the action
-  userRole: UserRole; // Role of the user at the time of action
-  taskId: string; // Related task ID
-  instanceId?: string; // Optional task instance ID
-  category: string; // Added category property (system, user, task)
-  level: string; // Added level property (info, warning, error)
-  details: {
-    taskName: string;
-    taskCategory: string;
-    maker?: string; // User ID of maker
-    checker1?: string; // User ID of checker1
-    checker2?: string; // User ID of checker2
-    dueDate?: string; // Task due date
-    overdueBy?: number; // Days overdue (if applicable)
-    status?: TaskStatus; // Task status after action
-    attachmentId?: string; // Related attachment ID (if applicable)
-    attachmentName?: string; // Attachment name (if applicable)
-    comment?: string; // Any comment associated with the action
-    oldValue?: string; // Previous value (for updates)
-    newValue?: string; // New value (for updates)
-  };
+export interface UserNotificationPreferences {
+  userId: string;
+  emailEnabled: boolean;
+  inAppEnabled: boolean;
+  taskAssignment: boolean;
+  taskUpdates: boolean;
+  dueDateReminders: boolean;
+  systemNotifications: boolean;
+  digestFrequency: 'immediate' | 'daily' | 'weekly';
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
 }
