@@ -39,17 +39,18 @@ router.get('/', authenticateToken, async (req, res) => {
     );
 
     if (!settings) {
-      return res.status(404).json({ error: 'AWS settings not found' });
+      res.status(404).json({ error: 'AWS settings not found' });
+      return;
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       region: settings.region,
       s3BucketName: settings.s3_bucket_name,
       sesFromEmail: settings.ses_from_email,
     });
   } catch (error) {
     console.error('Get AWS settings error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -59,7 +60,8 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const { region, s3BucketName, sesFromEmail, accessKeyId, secretAccessKey } = req.body;
 
     if (!region || !s3BucketName || !sesFromEmail) {
-      return res.status(400).json({ error: 'Region, S3 bucket name, and SES from email are required' });
+      res.status(400).json({ error: 'Region, S3 bucket name, and SES from email are required' });
+      return;
     }
 
     // Check if settings already exist
@@ -103,10 +105,10 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
       }
     }
 
-    return res.status(200).json({ message: 'AWS settings updated successfully' });
+    res.status(200).json({ message: 'AWS settings updated successfully' });
   } catch (error) {
     console.error('Update AWS settings error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -121,20 +123,21 @@ router.get('/credentials', authenticateToken, async (req, res) => {
     );
 
     if (!credentials) {
-      return res.status(404).json({ error: 'AWS credentials not found' });
+      res.status(404).json({ error: 'AWS credentials not found' });
+      return;
     }
 
     // Decrypt the credentials
     const accessKeyId = decrypt(credentials.access_key_id);
     const secretAccessKey = decrypt(credentials.secret_access_key);
 
-    return res.status(200).json({
+    res.status(200).json({
       accessKeyId,
       secretAccessKey,
     });
   } catch (error) {
     console.error('Get AWS credentials error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -144,16 +147,17 @@ router.post('/test', authenticateToken, isAdmin, async (req, res) => {
     const { region, accessKeyId, secretAccessKey, s3BucketName, sesFromEmail } = req.body;
 
     if (!region || !accessKeyId || !secretAccessKey) {
-      return res.status(400).json({ error: 'Region, access key ID, and secret access key are required' });
+      res.status(400).json({ error: 'Region, access key ID, and secret access key are required' });
+      return;
     }
 
     // In a real implementation, we would test the AWS connection here
     // For now, we'll just simulate a successful connection
 
-    return res.status(200).json({ message: 'AWS connection successful' });
+    res.status(200).json({ message: 'AWS connection successful' });
   } catch (error) {
     console.error('Test AWS connection error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

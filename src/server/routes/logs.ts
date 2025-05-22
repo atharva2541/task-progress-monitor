@@ -84,10 +84,10 @@ router.get('/', authenticateToken, isAdmin, async (req, res) => {
       details: JSON.parse(log.details)
     }));
 
-    return res.status(200).json(formattedLogs);
+    res.status(200).json(formattedLogs);
   } catch (error) {
     console.error('Get logs error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -104,7 +104,8 @@ router.post('/', authenticateToken, async (req, res) => {
     } = req.body;
 
     if (!actionType || !taskId || !category) {
-      return res.status(400).json({ error: 'Required fields missing' });
+      res.status(400).json({ error: 'Required fields missing' });
+      return;
     }
 
     // Generate a unique ID
@@ -130,7 +131,8 @@ router.post('/', authenticateToken, async (req, res) => {
     );
 
     if (!createdLog) {
-      return res.status(500).json({ error: 'Failed to create log' });
+      res.status(500).json({ error: 'Failed to create log' });
+      return;
     }
 
     // Parse details from JSON string
@@ -139,10 +141,10 @@ router.post('/', authenticateToken, async (req, res) => {
       details: JSON.parse(createdLog.details)
     };
 
-    return res.status(201).json(formattedLog);
+    res.status(201).json(formattedLog);
   } catch (error) {
     console.error('Create log error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -176,7 +178,7 @@ router.get('/metrics', authenticateToken, isAdmin, async (req, res) => {
     `;
     const dailyCounts = await query<{date: string, count: number}>(dailyCountsQuery, [thirtyDaysAgo.toISOString()]);
 
-    return res.status(200).json({
+    res.status(200).json({
       levelCounts,
       categoryCounts,
       actionTypeCounts,
@@ -184,7 +186,7 @@ router.get('/metrics', authenticateToken, isAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Get log metrics error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -14,7 +14,8 @@ router.post('/request-otp', async (req, res) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+      res.status(400).json({ error: 'Email is required' });
+      return;
     }
 
     // Find user by email
@@ -24,7 +25,8 @@ router.post('/request-otp', async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Generate a 6-digit OTP
@@ -42,10 +44,10 @@ router.post('/request-otp', async (req, res) => {
     // In a real app, we would send an email with the OTP
     console.log(`OTP for ${email}: ${otp}`);
 
-    return res.status(200).json({ message: 'OTP sent successfully' });
+    res.status(200).json({ message: 'OTP sent successfully' });
   } catch (error) {
     console.error('OTP request error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -55,7 +57,8 @@ router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
+      res.status(400).json({ error: 'Email and OTP are required' });
+      return;
     }
 
     // Find user by email
@@ -65,12 +68,14 @@ router.post('/verify-otp', async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Verify OTP
     if (user.last_otp !== otp) {
-      return res.status(401).json({ error: 'Invalid OTP' });
+      res.status(401).json({ error: 'Invalid OTP' });
+      return;
     }
 
     // Check if password has expired or if it's first login
@@ -93,14 +98,14 @@ router.post('/verify-otp', async (req, res) => {
       [user.id]
     );
 
-    return res.status(200).json({
+    res.status(200).json({
       token,
       passwordExpired,
       isFirstLogin,
     });
   } catch (error) {
     console.error('OTP verification error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -111,7 +116,8 @@ router.post('/reset-password', authenticateToken, async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId || !newPassword) {
-      return res.status(400).json({ error: 'User ID and new password are required' });
+      res.status(400).json({ error: 'User ID and new password are required' });
+      return;
     }
 
     // Hash the new password
@@ -128,10 +134,10 @@ router.post('/reset-password', authenticateToken, async (req, res) => {
       [hashedPassword, newExpiryDate.toISOString(), false, userId]
     );
 
-    return res.status(200).json({ message: 'Password updated successfully' });
+    res.status(200).json({ message: 'Password updated successfully' });
   } catch (error) {
     console.error('Password reset error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -141,7 +147,8 @@ router.get('/me', authenticateToken, async (req, res) => {
     const userId = req.user?.id;
 
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     const user = await queryOne<DbUser>(
@@ -150,13 +157,14 @@ router.get('/me', authenticateToken, async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     // Parse the roles from the JSON string
     const roles = JSON.parse(user.roles);
 
-    return res.status(200).json({
+    res.status(200).json({
       id: user.id,
       name: user.name,
       email: user.email,
@@ -168,7 +176,7 @@ router.get('/me', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get user profile error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -20,10 +20,10 @@ router.get('/', authenticateToken, async (req, res) => {
       [userId]
     );
 
-    return res.status(200).json(notifications);
+    res.status(200).json(notifications);
   } catch (error) {
     console.error('Get notifications error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -53,10 +53,10 @@ router.put('/:id/read', authenticateToken, async (req, res) => {
       [true, id]
     );
 
-    return res.status(200).json({ message: 'Notification marked as read' });
+    res.status(200).json({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Update notification error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -86,10 +86,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    return res.status(200).json({ message: 'Notification deleted successfully' });
+    res.status(200).json({ message: 'Notification deleted successfully' });
   } catch (error) {
     console.error('Delete notification error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
