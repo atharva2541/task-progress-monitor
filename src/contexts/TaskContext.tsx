@@ -46,10 +46,14 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         try {
           setIsCalendarLoading(true);
           const response = await axios.get('/api/tasks/calendar');
-          setCalendarTasks(response.data);
+          // Ensure we always have an array, even if the API returns something unexpected
+          const tasksData = Array.isArray(response.data) ? response.data : [];
+          setCalendarTasks(tasksData);
         } catch (error) {
           console.error('Error loading calendar tasks:', error);
           toast.error('Failed to load calendar tasks');
+          // Set to empty array on error
+          setCalendarTasks([]);
         } finally {
           setIsCalendarLoading(false);
         }
@@ -119,8 +123,13 @@ export function useAuthorizedTasks() {
   // Filter tasks based on user role and involvement
   const authorizedTasks = taskContext.getUserAccessibleTasks(user.id, user.role);
   
+  // Ensure calendarTasks is an array before attempting to filter
+  const calendarTasksArray = Array.isArray(taskContext.calendarTasks) 
+    ? taskContext.calendarTasks 
+    : [];
+    
   // Filter calendar tasks based on user role and involvement
-  const authorizedCalendarTasks = taskContext.calendarTasks.filter(task => {
+  const authorizedCalendarTasks = calendarTasksArray.filter(task => {
     // Admin sees all
     if (user.role === 'admin') return true;
     
