@@ -12,7 +12,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { parseExcelFile, generateExcelTemplate, TaskExcelRow, convertRowToTask } from "@/utils/excel-import";
+import { 
+  parseExcelFile, 
+  generateExcelTemplate, 
+  TaskExcelRow, 
+  convertRowToTask 
+} from "@/utils/excel-import";
 import { useTask } from "@/contexts/TaskContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";

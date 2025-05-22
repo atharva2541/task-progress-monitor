@@ -20,15 +20,16 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { UserFormValues } from './UserFormDialog';
-import { UserRole } from '@/types';
+import { UserRole, User } from '@/types';
 
 interface UserFormProps {
   form: UseFormReturn<UserFormValues>;
   onSubmit: (data: UserFormValues) => void;
   emailError: string | null;
+  user?: User; // Add user prop to match what's passed in UserFormDialog
 }
 
-const UserForm: React.FC<UserFormProps> = ({ form, onSubmit, emailError }) => {
+const UserForm: React.FC<UserFormProps> = ({ form, onSubmit, emailError, user }) => {
   const roles = [
     { id: 'admin', label: 'Admin' },
     { id: 'maker', label: 'Maker' },

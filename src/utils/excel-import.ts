@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { Task, TaskFrequency } from '@/types';
 import { z } from 'zod';
@@ -19,6 +18,21 @@ const taskImportSchema = z.object({
 });
 
 export type TaskImportData = z.infer<typeof taskImportSchema>;
+
+// Define the TaskExcelRow type to match what TaskExcelUploader expects
+export interface TaskExcelRow {
+  name: string;
+  description: string;
+  category: string;
+  assignedTo: string;
+  checker1: string;
+  checker2: string;
+  priority: "low" | "medium" | "high";
+  frequency: TaskFrequency;
+  isRecurring: boolean;
+  dueDate: string;
+  observationStatus: "yes" | "no" | "mixed";
+}
 
 // Helper function to parse date from Excel serial number or string
 const parseExcelDate = (excelDate: any): string => {
@@ -131,6 +145,138 @@ const columnMap = {
   "Due Date": "dueDate",
   "Observation Status": "observationStatus",
   // Add other mappings as needed
+};
+
+/**
+ * Parse Excel file and return task data
+ */
+export const parseExcelFile = async (file: File, users: any[] = []): Promise<{ data: TaskExcelRow[], errors: string[] }> => {
+  try {
+    const tasks = await parseExcelTasks(file);
+    
+    // Filter out invalid tasks and collect errors
+    const errors: string[] = [];
+    const validTasks: TaskExcelRow[] = [];
+    
+    tasks.forEach((task, index) => {
+      // Validate user exists if we have user data
+      if (users.length > 0) {
+        const assignedUserExists = users.some(user => 
+          user.email.toLowerCase() === task.assignedTo.toLowerCase() || user.id === task.assignedTo
+        );
+        const checker1Exists = users.some(user => 
+          user.email.toLowerCase() === task.checker1.toLowerCase() || user.id === task.checker1
+        );
+        const checker2Exists = users.some(user => 
+          user.email.toLowerCase() === task.checker2.toLowerCase() || user.id === task.checker2
+        );
+        
+        if (!assignedUserExists) {
+          errors.push(`Row ${index + 2}: Assigned user "${task.assignedTo}" not found`);
+        }
+        if (!checker1Exists) {
+          errors.push(`Row ${index + 2}: Checker 1 "${task.checker1}" not found`);
+        }
+        if (!checker2Exists) {
+          errors.push(`Row ${index + 2}: Checker 2 "${task.checker2}" not found`);
+        }
+        
+        // Only add task if it passes user validation
+        if (assignedUserExists && checker1Exists && checker2Exists) {
+          validTasks.push(task);
+        }
+      } else {
+        // If no user validation is required, add all tasks
+        validTasks.push(task);
+      }
+    });
+    
+    return { data: validTasks, errors };
+  } catch (error) {
+    console.error("Error parsing Excel file:", error);
+    return { 
+      data: [], 
+      errors: [(error instanceof Error) ? error.message : 'Unknown error parsing Excel file'] 
+    };
+  }
+};
+
+/**
+ * Generate an Excel template file for task imports
+ */
+export const generateExcelTemplate = (users: any[] = []): Blob => {
+  // Create worksheet
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    // Header row
+    ["Task Name", "Description", "Category", "Assigned To", "Checker 1", "Checker 2", 
+     "Priority", "Frequency", "Recurring", "Due Date", "Observation Status"],
+    
+    // Example row
+    ["Monthly Financial Report", "Complete the monthly financial report including all transactions", 
+     "Finance", users[0]?.email || "user@example.com", users[1]?.email || "checker1@example.com", 
+     users[2]?.email || "checker2@example.com", "high", "monthly", "yes", 
+     new Date().toISOString().split('T')[0], "no"]
+  ]);
+  
+  // Create a new workbook and add the worksheet
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Tasks");
+  
+  // Add a second sheet with available users if provided
+  if (users.length > 0) {
+    const usersWorksheet = XLSX.utils.aoa_to_sheet([
+      ["User Name", "Email", "Role"],
+      ...users.map(user => [user.name, user.email, user.role])
+    ]);
+    XLSX.utils.book_append_sheet(workbook, usersWorksheet, "Available Users");
+  }
+  
+  // Generate and return Excel file as blob
+  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+};
+
+/**
+ * Convert TaskExcelRow to Task object
+ */
+export const convertRowToTask = (row: TaskExcelRow, users: any[] = []): Omit<Task, 'id' | 'createdAt' | 'updatedAt'> => {
+  // Find user IDs from emails if users provided
+  const getUserId = (emailOrId: string): string => {
+    const user = users.find(u => u.email.toLowerCase() === emailOrId.toLowerCase());
+    return user?.id || emailOrId;
+  };
+  
+  return {
+    name: row.name,
+    description: row.description,
+    category: row.category,
+    assignedTo: getUserId(row.assignedTo),
+    checker1: getUserId(row.checker1),
+    checker2: getUserId(row.checker2),
+    priority: row.priority,
+    frequency: row.frequency,
+    isRecurring: row.isRecurring,
+    dueDate: row.dueDate,
+    status: 'pending',
+    observationStatus: row.observationStatus,
+    comments: [],
+    attachments: [],
+    isEscalated: false,
+    isTemplate: row.isRecurring,
+    notificationSettings: {
+      taskId: 'temp-id', // Will be replaced with actual ID when task is created
+      notifyCheckers: true,
+      enablePreNotifications: true,
+      preDays: [1, 3, 7],
+      enablePostNotifications: true,
+      postNotificationFrequency: "daily",
+      sendEmails: true,
+      notifyMaker: true,
+      notifyChecker1: true,
+      notifyChecker2: true
+    },
+    escalation: null
+  };
 };
 
 export const parseExcelTasks = (file: File): Promise<TaskImportData[]> => {
