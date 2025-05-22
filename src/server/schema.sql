@@ -137,8 +137,30 @@ CREATE TABLE notifications (
   link VARCHAR(255),
   task_id VARCHAR(36),
   created_at DATETIME NOT NULL,
+  notification_type VARCHAR(50) DEFAULT 'general',
+  reference_id VARCHAR(36),
+  priority VARCHAR(20) DEFAULT 'normal',
+  delivery_status VARCHAR(20) DEFAULT 'pending',
+  action_url VARCHAR(255),
   FOREIGN KEY (user_id) REFERENCES users(id),
   FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+-- User Notification Preferences Table
+CREATE TABLE user_notification_preferences (
+  user_id VARCHAR(36) PRIMARY KEY,
+  email_enabled BOOLEAN DEFAULT TRUE,
+  in_app_enabled BOOLEAN DEFAULT TRUE,
+  task_assignment BOOLEAN DEFAULT TRUE,
+  task_updates BOOLEAN DEFAULT TRUE,
+  due_date_reminders BOOLEAN DEFAULT TRUE,
+  system_notifications BOOLEAN DEFAULT TRUE,
+  digest_frequency VARCHAR(20) DEFAULT 'immediate', -- immediate, daily, weekly
+  quiet_hours_start TIME,
+  quiet_hours_end TIME,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Task Notification Settings Table
@@ -186,3 +208,5 @@ CREATE INDEX idx_task_instances_due_date ON task_instances(due_date);
 CREATE INDEX idx_activity_logs_task_id ON activity_logs(task_id);
 CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_type ON notifications(notification_type);
+CREATE INDEX idx_notifications_priority ON notifications(priority);

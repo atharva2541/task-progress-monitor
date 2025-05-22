@@ -1,50 +1,9 @@
 
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Notification } from '@/types';
-
-// Mock notifications
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    userId: '2', // For Maker
-    title: 'Task Due Today',
-    message: 'The "Daily System Check" task is due today.',
-    type: 'warning',
-    isRead: false, // Changed from read to isRead
-    createdAt: new Date().toISOString(),
-    timestamp: new Date().toISOString()
-  },
-  {
-    id: '2',
-    userId: '3', // For Checker1
-    title: 'New Task Submitted',
-    message: 'A task "Quarterly Compliance Audit" has been submitted for your review.',
-    type: 'info',
-    isRead: false, // Changed from read to isRead
-    createdAt: new Date().toISOString(),
-    timestamp: new Date().toISOString()
-  },
-  {
-    id: '3',
-    userId: '4', // For Checker2
-    title: 'Task Escalation',
-    message: 'The task "System Security Review" was rejected and needs your attention.',
-    type: 'error',
-    isRead: false, // Changed from read to isRead
-    createdAt: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString(),
-    timestamp: new Date(new Date().setHours(new Date().getHours() - 2)).toISOString()
-  },
-  {
-    id: '4',
-    userId: '4', // For Checker2
-    title: 'Critical Escalation',
-    message: 'The task "Monthly Fraud Monitoring" is severely overdue and requires immediate attention.',
-    type: 'error',
-    isRead: false, // Changed from read to isRead
-    createdAt: new Date().toISOString(),
-    timestamp: new Date().toISOString()
-  }
-];
+import { Notification, NotificationPreferences } from '@/types';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
+import { toast } from '@/components/ui/use-toast';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -54,66 +13,180 @@ interface NotificationContextType {
   markAllAsRead: () => void;
   deleteNotification: (id: string) => void;
   getUserNotifications: (userId: string) => Notification[];
+  preferences: NotificationPreferences | null;
+  loadingPreferences: boolean;
+  fetchNotifications: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
+  const [loadingPreferences, setLoadingPreferences] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const unreadCount = notifications.filter(notification => !notification.isRead).length; // Changed to isRead
+  const unreadCount = notifications.filter(notification => !notification.isRead).length;
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'createdAt'>) => {
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await axios.get('/api/notifications');
+      
+      // Transform DB notifications to our frontend format
+      const transformedNotifications: Notification[] = response.data.map((notif: any) => ({
+        id: notif.id,
+        userId: notif.user_id,
+        title: notif.title,
+        message: notif.message,
+        type: notif.type,
+        isRead: notif.is_read,
+        createdAt: notif.created_at,
+        timestamp: notif.timestamp,
+        link: notif.link,
+        taskId: notif.task_id,
+        notificationType: notif.notification_type,
+        referenceId: notif.reference_id,
+        priority: notif.priority,
+        deliveryStatus: notif.delivery_status,
+        actionUrl: notif.action_url
+      }));
+      
+      setNotifications(transformedNotifications);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch notification preferences
+  const fetchPreferences = async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingPreferences(true);
+      const response = await axios.get('/api/notifications/preferences');
+      
+      // Transform from snake_case to camelCase
+      const transformedPreferences: NotificationPreferences = {
+        userId: response.data.user_id,
+        emailEnabled: response.data.email_enabled,
+        inAppEnabled: response.data.in_app_enabled,
+        taskAssignment: response.data.task_assignment,
+        taskUpdates: response.data.task_updates,
+        dueDateReminders: response.data.due_date_reminders,
+        systemNotifications: response.data.system_notifications,
+        digestFrequency: response.data.digest_frequency,
+        quietHoursStart: response.data.quiet_hours_start,
+        quietHoursEnd: response.data.quiet_hours_end
+      };
+      
+      setPreferences(transformedPreferences);
+    } catch (error) {
+      console.error('Failed to fetch notification preferences:', error);
+    } finally {
+      setLoadingPreferences(false);
+    }
+  };
+
+  // Initial fetch of notifications and preferences
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      fetchPreferences();
+    }
+  }, [user]);
+
+  // Add a new notification
+  const addNotification = async (notification: Omit<Notification, 'id' | 'createdAt'>) => {
+    // This would typically be done by the server
+    // In a real application, we'd receive notifications via WebSocket or polling
     const newNotification: Notification = {
       ...notification,
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
-      timestamp: notification.timestamp || new Date().toISOString() // Ensure timestamp is set
+      timestamp: notification.timestamp || new Date().toISOString()
     };
     
     setNotifications([newNotification, ...notifications]);
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(notification => {
-      if (notification.id === id) {
-        return { ...notification, isRead: true }; // Changed to isRead
-      }
-      return notification;
-    }));
+  // Mark a notification as read
+  const markAsRead = async (id: string) => {
+    try {
+      await axios.put(`/api/notifications/${id}/read`);
+      
+      setNotifications(notifications.map(notification => {
+        if (notification.id === id) {
+          return { ...notification, isRead: true };
+        }
+        return notification;
+      }));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to mark notification as read.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notification => ({
-      ...notification,
-      isRead: true // Changed to isRead
-    })));
+  // Mark all notifications as read
+  const markAllAsRead = async () => {
+    try {
+      await axios.put('/api/notifications/mark-all-read');
+      
+      setNotifications(notifications.map(notification => ({
+        ...notification,
+        isRead: true
+      })));
+    } catch (error) {
+      console.error('Failed to mark all notifications as read:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to mark all notifications as read.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(notification => notification.id !== id));
+  // Delete a notification
+  const deleteNotification = async (id: string) => {
+    try {
+      await axios.delete(`/api/notifications/${id}`);
+      setNotifications(notifications.filter(notification => notification.id !== id));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete notification.',
+        variant: 'destructive',
+      });
+    }
   };
 
+  // Get notifications for a specific user
   const getUserNotifications = (userId: string) => {
     return notifications.filter(notification => notification.userId === userId);
   };
 
-  // Persist notifications to localStorage
+  // Refresh notifications periodically (every 2 minutes)
   useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  // Load notifications from localStorage on init
-  useEffect(() => {
-    const savedNotifications = localStorage.getItem('notifications');
-    if (savedNotifications) {
-      try {
-        setNotifications(JSON.parse(savedNotifications));
-      } catch (error) {
-        console.error('Failed to parse saved notifications:', error);
-      }
-    }
-  }, []);
+    if (!user) return;
+    
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 2 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <NotificationContext.Provider value={{
@@ -123,7 +196,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markAsRead,
       markAllAsRead,
       deleteNotification,
-      getUserNotifications
+      getUserNotifications,
+      preferences,
+      loadingPreferences,
+      fetchNotifications,
+      isLoading
     }}>
       {children}
     </NotificationContext.Provider>

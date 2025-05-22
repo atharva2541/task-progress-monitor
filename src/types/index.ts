@@ -140,15 +140,33 @@ export interface Task {
 // Notification types
 export interface Notification {
   id: string;
+  userId: string;
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
+  isRead: boolean;
+  createdAt: string;
   timestamp: string;
-  isRead: boolean; 
-  userId: string;
   link?: string;
   taskId?: string;
-  createdAt: string;
+  notificationType?: 'task_assignment' | 'due_date_reminder' | 'status_change' | 'system' | 'general';
+  referenceId?: string;
+  priority?: 'high' | 'normal' | 'low';
+  deliveryStatus?: 'pending' | 'sent' | 'delivered' | 'failed';
+  actionUrl?: string;
+}
+
+export interface NotificationPreferences {
+  userId: string;
+  emailEnabled: boolean;
+  inAppEnabled: boolean;
+  taskAssignment: boolean;
+  taskUpdates: boolean;
+  dueDateReminders: boolean;
+  systemNotifications: boolean;
+  digestFrequency: 'immediate' | 'daily' | 'weekly';
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
 }
 
 // Activity Log types

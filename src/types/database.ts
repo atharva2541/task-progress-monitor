@@ -141,6 +141,27 @@ export interface DbNotification {
   link?: string;
   task_id?: string;
   created_at: string;
+  notification_type?: string;
+  reference_id?: string;
+  priority?: string;
+  delivery_status?: string;
+  action_url?: string;
+}
+
+// User Notification Preferences table
+export interface DbNotificationPreferences {
+  user_id: string;
+  email_enabled: boolean;
+  in_app_enabled: boolean;
+  task_assignment: boolean;
+  task_updates: boolean;
+  due_date_reminders: boolean;
+  system_notifications: boolean;
+  digest_frequency: string;
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Task notification settings table
