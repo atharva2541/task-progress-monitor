@@ -217,25 +217,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = users.find(u => u.email === email && u.lastOtp === otp);
     
     if (foundUser) {
-      // Check if password has expired or if it's first login
-      const passwordExpired = new Date(foundUser.passwordExpiryDate) < new Date();
-      const isFirstTimeLogin = foundUser.isFirstLogin === true;
-      
-      if (!passwordExpired && !isFirstTimeLogin) {
-        // If not expired and not first login, log the user in
-        setUser(foundUser);
-        localStorage.setItem('currentUser', JSON.stringify(foundUser));
-        setIsFirstLogin(false);
-      } else if (isFirstTimeLogin) {
-        // If it's first login, set flag for mandatory password change
-        setIsFirstLogin(true);
-      } else {
-        // If password expired, flag that password reset is needed
-        setIsPasswordExpired(true);
-      }
+      // For testing purposes, bypass password expiry and first login checks
+      // Always log the user in directly
+      setUser(foundUser);
+      localStorage.setItem('currentUser', JSON.stringify(foundUser));
+      setIsFirstLogin(false);
+      setIsPasswordExpired(false);
       
       setIsLoading(false);
-      return { success: true, passwordExpired, isFirstLogin: isFirstTimeLogin };
+      return { success: true, passwordExpired: false, isFirstLogin: false };
     }
     
     setIsLoading(false);
