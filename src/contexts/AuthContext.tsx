@@ -146,17 +146,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (foundUser) {
       try {
-        let otp: string;
-        
-        // For the test admin user, use constant OTP
-        if (foundUser.email === 'testadmin@example.com') {
-          otp = '123456';
-          console.log(`Test Admin OTP (constant): ${otp}`);
-        } else {
-          // Generate a 6-digit OTP for other users
-          otp = Math.floor(100000 + Math.random() * 900000).toString();
-          console.log(`OTP for ${email}: ${otp}`);
-        }
+        // For testing purposes, use constant OTP for ALL users
+        const otp = '123456';
+        console.log(`Testing OTP for ${email}: ${otp}`);
         
         // Update the user with the new OTP (only for demo purposes)
         setUsers(users.map(u => 
