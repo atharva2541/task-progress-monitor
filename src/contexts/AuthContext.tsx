@@ -13,7 +13,7 @@ interface ExtendedUser extends User {
 }
 
 // Mock users for demonstration including a test admin with constant OTP
-const mockUsers: ExtendedUser[] = [
+const defaultMockUsers: ExtendedUser[] = [
   {
     id: 'test-admin',
     name: 'Test Admin',
@@ -87,12 +87,32 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [users, setUsers] = useState<ExtendedUser[]>(mockUsers);
+  const [users, setUsers] = useState<ExtendedUser[]>(defaultMockUsers);
   const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading until we check localStorage
   const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
   const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
   
-  // Don't use the useToast hook here, just use the toast function directly
+  // Function to ensure test admin user exists
+  const ensureTestAdminExists = (usersList: ExtendedUser[]): ExtendedUser[] => {
+    const testAdminExists = usersList.some(u => u.email === 'testadmin@example.com');
+    
+    if (!testAdminExists) {
+      console.log('Test admin user not found, adding it back');
+      const testAdmin: ExtendedUser = {
+        id: 'test-admin',
+        name: 'Test Admin',
+        email: 'testadmin@example.com',
+        role: 'admin',
+        roles: ['admin'],
+        avatar: 'https://ui-avatars.com/api/?name=Test+Admin&background=8b5cf6&color=fff',
+        passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        lastOtp: '123456',
+      };
+      return [testAdmin, ...usersList];
+    }
+    
+    return usersList;
+  };
 
   // Function to check password strength
   const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
@@ -118,7 +138,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const requestOtp = async (email: string): Promise<boolean> => {
     setIsLoading(true);
     
+    console.log('Requesting OTP for email:', email);
+    console.log('Current users in state:', users.map(u => ({ id: u.id, email: u.email })));
+    
     const foundUser = users.find(u => u.email === email);
+    console.log('Found user:', foundUser ? `${foundUser.name} (${foundUser.email})` : 'Not found');
     
     if (foundUser) {
       try {
@@ -186,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
+    console.log('User not found for email:', email);
     setIsLoading(false);
     return false;
   };
@@ -443,15 +468,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('users', JSON.stringify(users));
   }, [users]);
 
-  // Load users from localStorage on init
+  // Load users from localStorage on init, but ensure test admin always exists
   useEffect(() => {
     const savedUsers = localStorage.getItem('users');
     if (savedUsers) {
       try {
-        setUsers(JSON.parse(savedUsers));
+        const parsedUsers = JSON.parse(savedUsers);
+        const usersWithTestAdmin = ensureTestAdminExists(parsedUsers);
+        setUsers(usersWithTestAdmin);
+        console.log('Loaded users from localStorage:', usersWithTestAdmin.map(u => ({ id: u.id, email: u.email })));
       } catch (error) {
         console.error('Failed to parse saved users:', error);
+        setUsers(defaultMockUsers);
       }
+    } else {
+      console.log('No saved users found, using default mock users');
+      setUsers(defaultMockUsers);
     }
   }, []);
 
