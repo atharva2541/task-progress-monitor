@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { toast } from '@/components/ui/use-toast';
@@ -13,8 +12,18 @@ interface ExtendedUser extends User {
   passwordStrength?: 'weak' | 'medium' | 'strong';
 }
 
-// Mock users for demonstration
+// Mock users for demonstration including a test admin with constant OTP
 const mockUsers: ExtendedUser[] = [
+  {
+    id: 'test-admin',
+    name: 'Test Admin',
+    email: 'testadmin@example.com',
+    role: 'admin',
+    roles: ['admin'],
+    avatar: 'https://ui-avatars.com/api/?name=Test+Admin&background=8b5cf6&color=fff',
+    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+    lastOtp: '123456', // Constant OTP for testing
+  },
   {
     id: '1',
     name: 'Admin User',
@@ -113,52 +122,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (foundUser) {
       try {
-        // Generate a 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        let otp: string;
         
-        // In a real app, this would be hashed and stored in a database
-        console.log(`OTP for ${email}: ${otp}`);
+        // For the test admin user, use constant OTP
+        if (foundUser.email === 'testadmin@example.com') {
+          otp = '123456';
+          console.log(`Test Admin OTP (constant): ${otp}`);
+        } else {
+          // Generate a 6-digit OTP for other users
+          otp = Math.floor(100000 + Math.random() * 900000).toString();
+          console.log(`OTP for ${email}: ${otp}`);
+        }
         
         // Update the user with the new OTP (only for demo purposes)
         setUsers(users.map(u => 
           u.id === foundUser.id ? { ...u, lastOtp: otp } : u
         ));
         
-        // Send email with OTP
-        try {
-          // Try to send password reset email if context suggests it's for password reset
-          await sendPasswordResetEmail(email, foundUser.name, otp);
-          
-          toast({
-            title: "OTP Sent",
-            description: `A verification code has been sent to ${email}`,
-          });
-          setIsLoading(false);
-          return true;
-        } catch (emailError) {
-          console.error('Email Error:', emailError);
-          
-          // Fall back to standard OTP email if password reset email fails
+        // Send email with OTP (skip for test admin to avoid email errors)
+        if (foundUser.email !== 'testadmin@example.com') {
           try {
-            await sendOtpEmail(email, otp, foundUser.name);
+            // Try to send password reset email if context suggests it's for password reset
+            await sendPasswordResetEmail(email, foundUser.name, otp);
+            
             toast({
               title: "OTP Sent",
               description: `A verification code has been sent to ${email}`,
             });
-            setIsLoading(false);
-            return true;
-          } catch (standardEmailError) {
-            console.error('Standard Email Error:', standardEmailError);
+          } catch (emailError) {
+            console.error('Email Error:', emailError);
             
-            // For demo purposes, we'll consider it successful even if email fails
-            toast({
-              title: "OTP Generated",
-              description: `For demo purposes, check the console for the OTP code.`,
-            });
-            setIsLoading(false);
-            return true;
+            // Fall back to standard OTP email if password reset email fails
+            try {
+              await sendOtpEmail(email, otp, foundUser.name);
+              toast({
+                title: "OTP Sent",
+                description: `A verification code has been sent to ${email}`,
+              });
+            } catch (standardEmailError) {
+              console.error('Standard Email Error:', standardEmailError);
+              
+              // For demo purposes, we'll consider it successful even if email fails
+              toast({
+                title: "OTP Generated",
+                description: `For demo purposes, check the console for the OTP code.`,
+              });
+            }
           }
+        } else {
+          // For test admin, just show success message
+          toast({
+            title: "Test Admin OTP",
+            description: `Test admin OTP is always: 123456`,
+          });
         }
+        
+        setIsLoading(false);
+        return true;
       } catch (error) {
         console.error('Error in requestOtp:', error);
         setIsLoading(false);
