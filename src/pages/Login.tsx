@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, Shield, ShieldCheck } from 'lucide-react';
+import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -18,8 +18,7 @@ import {
   FormField, 
   FormItem, 
   FormLabel, 
-  FormMessage,
-  FormDescription 
+  FormMessage
 } from '@/components/ui/form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
@@ -31,11 +30,11 @@ import {
   InputOTPGroup, 
   InputOTPSlot 
 } from '@/components/ui/input-otp';
-import { Progress } from '@/components/ui/progress';
 
-// Email only login form schema
-const emailFormSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' })
+// Email and password login form schema
+const loginFormSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string().min(1, { message: 'Password is required' })
 });
 
 // OTP validation schema
@@ -43,49 +42,19 @@ const otpFormSchema = z.object({
   otp: z.string().length(6, { message: 'OTP must be 6 digits' })
 });
 
-// Strong password schema with custom validation
-const passwordSchema = z.string()
-  .min(8, { message: 'Password must be at least 8 characters' })
-  .refine((val) => /[A-Z]/.test(val), {
-    message: 'Password must contain at least one uppercase letter',
-  })
-  .refine((val) => /[a-z]/.test(val), {
-    message: 'Password must contain at least one lowercase letter',
-  })
-  .refine((val) => /[0-9]/.test(val), {
-    message: 'Password must contain at least one number',
-  })
-  .refine((val) => /[^A-Za-z0-9]/.test(val), {
-    message: 'Password must contain at least one special character',
-  });
-
-// Reset password form schema with strong password requirements
-const resetFormSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address' }),
-  password: passwordSchema,
-  confirmPassword: z.string().min(8, { message: 'Please confirm your password' })
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"]
-});
-
-// Login page states
-type LoginPageState = 'LOGIN' | 'VERIFY_OTP' | 'RESET_PASSWORD' | 'FIRST_LOGIN';
-
 const LoginPage = () => {
-  const { requestOtp, verifyOtp, resetPassword, isLoading, isPasswordExpired, isFirstLogin, checkPasswordStrength } = useAuth();
+  const { login, verifyOtp, isLoading, isAwaitingOtp, currentEmail } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [loginState, setLoginState] = useState<LoginPageState>('LOGIN');
-  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Form for email only login
-  const emailForm = useForm<z.infer<typeof emailFormSchema>>({
-    resolver: zodResolver(emailFormSchema),
+  // Form for email and password login
+  const loginForm = useForm<z.infer<typeof loginFormSchema>>({
+    resolver: zodResolver(loginFormSchema),
     defaultValues: { 
-      email: ''
+      email: '',
+      password: ''
     },
   });
 
@@ -95,53 +64,15 @@ const LoginPage = () => {
     defaultValues: { otp: '' },
   });
 
-  // Form for password reset or first login
-  const resetForm = useForm<z.infer<typeof resetFormSchema>>({
-    resolver: zodResolver(resetFormSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: ''
-    },
-  });
-
-  // Update password strength meter when password changes
-  useEffect(() => {
-    const subscription = resetForm.watch((value, { name }) => {
-      if (name === 'password' && value.password) {
-        const password = value.password as string;
-        const strength = checkPasswordStrength(password);
-        
-        if (strength === 'weak') setPasswordStrength(33);
-        else if (strength === 'medium') setPasswordStrength(66);
-        else setPasswordStrength(100);
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, [resetForm, checkPasswordStrength]);
-
-  // Check if user needs to reset password or it's their first login
-  useEffect(() => {
-    if (isPasswordExpired) {
-      setLoginState('RESET_PASSWORD');
-    } else if (isFirstLogin) {
-      setLoginState('FIRST_LOGIN');
-    }
-  }, [isPasswordExpired, isFirstLogin]);
-
-  // Handle email submission (no password required)
-  const onEmailSubmit = async (values: z.infer<typeof emailFormSchema>) => {
+  // Handle login submission
+  const onLoginSubmit = async (values: z.infer<typeof loginFormSchema>) => {
     setError(null);
-    setEmail(values.email);
     
     try {
-      const success = await requestOtp(values.email);
+      const result = await login(values.email, values.password);
       
-      if (success) {
-        setLoginState('VERIFY_OTP');
-      } else {
-        setError('User not found. Please check your email address.');
+      if (!result.success) {
+        setError(result.message || 'Login failed');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -152,75 +83,22 @@ const LoginPage = () => {
   const onVerifyOtp = async (values: z.infer<typeof otpFormSchema>) => {
     setError(null);
     
+    if (!currentEmail) {
+      setError('Email not found. Please login again.');
+      return;
+    }
+    
     try {
-      const result = await verifyOtp(email, values.otp);
+      const result = await verifyOtp(currentEmail, values.otp);
       
       if (result.success) {
-        if (result.passwordExpired) {
-          // Password is expired, redirect to reset password
-          setLoginState('RESET_PASSWORD');
-          resetForm.setValue('email', email);
-          toast({
-            title: 'Password Reset Required',
-            description: 'Your password has expired. Please create a new one.',
-          });
-        } else if (result.isFirstLogin) {
-          // First login, needs to set a new password
-          setLoginState('FIRST_LOGIN');
-          resetForm.setValue('email', email);
-          toast({
-            title: 'Password Setup Required',
-            description: 'This is your first login. Please set a new secure password.',
-          });
-        } else {
-          // Login successful, redirect to dashboard
-          toast({
-            title: 'Login successful',
-            description: 'Welcome to Audit Tracker!',
-            variant: 'default',
-          });
-          navigate('/');
-        }
+        navigate('/');
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError(result.message || 'Invalid OTP. Please try again.');
       }
     } catch (err) {
       setError('An error occurred during verification. Please try again.');
     }
-  };
-
-  // Handle password reset
-  const onResetPassword = async (values: z.infer<typeof resetFormSchema>) => {
-    setError(null);
-    
-    try {
-      const success = await resetPassword(values.email, values.password);
-      
-      if (success) {
-        toast({
-          title: 'Password Updated',
-          description: 'Your password has been successfully updated.',
-          variant: 'default',
-        });
-        navigate('/');
-      } else {
-        setError('Failed to update password. Please make sure it meets all requirements.');
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-    }
-  };
-
-  // Handle first login password setup - uses the same flow as reset password
-  const onSetInitialPassword = async (values: z.infer<typeof resetFormSchema>) => {
-    return onResetPassword(values);
-  };
-
-  // Get password strength indicator color
-  const getPasswordStrengthColor = (): string => {
-    if (passwordStrength <= 33) return "bg-destructive";
-    if (passwordStrength <= 66) return "bg-yellow-500";
-    return "bg-green-500";
   };
 
   return (
@@ -236,10 +114,10 @@ const LoginPage = () => {
           <CardHeader className="space-y-2 text-center pb-6">
             <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
             <CardDescription className="text-gray-500">
-              {loginState === 'LOGIN' && 'Enter your email to receive a login code'}
-              {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
-              {loginState === 'RESET_PASSWORD' && 'Create a new password'}
-              {loginState === 'FIRST_LOGIN' && 'Set your new password for first time login'}
+              {!isAwaitingOtp 
+                ? 'Enter your email and password to login'
+                : 'Enter the verification code sent to your email'
+              }
             </CardDescription>
           </CardHeader>
           
@@ -252,12 +130,12 @@ const LoginPage = () => {
               </Alert>
             )}
             
-            {/* Email Login Form */}
-            {loginState === 'LOGIN' && (
-              <Form {...emailForm}>
-                <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-5">
+            {/* Login Form */}
+            {!isAwaitingOtp && (
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-5">
                   <FormField
-                    control={emailForm.control}
+                    control={loginForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
@@ -276,23 +154,60 @@ const LoginPage = () => {
                     )}
                   />
                   
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              placeholder="Enter your password" 
+                              type={showPassword ? "text" : "password"}
+                              className="bg-gray-50 pr-10"
+                              autoComplete="current-password"
+                              {...field} 
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
                   <Button 
                     type="submit" 
                     className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
                     disabled={isLoading}
                   >
                     <Mail className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Sending Code...' : 'Send Login Code'}
+                    {isLoading ? 'Authenticating...' : 'Login'}
                   </Button>
                 </form>
               </Form>
             )}
             
             {/* OTP Verification Form */}
-            {loginState === 'VERIFY_OTP' && (
+            {isAwaitingOtp && (
               <div className="space-y-6">
                 <div>
-                  <p className="text-sm text-center mb-4">{`We've sent a verification code to ${email}`}</p>
+                  <p className="text-sm text-center mb-4">
+                    {`We've sent a verification code to ${currentEmail}`}
+                  </p>
                   
                   <Form {...otpForm}>
                     <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-5">
@@ -336,12 +251,13 @@ const LoginPage = () => {
                           variant="outline"
                           className="w-full"
                           onClick={() => {
-                            setLoginState('LOGIN');
+                            loginForm.reset();
                             otpForm.reset();
+                            setError(null);
                           }}
                         >
                           <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back
+                          Back to Login
                         </Button>
                       </div>
                     </form>
@@ -349,225 +265,24 @@ const LoginPage = () => {
                 </div>
                 
                 <div className="text-center">
-                  <button 
-                    type="button" 
-                    onClick={async () => {
-                      const success = await requestOtp(email);
-                      if (success) {
-                        toast({
-                          title: 'OTP Sent',
-                          description: `A verification code has been sent to ${email}`,
-                          variant: 'default',
-                        });
-                      }
-                    }}
-                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Sending...' : "Didn't receive a code? Send again"}
-                  </button>
+                  <p className="text-xs text-gray-500">
+                    For testing: Use OTP <strong>123456</strong>
+                  </p>
                 </div>
               </div>
             )}
-            
-            {/* First Time Login Password Form */}
-            {loginState === 'FIRST_LOGIN' && (
-              <Form {...resetForm}>
-                <form onSubmit={resetForm.handleSubmit(onSetInitialPassword)} className="space-y-5">
-                  <div className="mb-4">
-                    <Alert>
-                      <ShieldCheck className="h-4 w-4" />
-                      <AlertTitle>First Time Login</AlertTitle>
-                      <AlertDescription>
-                        You need to set a strong password for your account.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Email</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your email" 
-                            type="email" 
-                            className="bg-gray-50"
-                            autoComplete="email"
-                            readOnly
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">New Password</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your new password" 
-                            type="password" 
-                            className="bg-gray-50"
-                            autoComplete="new-password"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
-                        </FormDescription>
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
-                            <span className="text-xs">
-                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
-                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
-                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
-                            </span>
-                          </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Confirm your new password" 
-                            type="password" 
-                            className="bg-gray-50"
-                            autoComplete="new-password"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                    disabled={isLoading || passwordStrength <= 33}
-                  >
-                    <Shield className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Setting Password...' : 'Set Password & Login'}
-                  </Button>
-                </form>
-              </Form>
-            )}
-            
-            {/* Reset Password Form */}
-            {loginState === 'RESET_PASSWORD' && (
-              <Form {...resetForm}>
-                <form onSubmit={resetForm.handleSubmit(onResetPassword)} className="space-y-5">
-                  <div className="mb-4">
-                    <Alert>
-                      <ShieldCheck className="h-4 w-4" />
-                      <AlertTitle>Password Reset Required</AlertTitle>
-                      <AlertDescription>
-                        Your password has expired. Please set a new strong password.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Email</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your email" 
-                            type="email" 
-                            className="bg-gray-50"
-                            autoComplete="email"
-                            readOnly
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">New Password</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your new password" 
-                            type="password" 
-                            className="bg-gray-50"
-                            autoComplete="new-password"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
-                        </FormDescription>
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2">
-                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
-                            <span className="text-xs">
-                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
-                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
-                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
-                            </span>
-                          </div>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={resetForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Confirm your new password" 
-                            type="password" 
-                            className="bg-gray-50"
-                            autoComplete="new-password"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
-                    disabled={isLoading || passwordStrength <= 33}
-                  >
-                    {isLoading ? 'Updating...' : 'Update Password'}
-                  </Button>
-                </form>
-              </Form>
-            )}
+
+            {/* Test Credentials Info */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h4 className="text-sm font-semibold text-blue-900 mb-2">Test Credentials:</h4>
+              <div className="text-xs text-blue-800 space-y-1">
+                <p><strong>Admin:</strong> admin@test.com / password123</p>
+                <p><strong>Maker:</strong> maker@test.com / password123</p>
+                <p><strong>Checker1:</strong> checker1@test.com / password123</p>
+                <p><strong>Checker2:</strong> checker2@test.com / password123</p>
+                <p className="mt-2"><strong>OTP:</strong> 123456 (for all users)</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

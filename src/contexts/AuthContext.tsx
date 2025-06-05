@@ -1,486 +1,253 @@
+
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { toast } from '@/components/ui/use-toast';
-import { sendOtpEmail } from '@/utils/aws-ses';
-import { generateStrongPassword, sendWelcomeEmail, sendPasswordResetEmail } from '@/utils/auth-helpers';
-
-// Extended user type with password expiry and first login flag
-interface ExtendedUser extends User {
-  passwordExpiryDate: string; // ISO string date
-  lastOtp?: string; // For demo purposes only, in real app this would be stored server-side
-  isFirstLogin?: boolean; // Track if this is the user's first login
-  passwordStrength?: 'weak' | 'medium' | 'strong';
-}
-
-// Mock users for demonstration including a test admin with constant OTP
-const defaultMockUsers: ExtendedUser[] = [
-  {
-    id: 'test-admin',
-    name: 'Test Admin',
-    email: 'testadmin@example.com',
-    role: 'admin',
-    roles: ['admin'],
-    avatar: 'https://ui-avatars.com/api/?name=Test+Admin&background=8b5cf6&color=fff',
-    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-    lastOtp: '123456', // Constant OTP for testing
-  },
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    roles: ['admin'],
-    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=8b5cf6&color=fff',
-    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-  },
-  {
-    id: '2',
-    name: 'Maker User',
-    email: 'maker@example.com',
-    role: 'maker',
-    roles: ['maker', 'checker1'],
-    avatar: 'https://ui-avatars.com/api/?name=Maker+User&background=8b5cf6&color=fff',
-    passwordExpiryDate: new Date(Date.now() - 1000).toISOString(), // Expired password
-  },
-  {
-    id: '3',
-    name: 'Checker One',
-    email: 'checker1@example.com',
-    role: 'checker1',
-    roles: ['checker1'],
-    avatar: 'https://ui-avatars.com/api/?name=Checker+One&background=8b5cf6&color=fff',
-    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '4',
-    name: 'Checker Two',
-    email: 'checker2@example.com',
-    role: 'checker2',
-    roles: ['checker2', 'maker'],
-    avatar: 'https://ui-avatars.com/api/?name=Checker+Two&background=8b5cf6&color=fff',
-    passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
+import { authApi } from '@/services/api-client';
 
 interface AuthContextType {
   user: User | null;
   users: User[];
   
-  // OTP and login methods
-  requestOtp: (email: string) => Promise<boolean>;
-  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}>;
-  resetPassword: (email: string, newPassword: string) => Promise<boolean>;
-  checkPasswordStrength: (password: string) => 'weak' | 'medium' | 'strong';
+  // Email/password + OTP authentication
+  login: (email: string, password: string) => Promise<{success: boolean, message?: string}>;
+  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, message?: string}>;
   logout: () => void;
   isLoading: boolean;
-  isPasswordExpired: boolean;
-  isFirstLogin: boolean;
+  isAwaitingOtp: boolean;
+  currentEmail: string | null;
   
-  // User management methods
-  addUser: (newUser: Omit<User, 'id'>) => void;
-  updateUser: (id: string, userData: Partial<User>) => void;
-  deleteUser: (id: string) => void;
+  // User management methods (admin only)
+  addUser: (newUser: Omit<User, 'id'>) => Promise<{success: boolean, message?: string}>;
+  updateUser: (id: string, userData: Partial<User>) => Promise<{success: boolean, message?: string}>;
+  deleteUser: (id: string) => Promise<{success: boolean, message?: string}>;
   getUserById: (id: string) => User | undefined;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [users, setUsers] = useState<ExtendedUser[]>(defaultMockUsers);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as loading until we check localStorage
-  const [isPasswordExpired, setIsPasswordExpired] = useState<boolean>(false);
-  const [isFirstLogin, setIsFirstLogin] = useState<boolean>(false);
-  
-  // Function to ensure test admin user exists
-  const ensureTestAdminExists = (usersList: ExtendedUser[]): ExtendedUser[] => {
-    const testAdminExists = usersList.some(u => u.email === 'testadmin@example.com');
-    
-    if (!testAdminExists) {
-      console.log('Test admin user not found, adding it back');
-      const testAdmin: ExtendedUser = {
-        id: 'test-admin',
-        name: 'Test Admin',
-        email: 'testadmin@example.com',
-        role: 'admin',
-        roles: ['admin'],
-        avatar: 'https://ui-avatars.com/api/?name=Test+Admin&background=8b5cf6&color=fff',
-        passwordExpiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        lastOtp: '123456',
-      };
-      return [testAdmin, ...usersList];
-    }
-    
-    return usersList;
-  };
+  const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAwaitingOtp, setIsAwaitingOtp] = useState<boolean>(false);
+  const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
-  // Function to check password strength
-  const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
-    // Check for at least 8 characters
-    if (password.length < 8) return 'weak';
-    
-    // Check for at least one uppercase letter, one lowercase letter, one number, and one special character
-    const hasUppercase = /[A-Z]/.test(password);
-    const hasLowercase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
-    
-    if (hasUppercase && hasLowercase && hasNumber && hasSpecial) {
-      return 'strong';
-    } else if ((hasUppercase || hasLowercase) && hasNumber) {
-      return 'medium';
-    } else {
-      return 'weak';
-    }
-  };
-
-  // Function to request OTP
-  const requestOtp = async (email: string): Promise<boolean> => {
+  // Email/password login function
+  const login = async (email: string, password: string): Promise<{success: boolean, message?: string}> => {
     setIsLoading(true);
     
-    console.log('Requesting OTP for email:', email);
-    console.log('Current users in state:', users.map(u => ({ id: u.id, email: u.email })));
-    
-    const foundUser = users.find(u => u.email === email);
-    console.log('Found user:', foundUser ? `${foundUser.name} (${foundUser.email})` : 'Not found');
-    
-    if (foundUser) {
-      try {
-        // For testing purposes, use constant OTP for ALL users
-        const otp = '123456';
-        console.log(`Testing OTP for ${email}: ${otp}`);
-        
-        // Update the user with the new OTP (only for demo purposes)
-        setUsers(users.map(u => 
-          u.id === foundUser.id ? { ...u, lastOtp: otp } : u
-        ));
-        
-        // Send email with OTP (skip for test admin to avoid email errors)
-        if (foundUser.email !== 'testadmin@example.com') {
-          try {
-            // Try to send password reset email if context suggests it's for password reset
-            await sendPasswordResetEmail(email, foundUser.name, otp);
-            
-            toast({
-              title: "OTP Sent",
-              description: `A verification code has been sent to ${email}`,
-            });
-          } catch (emailError) {
-            console.error('Email Error:', emailError);
-            
-            // Fall back to standard OTP email if password reset email fails
-            try {
-              await sendOtpEmail(email, otp, foundUser.name);
-              toast({
-                title: "OTP Sent",
-                description: `A verification code has been sent to ${email}`,
-              });
-            } catch (standardEmailError) {
-              console.error('Standard Email Error:', standardEmailError);
-              
-              // For demo purposes, we'll consider it successful even if email fails
-              toast({
-                title: "OTP Generated",
-                description: `For demo purposes, check the console for the OTP code.`,
-              });
-            }
-          }
-        } else {
-          // For test admin, just show success message
-          toast({
-            title: "Test Admin OTP",
-            description: `Test admin OTP is always: 123456`,
-          });
-        }
-        
+    try {
+      const response = await authApi.login(email, password);
+      
+      if (response.data.success) {
+        setCurrentEmail(email);
+        setIsAwaitingOtp(true);
         setIsLoading(false);
-        return true;
-      } catch (error) {
-        console.error('Error in requestOtp:', error);
-        setIsLoading(false);
-        return false;
-      }
-    }
-    
-    console.log('User not found for email:', email);
-    setIsLoading(false);
-    return false;
-  };
-
-  // Function to verify OTP
-  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = users.find(u => u.email === email && u.lastOtp === otp);
-    
-    if (foundUser) {
-      // For testing purposes, bypass password expiry and first login checks
-      // Always log the user in directly
-      setUser(foundUser);
-      localStorage.setItem('currentUser', JSON.stringify(foundUser));
-      setIsFirstLogin(false);
-      setIsPasswordExpired(false);
-      
-      setIsLoading(false);
-      return { success: true, passwordExpired: false, isFirstLogin: false };
-    }
-    
-    setIsLoading(false);
-    return { success: false, passwordExpired: false, isFirstLogin: false };
-  };
-
-  // Function to reset password with strong password validation
-  const resetPassword = async (email: string, newPassword: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Check password strength
-    const strength = checkPasswordStrength(newPassword);
-    
-    if (strength === 'weak') {
-      toast({
-        title: "Password Too Weak",
-        description: "Please use a stronger password with at least 8 characters, including uppercase, lowercase, numbers, and special characters",
-        variant: "destructive"
-      });
-      setIsLoading(false);
-      return false;
-    }
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const foundUser = users.find(u => u.email === email);
-    
-    if (foundUser) {
-      // Set new password expiry date to 30 days from now
-      const newExpiryDate = new Date();
-      newExpiryDate.setDate(newExpiryDate.getDate() + 30);
-      
-      const updatedUser = { 
-        ...foundUser, 
-        passwordExpiryDate: newExpiryDate.toISOString(),
-        isFirstLogin: false,
-        passwordStrength: strength
-      };
-      
-      // Update user in state
-      setUsers(users.map(u => 
-        u.id === foundUser.id ? updatedUser : u
-      ));
-      
-      // If this was initiated from forgot password flow, don't log in the user
-      if (isPasswordExpired || isFirstLogin) {
-        // Log in the user
-        setUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
         
-        setIsPasswordExpired(false);
-        setIsFirstLogin(false);
+        toast({
+          title: "Login Successful",
+          description: "Please check your email for the OTP verification code.",
+        });
+        
+        return { success: true, message: "OTP sent to your email" };
+      } else {
+        setIsLoading(false);
+        return { success: false, message: response.data.message || "Login failed" };
       }
-      
+    } catch (error: any) {
+      console.error('Login error:', error);
       setIsLoading(false);
-      
-      toast({
-        title: "Password Updated",
-        description: `Your password has been successfully updated and will expire in 30 days.`,
-      });
-      
-      return true;
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Login failed. Please check your credentials." 
+      };
     }
+  };
+
+  // OTP verification function
+  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, message?: string}> => {
+    setIsLoading(true);
     
-    setIsLoading(false);
-    return false;
+    try {
+      const response = await authApi.verifyOtp(email, otp);
+      
+      if (response.data.success) {
+        // Store the JWT token
+        localStorage.setItem('token', response.data.token);
+        
+        // Get user profile
+        const profileResponse = await authApi.getProfile();
+        const userData = profileResponse.data;
+        
+        setUser(userData);
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        setIsAwaitingOtp(false);
+        setCurrentEmail(null);
+        setIsLoading(false);
+        
+        toast({
+          title: "Welcome!",
+          description: `Successfully logged in as ${userData.name}`,
+        });
+        
+        return { success: true };
+      } else {
+        setIsLoading(false);
+        return { success: false, message: response.data.message || "Invalid OTP" };
+      }
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setIsLoading(false);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "OTP verification failed" 
+      };
+    }
   };
 
   const logout = () => {
     setUser(null);
-    setIsPasswordExpired(false);
-    setIsFirstLogin(false);
+    setIsAwaitingOtp(false);
+    setCurrentEmail(null);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
+    
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
   };
 
-  const addUser = (newUser: Omit<User, 'id'>) => {
-    // Only admin can add users
+  // User management functions (admin only)
+  const addUser = async (newUser: Omit<User, 'id'>): Promise<{success: boolean, message?: string}> => {
     if (user?.role !== 'admin') {
-      toast({
-        title: "Permission Denied",
-        description: "Only administrators can add new users",
-        variant: "destructive"
-      });
-      return;
+      return { success: false, message: "Only administrators can add users" };
     }
 
-    const id = Date.now().toString();
-    // Set new password expiry date to 30 days from now
-    const newExpiryDate = new Date();
-    newExpiryDate.setDate(newExpiryDate.getDate() + 30);
-    
-    const tempPassword = generateStrongPassword();
-    
-    // Ensure roles array is properly set
-    const userRoles = newUser.roles || [newUser.role];
-    
-    const createdUser: ExtendedUser = {
-      ...newUser,
-      id,
-      roles: userRoles, // Use the roles provided or fallback to array with primary role
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(newUser.name)}&background=8b5cf6&color=fff`,
-      passwordExpiryDate: newExpiryDate.toISOString(),
-      isFirstLogin: true, // Mark as first login to force password change
-    };
-
-    // Send welcome email with temporary password
     try {
-      sendWelcomeEmail(createdUser.email, createdUser.name, tempPassword);
-      console.log(`Temporary password for ${createdUser.email}: ${tempPassword}`);
-    } catch (error) {
-      console.error('Failed to send welcome email:', error);
-      // For demo, we'll still show the password in console
-      console.log(`Temporary password for ${createdUser.email}: ${tempPassword}`);
-    }
-
-    setUsers([...users, createdUser]);
-    toast({
-      title: "User Created",
-      description: `User ${newUser.name} has been created successfully. An email has been sent with login information.`
-    });
-  };
-
-  const updateUser = (id: string, userData: Partial<User>) => {
-    // Only admin can update users
-    if (user?.role !== 'admin') {
-      toast({
-        title: "Permission Denied",
-        description: "Only administrators can update users",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        // If updating roles, make sure primary role is included
-        let updatedRoles = userData.roles || u.roles;
-        if (userData.role && !updatedRoles.includes(userData.role)) {
-          updatedRoles = [userData.role, ...updatedRoles];
-        }
-
-        return { 
-          ...u, 
-          ...userData,
-          roles: updatedRoles
-        };
+      const response = await authApi.createUser(newUser);
+      
+      if (response.data.success) {
+        // Refresh users list
+        await loadUsers();
+        return { success: true, message: "User created successfully" };
+      } else {
+        return { success: false, message: response.data.message || "Failed to create user" };
       }
-      return u;
-    }));
-
-    toast({
-      title: "User Updated",
-      description: "User information has been successfully updated"
-    });
+    } catch (error: any) {
+      console.error('Create user error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Failed to create user" 
+      };
+    }
   };
 
-  const deleteUser = (id: string) => {
-    // Only admin can delete users
+  const updateUser = async (id: string, userData: Partial<User>): Promise<{success: boolean, message?: string}> => {
     if (user?.role !== 'admin') {
-      toast({
-        title: "Permission Denied",
-        description: "Only administrators can delete users",
-        variant: "destructive"
-      });
-      return;
+      return { success: false, message: "Only administrators can update users" };
     }
 
-    const userToDelete = users.find(u => u.id === id);
-    if (!userToDelete) return;
+    try {
+      const response = await authApi.updateUser(id, userData);
+      
+      if (response.data.success) {
+        // Refresh users list
+        await loadUsers();
+        return { success: true, message: "User updated successfully" };
+      } else {
+        return { success: false, message: response.data.message || "Failed to update user" };
+      }
+    } catch (error: any) {
+      console.error('Update user error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Failed to update user" 
+      };
+    }
+  };
 
-    setUsers(users.filter(u => u.id !== id));
-    toast({
-      title: "User Deleted",
-      description: `User ${userToDelete.name} has been successfully deleted`
-    });
+  const deleteUser = async (id: string): Promise<{success: boolean, message?: string}> => {
+    if (user?.role !== 'admin') {
+      return { success: false, message: "Only administrators can delete users" };
+    }
+
+    try {
+      const response = await authApi.deleteUser(id);
+      
+      if (response.data.success) {
+        // Refresh users list
+        await loadUsers();
+        return { success: true, message: "User deleted successfully" };
+      } else {
+        return { success: false, message: response.data.message || "Failed to delete user" };
+      }
+    } catch (error: any) {
+      console.error('Delete user error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Failed to delete user" 
+      };
+    }
   };
 
   const getUserById = (id: string) => {
     return users.find(u => u.id === id);
   };
 
-  // Check for saved user on initial load and verify password expiry
-  useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    console.log('Checking for saved user on load:', savedUser ? 'Found' : 'Not found');
-    
-    if (savedUser) {
+  // Load users (admin only)
+  const loadUsers = async () => {
+    if (user?.role === 'admin') {
       try {
-        const parsedUser = JSON.parse(savedUser) as ExtendedUser;
-        
-        // Check if password has expired or if it's first login
-        const isExpired = new Date(parsedUser.passwordExpiryDate) < new Date();
-        console.log(`Saved user password expired: ${isExpired}, First login: ${parsedUser.isFirstLogin}`);
-        
-        if (isExpired) {
-          // Password expired, remove from localStorage and don't set user
-          console.log('Password expired, removing saved user');
+        const response = await authApi.getUsers();
+        setUsers(response.data);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+      }
+    }
+  };
+
+  // Check for saved user on initial load
+  useEffect(() => {
+    const checkAuthState = async () => {
+      const savedUser = localStorage.getItem('currentUser');
+      const token = localStorage.getItem('token');
+      
+      if (savedUser && token) {
+        try {
+          // Verify token is still valid
+          const response = await authApi.getProfile();
+          setUser(response.data);
+        } catch (error) {
+          console.error('Token validation failed:', error);
           localStorage.removeItem('currentUser');
-          setIsPasswordExpired(true);
-        } else if (parsedUser.isFirstLogin) {
-          // First login, needs password change
-          console.log('First login, removing saved user');
-          localStorage.removeItem('currentUser');
-          setIsFirstLogin(true);
-        } else {
-          console.log('Setting user from localStorage:', parsedUser.name);
-          setUser(parsedUser);
+          localStorage.removeItem('token');
         }
-      } catch (error) {
-        console.error('Failed to parse saved user:', error);
-        localStorage.removeItem('currentUser');
       }
-    }
-    
-    // End loading state after we've checked localStorage
-    setIsLoading(false);
+      
+      setIsLoading(false);
+    };
+
+    checkAuthState();
   }, []);
 
-  // Save users to localStorage
+  // Load users when admin logs in
   useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
-  }, [users]);
-
-  // Load users from localStorage on init, but ensure test admin always exists
-  useEffect(() => {
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-      try {
-        const parsedUsers = JSON.parse(savedUsers);
-        const usersWithTestAdmin = ensureTestAdminExists(parsedUsers);
-        setUsers(usersWithTestAdmin);
-        console.log('Loaded users from localStorage:', usersWithTestAdmin.map(u => ({ id: u.id, email: u.email })));
-      } catch (error) {
-        console.error('Failed to parse saved users:', error);
-        setUsers(defaultMockUsers);
-      }
-    } else {
-      console.log('No saved users found, using default mock users');
-      setUsers(defaultMockUsers);
+    if (user?.role === 'admin') {
+      loadUsers();
     }
-  }, []);
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ 
       user, 
       users,
-      requestOtp,
+      login,
       verifyOtp,
-      resetPassword,
-      checkPasswordStrength,
       logout, 
       isLoading,
-      isPasswordExpired,
-      isFirstLogin,
+      isAwaitingOtp,
+      currentEmail,
       addUser,
       updateUser,
       deleteUser,

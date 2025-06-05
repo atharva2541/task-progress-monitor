@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 // Base URL for API requests
@@ -45,13 +44,16 @@ api.interceptors.response.use(
 
 // Authentication API
 export const authApi = {
-  requestOtp: (email: string) => api.post('/auth/request-otp', { email }),
+  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
   verifyOtp: (email: string, otp: string) => api.post('/auth/verify-otp', { email, otp }),
-  resetPassword: (newPassword: string) => api.post('/auth/reset-password', { newPassword }),
   getProfile: () => api.get('/auth/me'),
+  createUser: (userData: any) => api.post('/auth/create-user', userData),
+  updateUser: (id: string, userData: any) => api.put(`/auth/update-user/${id}`, userData),
+  deleteUser: (id: string) => api.delete(`/auth/delete-user/${id}`),
+  getUsers: () => api.get('/auth/users'),
 };
 
-// User API
+// User API (legacy - keeping for backward compatibility)
 export const userApi = {
   getUsers: () => api.get('/users'),
   getUser: (id: string) => api.get(`/users/${id}`),
