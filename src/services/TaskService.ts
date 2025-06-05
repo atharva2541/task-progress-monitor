@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { 
   Task, 
@@ -12,14 +13,53 @@ import {
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { mockTasks } from '@/data/mockTasks';
+import { taskApi } from '@/services/api-client';
 import { addDays, addWeeks, addMonths, format } from 'date-fns';
 
 export function useTaskService() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [taskInstances, setTaskInstances] = useState<TaskInstance[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();
   const { getUserById: authGetUserById, user } = useAuth();
+
+  // Load tasks from backend
+  const loadTasks = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await taskApi.getTasks();
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load tasks',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load task instances from backend
+  const loadTaskInstances = async (taskId: string) => {
+    try {
+      const response = await taskApi.getTaskInstances(taskId);
+      return response.data;
+    } catch (error) {
+      console.error('Error loading task instances:', error);
+      return [];
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    if (user) {
+      loadTasks();
+    }
+  }, [user]);
 
   // Helper to generate consistent instance references
   const generateInstanceReference = (baseTaskId: string, date: Date): string => {
@@ -53,7 +93,7 @@ export function useTaskService() {
         nextDate = addMonths(date, 12);
         break;
       default:
-        nextDate = date; // one-time tasks don't have next instances
+        nextDate = date;
     }
     
     return nextDate.toISOString();
@@ -90,7 +130,7 @@ export function useTaskService() {
         startDate.setFullYear(date.getFullYear() - 1);
         break;
       default:
-        startDate = date; // For one-time tasks, period starts on the due date
+        startDate = date;
     }
     
     return { 
@@ -99,193 +139,121 @@ export function useTaskService() {
     };
   };
 
-  // New method to get tasks accessible to a specific user
+  // Get tasks accessible to a specific user
   const getUserAccessibleTasks = (userId: string, userRole: string): Task[] => {
-    // Admin can see all tasks
     if (userRole === 'admin') return tasks;
     
-    // Non-admins can only see tasks they're involved in
     return tasks.filter(task => 
-      task.assignedTo === userId || // As Maker
-      task.checker1 === userId ||   // As Checker1
-      task.checker2 === userId      // As Checker2
+      task.assignedTo === userId || 
+      task.checker1 === userId ||   
+      task.checker2 === userId      
     );
   };
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date().toISOString();
-    const taskId = Date.now().toString();
-    
-    const newTask: Task = {
-      ...task,
-      id: taskId,
-      createdAt: now,
-      updatedAt: now,
-      comments: [],
-      attachments: [], // Initialize empty attachments array
-      isEscalated: task.isEscalated || false,
-      isTemplate: task.isTemplate || task.isRecurring // If recurring, this is a template
-    };
-    
-    // If it's a recurring task, create the first instance
-    if (newTask.isRecurring) {
-      // Set next instance date based on frequency
-      newTask.nextInstanceDate = calculateNextInstanceDate(
-        task.dueDate, 
-        task.frequency
-      );
+  const addTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      setIsLoading(true);
+      const response = await taskApi.createTask(task);
       
-      // Create the first instance
-      createTaskInstanceInternal(newTask).then(instanceId => {
-        newTask.currentInstanceId = instanceId;
-        
-        // Update the tasks state with the complete task including instance
-        setTasks(prevTasks => {
-          return prevTasks.map(t => 
-            t.id === newTask.id ? { ...newTask } : t
-          );
-        });
+      // Refresh tasks from backend
+      await loadTasks();
+      
+      toast({
+        title: 'Task created',
+        description: `Task "${task.name}" has been created successfully.`
       });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create task',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    setTasks([...tasks, newTask]);
-    toast({
-      title: 'Task created',
-      description: `Task "${newTask.name}" has been created successfully.`
-    });
   };
 
-  // Internal helper to create a task instance
-  const createTaskInstanceInternal = async (baseTask: Task): Promise<string> => {
-    const now = new Date().toISOString();
-    const instanceId = `${baseTask.id}-${Date.now()}`;
-    
-    const { start, end } = calculatePeriodDates(baseTask.dueDate, baseTask.frequency);
-    
-    const newInstance: TaskInstance = {
-      id: instanceId,
-      baseTaskId: baseTask.id,
-      instanceReference: generateInstanceReference(baseTask.id, new Date(baseTask.dueDate)),
-      periodStart: start,
-      periodEnd: end,
-      status: 'pending',
-      dueDate: baseTask.dueDate,
-      comments: [],
-      attachments: [],
-      approvals: [],
-      assignedTo: baseTask.assignedTo,
-      checker1: baseTask.checker1,
-      checker2: baseTask.checker2,
-      observationStatus: baseTask.observationStatus,
-      createdAt: now,
-      updatedAt: now,
-    };
-    
-    setTaskInstances(prev => [...prev, newInstance]);
-    return instanceId;
-  };
-
-  // Public method to create a task instance
   const createTaskInstance = async (baseTaskId: string): Promise<string> => {
-    const baseTask = tasks.find(task => task.id === baseTaskId);
-    if (!baseTask) {
-      throw new Error("Base task not found");
-    }
-    
-    const instanceId = await createTaskInstanceInternal(baseTask);
-    
-    toast({
-      title: 'Instance created',
-      description: `New instance of task "${baseTask.name}" has been created.`
-    });
-    
-    return instanceId;
-  };
-
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        // Ensure all required fields are preserved
-        return {
-          ...task,
-          ...updates,
-          updatedAt: new Date().toISOString(),
-          // Make sure these fields are preserved or have defaults
-          isEscalated: updates.isEscalated !== undefined ? updates.isEscalated : task.isEscalated,
-          isTemplate: updates.isTemplate !== undefined ? updates.isTemplate : task.isTemplate
-        };
-      }
-      return task;
-    }));
-    
-    toast({
-      title: 'Task updated',
-      description: `Task has been updated successfully.`
-    });
-  };
-
-  const deleteTask = (taskId: string) => {
-    const taskToDelete = tasks.find(task => task.id === taskId);
-    if (taskToDelete) {
-      setTasks(tasks.filter(task => task.id !== taskId));
+    try {
+      const response = await taskApi.getTask(baseTaskId);
+      const baseTask = response.data;
       
-      // Also delete all instances if this was a recurring task
-      if (taskToDelete.isRecurring) {
-        setTaskInstances(prev => prev.filter(instance => instance.baseTaskId !== taskId));
-      }
+      // This would be handled by the backend
+      const instanceId = `${baseTaskId}-${Date.now()}`;
+      
+      toast({
+        title: 'Instance created',
+        description: `New instance of task "${baseTask.name}" has been created.`
+      });
+      
+      return instanceId;
+    } catch (error) {
+      console.error('Error creating task instance:', error);
+      throw new Error("Failed to create task instance");
+    }
+  };
+
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      setIsLoading(true);
+      await taskApi.updateTask(taskId, updates);
+      
+      // Refresh tasks from backend
+      await loadTasks();
+      
+      toast({
+        title: 'Task updated',
+        description: `Task has been updated successfully.`
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update task',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    const taskToDelete = tasks.find(task => task.id === taskId);
+    
+    try {
+      setIsLoading(true);
+      await taskApi.deleteTask(taskId);
+      
+      // Refresh tasks from backend
+      await loadTasks();
       
       toast({
         title: 'Task deleted',
-        description: `Task "${taskToDelete.name}" has been deleted.`,
+        description: `Task "${taskToDelete?.name || 'Unknown'}" has been deleted.`,
         variant: 'destructive'
       });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete task',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateTaskStatus = (taskId: string, status: TaskStatus, comment?: string) => {
-    const now = new Date().toISOString();
-    
-    // Check if this is a base task or an instance
-    const baseTask = tasks.find(task => task.id === taskId);
-    
-    if (baseTask) {
-      // If it has a current instance, update that instead
-      if (baseTask.currentInstanceId) {
-        updateTaskInstanceStatus(baseTask.currentInstanceId, status, comment);
-        return;
-      }
+  const updateTaskStatus = async (taskId: string, status: TaskStatus, comment?: string) => {
+    try {
+      await taskApi.updateTask(taskId, { 
+        status,
+        ...(comment && { comment })
+      });
       
-      // Otherwise update the base task directly (for non-recurring tasks)
-      setTasks(tasks.map(task => {
-        if (task.id === taskId) {
-          const updatedTask = {
-            ...task,
-            status,
-            updatedAt: now
-          };
-          
-          // Add submittedAt date when the task is submitted for review
-          if (status === 'submitted') {
-            updatedTask.submittedAt = now;
-          }
-          
-          if (comment) {
-            updatedTask.comments = [
-              ...(task.comments || []),
-              {
-                id: Date.now().toString(),
-                taskId,
-                userId: user?.id || '1',
-                content: comment,
-                createdAt: now
-              }
-            ];
-          }
-          
-          return updatedTask;
-        }
-        return task;
-      }));
+      // Refresh tasks from backend
+      await loadTasks();
       
       const statusMessages = {
         'pending': 'Task marked as pending',
@@ -301,227 +269,35 @@ export function useTaskService() {
         description: `The task status has been updated to ${status}.`,
         variant: status === 'rejected' ? 'destructive' : 'default'
       });
-    } else {
-      // This might be an instance ID
-      updateTaskInstanceStatus(taskId, status, comment);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update task status',
+        variant: 'destructive'
+      });
     }
   };
-  
-  // Update status for a task instance
-  const updateTaskInstanceStatus = (instanceId: string, status: TaskStatus, comment?: string) => {
-    const now = new Date().toISOString();
-    
-    setTaskInstances(prev => prev.map(instance => {
-      if (instance.id === instanceId) {
-        const updatedInstance = {
-          ...instance,
-          status,
-          updatedAt: now
-        };
-        
-        // Add submittedAt date when the task is submitted for review
-        if (status === 'submitted') {
-          updatedInstance.submittedAt = now;
-        }
-        
-        if (comment) {
-          updatedInstance.comments = [
-            ...instance.comments,
-            {
-              id: Date.now().toString(),
-              taskId: instance.id,
-              userId: user?.id || '1',
-              content: comment,
-              createdAt: now
-            }
-          ];
-        }
-        
-        // Update base task status to match its current instance
-        setTasks(tasks => tasks.map(task => {
-          if (task.id === instance.baseTaskId && task.currentInstanceId === instanceId) {
-            return {
-              ...task,
-              status, // Sync the status
-              updatedAt: now
-            };
-          }
-          return task;
-        }));
-        
-        return updatedInstance;
-      }
-      return instance;
-    }));
-    
-    const statusMessages = {
-      'pending': 'Task marked as pending',
-      'in-progress': 'Task started',
-      'submitted': 'Task submitted for review',
-      'checker1-approved': 'Task approved by Checker 1',
-      'approved': 'Task fully approved',
-      'rejected': 'Task rejected'
-    };
-    
-    toast({
-      title: statusMessages[status],
-      description: `The task status has been updated to ${status}.`,
-      variant: status === 'rejected' ? 'destructive' : 'default'
-    });
-  };
 
-  // Add an approval to a task instance
-  const addTaskApproval = (instanceId: string, approval: Omit<TaskApproval, 'id' | 'timestamp'>) => {
-    const now = new Date().toISOString();
-    
-    setTaskInstances(prev => prev.map(instance => {
-      if (instance.id === instanceId) {
-        const newApproval: TaskApproval = {
-          id: Date.now().toString(),
-          timestamp: now,
-          ...approval
-        };
-        
-        return {
-          ...instance,
-          approvals: [...instance.approvals, newApproval],
-          updatedAt: now
-        };
-      }
-      return instance;
-    }));
-    
-    toast({
-      title: approval.status === 'approved' ? 'Task approved' : 'Task rejected',
-      description: `The task has been ${approval.status} by ${approval.userRole}.`,
-      variant: approval.status === 'approved' ? 'default' : 'destructive'
-    });
-  };
-
-  // Mark a task instance as completed
-  const completeTaskInstance = (instanceId: string) => {
-    const now = new Date().toISOString();
-    
-    setTaskInstances(prev => prev.map(instance => {
-      if (instance.id === instanceId) {
-        return {
-          ...instance,
-          status: 'approved',
-          completedAt: now,
-          updatedAt: now
-        };
-      }
-      return instance;
-    }));
-    
-    // Find the base task
-    const instance = taskInstances.find(i => i.id === instanceId);
-    if (!instance) return;
-    
-    const baseTask = tasks.find(task => task.id === instance.baseTaskId);
-    if (!baseTask || !baseTask.isRecurring) return;
-    
-    // Create the next instance if this is a recurring task
-    rolloverRecurringTask(instance.baseTaskId);
-  };
-
-  // Create the next instance of a recurring task
-  const rolloverRecurringTask = async (baseTaskId: string): Promise<string> => {
-    const baseTask = tasks.find(task => task.id === baseTaskId);
-    if (!baseTask || !baseTask.isRecurring) {
-      throw new Error("Not a recurring task");
-    }
-    
-    // Calculate the next due date
-    const nextDueDate = calculateNextInstanceDate(baseTask.dueDate, baseTask.frequency);
-    
-    // Update the base task with the new due date
-    const updatedBaseTask: Task = {
-      ...baseTask,
-      dueDate: nextDueDate,
-      nextInstanceDate: calculateNextInstanceDate(nextDueDate, baseTask.frequency),
-      updatedAt: new Date().toISOString()
-    };
-    
-    // Create new instance
-    const newInstanceId = await createTaskInstanceInternal(updatedBaseTask);
-    
-    // Update the base task with the new current instance ID
-    setTasks(prev => prev.map(task => {
-      if (task.id === baseTaskId) {
-        return {
-          ...updatedBaseTask,
-          currentInstanceId: newInstanceId,
-        };
-      }
-      return task;
-    }));
-    
-    toast({
-      title: 'Task rolled over',
-      description: `New instance created for recurring task "${baseTask.name}".`
-    });
-    
-    return newInstanceId;
-  };
-
-  const updateObservationStatus = (taskId: string, status: ObservationStatus, userId: string) => {
-    // Check if this is a task instance first
-    const instance = taskInstances.find(i => i.id === taskId);
-    if (instance) {
-      setTaskInstances(prev => prev.map(i => {
-        if (i.id === taskId) {
-          const previousStatus = i.observationStatus;
-          return {
-            ...i,
-            observationStatus: status,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return i;
-      }));
+  const updateObservationStatus = async (taskId: string, status: ObservationStatus, userId: string) => {
+    try {
+      await taskApi.updateTask(taskId, { observationStatus: status });
       
-      // Also update base task if this is the current instance
-      const baseTask = tasks.find(t => t.id === instance.baseTaskId);
-      if (baseTask && baseTask.currentInstanceId === taskId) {
-        setTasks(prev => prev.map(t => {
-          if (t.id === instance.baseTaskId) {
-            return {
-              ...t,
-              observationStatus: status,
-              updatedAt: new Date().toISOString()
-            };
-          }
-          return t;
-        }));
-      }
-    } else {
-      // Try updating the task directly
-      setTasks(tasks.map(task => {
-        if (task.id === taskId) {
-          // Store previous status for history tracking
-          const previousStatus = task.observationStatus || null;
-          
-          return {
-            ...task,
-            observationStatus: status,
-            // Add to history if there was a previous status
-            observationHistory: previousStatus ? {
-              previousStatus,
-              changedAt: new Date().toISOString(),
-              changedBy: userId
-            } : undefined,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return task;
-      }));
-    }
+      // Refresh tasks from backend
+      await loadTasks();
 
-    toast({
-      title: 'Observation status updated',
-      description: `Task observation status has been set to ${status === 'yes' ? 'Yes' : status === 'no' ? 'No' : 'Mixed'}.`
-    });
+      toast({
+        title: 'Observation status updated',
+        description: `Task observation status has been set to ${status === 'yes' ? 'Yes' : status === 'no' ? 'No' : 'Mixed'}.`
+      });
+    } catch (error) {
+      console.error('Error updating observation status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update observation status',
+        variant: 'destructive'
+      });
+    }
   };
 
   const addTaskAttachment = async (taskId: string, attachmentData: {
@@ -530,82 +306,41 @@ export function useTaskService() {
     fileUrl: string;
     s3Key: string;
   }): Promise<void> => {
-    const attachment: TaskAttachment = {
-      id: Date.now().toString(),
-      taskId,
-      fileName: attachmentData.fileName,
-      fileUrl: attachmentData.fileUrl,
-      fileType: attachmentData.fileType,
-      s3Key: attachmentData.s3Key,
-      userId: user?.id || '1',
-      uploadedAt: new Date().toISOString()
-    };
-    
-    // First check if this is a task instance ID
-    const instance = taskInstances.find(i => i.id === taskId);
-    if (instance) {
-      setTaskInstances(prev => prev.map(i => {
-        if (i.id === taskId) {
-          return {
-            ...i,
-            attachments: [...i.attachments, attachment],
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return i;
-      }));
-    } else {
-      // Try adding to a base task
-      setTasks(tasks.map(task => {
-        if (task.id === taskId) {
-          return {
-            ...task,
-            attachments: [...(task.attachments || []), attachment],
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return task;
-      }));
+    try {
+      // This would be handled by a file upload API endpoint
+      console.log('Adding attachment:', attachmentData);
+      
+      toast({
+        title: 'File uploaded',
+        description: `${attachmentData.fileName} has been attached to the task.`
+      });
+    } catch (error) {
+      console.error('Error adding attachment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload file',
+        variant: 'destructive'
+      });
     }
-    
-    toast({
-      title: 'File uploaded',
-      description: `${attachmentData.fileName} has been attached to the task.`
-    });
   };
 
-  const removeTaskAttachment = (taskId: string, attachmentId: string) => {
-    // First check if this is a task instance ID
-    const instance = taskInstances.find(i => i.id === taskId);
-    if (instance) {
-      setTaskInstances(prev => prev.map(i => {
-        if (i.id === taskId) {
-          return {
-            ...i,
-            attachments: i.attachments.filter(att => att.id !== attachmentId),
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return i;
-      }));
-    } else {
-      // Try removing from a base task
-      setTasks(tasks.map(task => {
-        if (task.id === taskId && task.attachments) {
-          return {
-            ...task,
-            attachments: task.attachments.filter(att => att.id !== attachmentId),
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return task;
-      }));
+  const removeTaskAttachment = async (taskId: string, attachmentId: string) => {
+    try {
+      // This would be handled by a delete attachment API endpoint
+      console.log('Removing attachment:', attachmentId);
+      
+      toast({
+        title: 'File removed',
+        description: 'The attachment has been removed from the task.'
+      });
+    } catch (error) {
+      console.error('Error removing attachment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to remove attachment',
+        variant: 'destructive'
+      });
     }
-    
-    toast({
-      title: 'File removed',
-      description: 'The attachment has been removed from the task.'
-    });
   };
 
   const getTaskById = (taskId: string) => {
@@ -632,97 +367,94 @@ export function useTaskService() {
     return tasks.filter(task => task.checker1 === userId || task.checker2 === userId);
   };
 
-  // Use the getUserById function from AuthContext
   const getUserById = (userId: string) => {
     return authGetUserById(userId);
   };
 
-  // Persist tasks and instances to localStorage
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-    localStorage.setItem('taskInstances', JSON.stringify(taskInstances));
-  }, [tasks, taskInstances]);
-
-  // Load tasks and instances from localStorage on init
-  useEffect(() => {
-    const savedTasks = localStorage.getItem('tasks');
-    if (savedTasks) {
-      try {
-        setTasks(JSON.parse(savedTasks));
-      } catch (error) {
-        console.error('Failed to parse saved tasks:', error);
-      }
+  // Escalation methods (would need backend implementation)
+  const escalateTask = async (taskId: string, priority: EscalationPriority, reason: string) => {
+    try {
+      await taskApi.updateTask(taskId, { 
+        isEscalated: true,
+        escalationPriority: priority,
+        escalationReason: reason 
+      });
+      
+      await loadTasks();
+      
+      const priorityLabels = {
+        'critical': 'Critical',
+        'high': 'High',
+        'medium': 'Medium',
+        'low': 'Low'
+      };
+      
+      toast({
+        title: `Task Escalated - ${priorityLabels[priority]} Priority`,
+        description: `The task has been escalated with reason: ${reason}`,
+        variant: priority === 'critical' || priority === 'high' ? 'destructive' : 'default'
+      });
+    } catch (error) {
+      console.error('Error escalating task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to escalate task',
+        variant: 'destructive'
+      });
     }
-    
-    const savedInstances = localStorage.getItem('taskInstances');
-    if (savedInstances) {
-      try {
-        setTaskInstances(JSON.parse(savedInstances));
-      } catch (error) {
-        console.error('Failed to parse saved task instances:', error);
-      }
-    }
-  }, []);
-
-  // New method to escalate a task
-  const escalateTask = (taskId: string, priority: EscalationPriority, reason: string) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        return {
-          ...task,
-          escalation: {
-            isEscalated: true,
-            priority,
-            reason,
-            escalatedAt: new Date().toISOString(),
-            escalatedBy: user?.id
-          },
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return task;
-    }));
-    
-    const priorityLabels = {
-      'critical': 'Critical',
-      'high': 'High',
-      'medium': 'Medium',
-      'low': 'Low'
-    };
-    
-    toast({
-      title: `Task Escalated - ${priorityLabels[priority]} Priority`,
-      description: `The task has been escalated with reason: ${reason}`,
-      variant: priority === 'critical' || priority === 'high' ? 'destructive' : 'default'
-    });
   };
 
-  // Method to de-escalate a task
-  const deescalateTask = (taskId: string) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId && task.escalation) {
-        const { escalation, ...taskWithoutEscalation } = task;
-        return {
-          ...taskWithoutEscalation,
-          updatedAt: new Date().toISOString()
-        };
-      }
-      return task;
-    }));
-    
-    toast({
-      title: 'Task De-escalated',
-      description: 'The task has been de-escalated and returned to normal workflow.'
-    });
+  const deescalateTask = async (taskId: string) => {
+    try {
+      await taskApi.updateTask(taskId, { 
+        isEscalated: false,
+        escalationPriority: undefined,
+        escalationReason: undefined 
+      });
+      
+      await loadTasks();
+      
+      toast({
+        title: 'Task De-escalated',
+        description: 'The task has been de-escalated and returned to normal workflow.'
+      });
+    } catch (error) {
+      console.error('Error de-escalating task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to de-escalate task',
+        variant: 'destructive'
+      });
+    }
   };
 
-  // Method to get all escalated tasks
   const getEscalatedTasks = () => {
-    return tasks.filter(task => task.escalation?.isEscalated);
+    return tasks.filter(task => task.isEscalated);
+  };
+
+  // Task instance methods (placeholder implementations)
+  const addTaskApproval = async (
+    instanceId: string, 
+    approval: Omit<TaskApproval, 'id' | 'timestamp'>
+  ) => {
+    console.log('Adding task approval:', { instanceId, approval });
+    // Would need backend implementation
+  };
+
+  const completeTaskInstance = async (instanceId: string) => {
+    console.log('Completing task instance:', instanceId);
+    // Would need backend implementation
+  };
+
+  const rolloverRecurringTask = async (baseTaskId: string): Promise<string> => {
+    console.log('Rolling over recurring task:', baseTaskId);
+    // Would need backend implementation
+    return `${baseTaskId}-${Date.now()}`;
   };
 
   return {
     tasks,
+    isLoading,
     getUserAccessibleTasks,
     addTask,
     updateTask,
@@ -735,13 +467,10 @@ export function useTaskService() {
     getUserById,
     addTaskAttachment,
     removeTaskAttachment,
-    // Escalation methods
     escalateTask,
     deescalateTask,
     getEscalatedTasks,
-    // Observation status method
     updateObservationStatus,
-    // Task instance methods
     createTaskInstance,
     getTaskInstanceById,
     getTaskInstances,

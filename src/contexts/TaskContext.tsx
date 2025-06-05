@@ -18,7 +18,6 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   let taskService;
   
   try {
-    // This might fail if AuthProvider is not available
     taskService = useTaskService();
     const { addNotification } = useNotification();
     const { user } = useAuth();
@@ -38,7 +37,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       return () => clearInterval(interval);
     }, [taskService.tasks, user]);
 
-    // Load calendar tasks (base tasks + instances)
+    // Load calendar tasks from backend
     useEffect(() => {
       const loadCalendarTasks = async () => {
         if (!user) return;
@@ -46,13 +45,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         try {
           setIsCalendarLoading(true);
           const response = await axios.get('/api/tasks/calendar');
-          // Ensure we always have an array, even if the API returns something unexpected
           const tasksData = Array.isArray(response.data) ? response.data : [];
           setCalendarTasks(tasksData);
         } catch (error) {
           console.error('Error loading calendar tasks:', error);
           toast.error('Failed to load calendar tasks');
-          // Set to empty array on error
           setCalendarTasks([]);
         } finally {
           setIsCalendarLoading(false);
@@ -80,12 +77,30 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       calendarTasks: [],
       isLoading: false,
       isCalendarLoading: false,
-      addTask: () => {},
-      updateTask: () => {},
-      deleteTask: () => {},
-      getTaskById: () => undefined,
       getUserAccessibleTasks: () => [],
-      getUserById: () => undefined
+      addTask: async () => {},
+      updateTask: async () => {},
+      deleteTask: async () => {},
+      updateTaskStatus: async () => {},
+      getTaskById: () => undefined,
+      getTasksByStatus: () => [],
+      getTasksByAssignee: () => [],
+      getTasksByChecker: () => [],
+      getUserById: () => undefined,
+      addTaskAttachment: async () => {},
+      removeTaskAttachment: async () => {},
+      uploadTaskAttachment: async () => {},
+      deleteTaskAttachment: async () => {},
+      updateObservationStatus: async () => {},
+      escalateTask: async () => {},
+      deescalateTask: async () => {},
+      getEscalatedTasks: () => [],
+      createTaskInstance: async () => '',
+      getTaskInstanceById: () => undefined,
+      getTaskInstances: () => [],
+      addTaskApproval: async () => {},
+      completeTaskInstance: async () => {},
+      rolloverRecurringTask: async () => ''
     };
   }
   
@@ -104,8 +119,7 @@ export function useTask() {
   return context;
 }
 
-// Fixed helper function to filter tasks based on user role and access rights
-// Properly spreads all properties from the original context
+// Helper function to filter tasks based on user role and access rights
 export function useAuthorizedTasks() {
   const taskContext = useTask();
   let user;
@@ -145,7 +159,6 @@ export function useAuthorizedTasks() {
     return false;
   });
   
-  // Return all the original taskContext properties, but with filtered tasks
   return { 
     ...taskContext, 
     tasks: authorizedTasks,
