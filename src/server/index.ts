@@ -1,8 +1,11 @@
 
+// Load environment variables FIRST before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import taskRoutes from './routes/tasks';
@@ -10,9 +13,6 @@ import awsRoutes from './routes/aws';
 import logsRoutes from './routes/logs';
 import notificationRoutes from './routes/notifications';
 import { generalLimiter } from './middleware/rate-limiter';
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
