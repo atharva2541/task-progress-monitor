@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Task, 
@@ -13,7 +12,7 @@ import {
 } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { taskApi } from '@/services/api-client';
+import { tasksApi } from '@/services/api-client';
 import { addDays, addWeeks, addMonths, format } from 'date-fns';
 
 export function useTaskService() {
@@ -29,7 +28,7 @@ export function useTaskService() {
     
     try {
       setIsLoading(true);
-      const response = await taskApi.getTasks();
+      const response = await tasksApi.getTasks();
       setTasks(response.data);
     } catch (error) {
       console.error('Error loading tasks:', error);
@@ -46,7 +45,7 @@ export function useTaskService() {
   // Load task instances from backend
   const loadTaskInstances = async (taskId: string) => {
     try {
-      const response = await taskApi.getTaskInstances(taskId);
+      const response = await tasksApi.getTaskInstances(taskId);
       return response.data;
     } catch (error) {
       console.error('Error loading task instances:', error);
@@ -153,7 +152,7 @@ export function useTaskService() {
   const addTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setIsLoading(true);
-      const response = await taskApi.createTask(task);
+      const response = await tasksApi.createTask(task);
       
       // Refresh tasks from backend
       await loadTasks();
@@ -176,7 +175,7 @@ export function useTaskService() {
 
   const createTaskInstance = async (baseTaskId: string): Promise<string> => {
     try {
-      const response = await taskApi.getTask(baseTaskId);
+      const response = await tasksApi.getTask(baseTaskId);
       const baseTask = response.data;
       
       // This would be handled by the backend
@@ -197,7 +196,7 @@ export function useTaskService() {
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
     try {
       setIsLoading(true);
-      await taskApi.updateTask(taskId, updates);
+      await tasksApi.updateTask(taskId, updates);
       
       // Refresh tasks from backend
       await loadTasks();
@@ -223,7 +222,7 @@ export function useTaskService() {
     
     try {
       setIsLoading(true);
-      await taskApi.deleteTask(taskId);
+      await tasksApi.deleteTask(taskId);
       
       // Refresh tasks from backend
       await loadTasks();
@@ -247,7 +246,7 @@ export function useTaskService() {
 
   const updateTaskStatus = async (taskId: string, status: TaskStatus, comment?: string) => {
     try {
-      await taskApi.updateTask(taskId, { 
+      await tasksApi.updateTask(taskId, { 
         status,
         ...(comment && { comment })
       });
@@ -281,7 +280,7 @@ export function useTaskService() {
 
   const updateObservationStatus = async (taskId: string, status: ObservationStatus, userId: string) => {
     try {
-      await taskApi.updateTask(taskId, { observationStatus: status });
+      await tasksApi.updateTask(taskId, { observationStatus: status });
       
       // Refresh tasks from backend
       await loadTasks();
@@ -374,7 +373,7 @@ export function useTaskService() {
   // Escalation methods (would need backend implementation)
   const escalateTask = async (taskId: string, priority: EscalationPriority, reason: string) => {
     try {
-      await taskApi.updateTask(taskId, { 
+      await tasksApi.updateTask(taskId, { 
         isEscalated: true,
         escalationPriority: priority,
         escalationReason: reason 
@@ -406,7 +405,7 @@ export function useTaskService() {
 
   const deescalateTask = async (taskId: string) => {
     try {
-      await taskApi.updateTask(taskId, { 
+      await tasksApi.updateTask(taskId, { 
         isEscalated: false,
         escalationPriority: undefined,
         escalationReason: undefined 
