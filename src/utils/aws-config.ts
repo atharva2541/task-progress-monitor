@@ -20,8 +20,6 @@ export const AWS_REGIONS = [
   { value: "ap-southeast-2", label: "Asia Pacific (Sydney)" },
   { value: "ap-southeast-3", label: "Asia Pacific (Jakarta)" },
   { value: "ca-central-1", label: "Canada (Central)" },
-  { value: "cn-north-1", label: "China (Beijing)" },
-  { value: "cn-northwest-1", label: "China (Ningxia)" },
   { value: "eu-central-1", label: "Europe (Frankfurt)" },
   { value: "eu-west-1", label: "Europe (Ireland)" },
   { value: "eu-west-2", label: "Europe (London)" },
@@ -31,8 +29,6 @@ export const AWS_REGIONS = [
   { value: "me-south-1", label: "Middle East (Bahrain)" },
   { value: "me-central-1", label: "Middle East (UAE)" },
   { value: "sa-east-1", label: "South America (São Paulo)" },
-  { value: "us-gov-east-1", label: "AWS GovCloud (US-East)" },
-  { value: "us-gov-west-1", label: "AWS GovCloud (US-West)" },
 ];
 
 // Current AWS configuration - these will be updated with values from the backend
@@ -74,24 +70,27 @@ export const getAwsSettings = async () => {
     const response = await awsApi.getSettings();
     
     if (response.data) {
-      // Update cache with settings (not credentials yet)
-      cachedCredentials = {
-        ...cachedCredentials,
+      // Update cache with settings
+      const newSettings = {
         region: response.data.region || defaultRegion,
         s3BucketName: response.data.s3BucketName || "",
         sesFromEmail: response.data.sesFromEmail || "",
+        accessKeyId: cachedCredentials?.accessKeyId || "",
+        secretAccessKey: cachedCredentials?.secretAccessKey || "",
         timestamp: Date.now(),
       };
 
+      cachedCredentials = newSettings;
+
       // Update exported variables
-      AWS_REGION = response.data.region || defaultRegion;
-      S3_BUCKET_NAME = response.data.s3BucketName || "";
-      SES_FROM_EMAIL = response.data.sesFromEmail || "";
+      AWS_REGION = newSettings.region;
+      S3_BUCKET_NAME = newSettings.s3BucketName;
+      SES_FROM_EMAIL = newSettings.sesFromEmail;
 
       return {
-        region: cachedCredentials.region,
-        s3BucketName: cachedCredentials.s3BucketName,
-        sesFromEmail: cachedCredentials.sesFromEmail,
+        region: newSettings.region,
+        s3BucketName: newSettings.s3BucketName,
+        sesFromEmail: newSettings.sesFromEmail,
       };
     }
   } catch (error) {
@@ -123,30 +122,28 @@ export const getAwsCredentials = async () => {
     }
 
     // Fetch credentials from API
-    const response = await awsApi.testConnection({
-      // This is a workaround since getCredentials is not yet implemented
-      // In a real implementation, we would use a dedicated endpoint
-      region: AWS_REGION,
-      accessKeyId: "",
-      secretAccessKey: ""
-    });
+    const response = await awsApi.getCredentials();
     
-    if (response.data && response.data.credentials) {
+    if (response.data) {
       // Update cache with credentials
-      cachedCredentials = {
-        ...cachedCredentials,
-        accessKeyId: response.data.credentials.accessKeyId || "",
-        secretAccessKey: response.data.credentials.secretAccessKey || "",
+      const newCredentials = {
+        region: cachedCredentials?.region || defaultRegion,
+        s3BucketName: cachedCredentials?.s3BucketName || "",
+        sesFromEmail: cachedCredentials?.sesFromEmail || "",
+        accessKeyId: response.data.accessKeyId || "",
+        secretAccessKey: response.data.secretAccessKey || "",
         timestamp: Date.now(),
       };
 
+      cachedCredentials = newCredentials;
+
       // Update exported variables
-      AWS_ACCESS_KEY_ID = response.data.credentials.accessKeyId || "";
-      AWS_SECRET_ACCESS_KEY = response.data.credentials.secretAccessKey || "";
+      AWS_ACCESS_KEY_ID = newCredentials.accessKeyId;
+      AWS_SECRET_ACCESS_KEY = newCredentials.secretAccessKey;
 
       return {
-        accessKeyId: cachedCredentials.accessKeyId,
-        secretAccessKey: cachedCredentials.secretAccessKey,
+        accessKeyId: newCredentials.accessKeyId,
+        secretAccessKey: newCredentials.secretAccessKey,
       };
     }
   } catch (error) {
