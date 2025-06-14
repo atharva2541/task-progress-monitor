@@ -99,6 +99,9 @@ export const tasksApi = {
   
   deleteTask: (id: string) => 
     apiClient.delete(`/tasks/${id}`),
+  
+  getTaskInstances: (taskId: string) => 
+    apiClient.get(`/tasks/${taskId}/instances`),
 };
 
 // Users API
