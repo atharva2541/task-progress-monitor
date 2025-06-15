@@ -1,11 +1,18 @@
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const mysql = require('mysql2/promise');
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import mysql from 'mysql2/promise';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 async function deploy() {
   console.log('🚀 Starting deployment process...');
@@ -124,11 +131,12 @@ async function setupAdminUser() {
   );
 
   if (existing.length === 0) {
-    const bcrypt = require('bcryptjs');
-    const crypto = require('crypto');
+    // Dynamic imports for modules that might not be available
+    const bcrypt = await import('bcryptjs');
+    const crypto = await import('crypto');
 
-    const hashedPassword = await bcrypt.hash('Admin123!', 12);
-    const userId = `user_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const hashedPassword = await bcrypt.default.hash('Admin123!', 12);
+    const userId = `user_${Date.now()}_${crypto.default.randomBytes(4).toString('hex')}`;
     const now = new Date().toISOString();
     const avatar = `https://ui-avatars.com/api/?name=Admin&background=8b5cf6&color=fff`;
 
