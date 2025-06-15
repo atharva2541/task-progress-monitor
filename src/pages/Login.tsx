@@ -1,216 +1,224 @@
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useToast } from '@/components/ui/use-toast';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Eye, EyeOff, Mail, Lock, Shield } from 'lucide-react';
 
-// Email and password login form schema
-const loginFormSchema = z.object({
-  email: z.string().email({
-    message: 'Please enter a valid email address'
-  }),
-  password: z.string().min(1, {
-    message: 'Password is required'
-  })
-});
-
-// OTP validation schema
-const otpFormSchema = z.object({
-  otp: z.string().length(6, {
-    message: 'OTP must be 6 digits'
-  })
-});
-const LoginPage = () => {
-  const {
-    login,
-    verifyOtp,
-    isLoading,
-    isAwaitingOtp,
-    currentEmail
-  } = useAuth();
-  const navigate = useNavigate();
-  const {
-    toast
-  } = useToast();
-  const [error, setError] = useState<string | null>(null);
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  
+  const { 
+    user, 
+    login, 
+    verifyOtp, 
+    isLoading, 
+    isAwaitingOtp, 
+    requiresPasswordChange,
+    currentEmail 
+  } = useAuth();
 
-  // Form for email and password login
-  const loginForm = useForm<z.infer<typeof loginFormSchema>>({
-    resolver: zodResolver(loginFormSchema),
-    defaultValues: {
-      email: '',
-      password: ''
-    }
-  });
+  // Reset error when switching between forms
+  useEffect(() => {
+    setError('');
+  }, [isAwaitingOtp, requiresPasswordChange]);
 
-  // Form for OTP verification
-  const otpForm = useForm<z.infer<typeof otpFormSchema>>({
-    resolver: zodResolver(otpFormSchema),
-    defaultValues: {
-      otp: ''
-    }
-  });
+  // Redirect if user is already logged in
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
-  // Handle login submission
-  const onLoginSubmit = async (values: z.infer<typeof loginFormSchema>) => {
-    setError(null);
-    try {
-      const result = await login(values.email, values.password);
-      if (!result.success) {
-        setError(result.message || 'Login failed');
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+  // Show password change form if required
+  if (requiresPasswordChange) {
+    return <ChangePasswordForm />;
+  }
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    const result = await login(email, password);
+    if (!result.success) {
+      setError(result.message || 'Login failed');
     }
   };
 
-  // Handle OTP verification
-  const onVerifyOtp = async (values: z.infer<typeof otpFormSchema>) => {
-    setError(null);
-    if (!currentEmail) {
-      setError('Email not found. Please login again.');
+  const handleOtpVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    if (otp.length !== 6) {
+      setError('Please enter a valid 6-digit code');
       return;
     }
-    try {
-      const result = await verifyOtp(currentEmail, values.otp);
-      if (result.success) {
-        navigate('/');
-      } else {
-        setError(result.message || 'Invalid OTP. Please try again.');
-      }
-    } catch (err) {
-      setError('An error occurred during verification. Please try again.');
+    
+    const result = await verifyOtp(currentEmail || email, otp);
+    if (!result.success) {
+      setError(result.message || 'OTP verification failed');
     }
   };
-  return <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-audit-purple-50 p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <div className="rounded-full bg-audit-purple-100 p-4 shadow-md">
-            <CheckSquare className="h-12 w-12 text-audit-purple-600" />
-          </div>
-        </div>
-        
-        <Card className="border-0 shadow-xl">
-          <CardHeader className="space-y-2 text-center pb-6">
-            <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
-            <CardDescription className="text-gray-500">
-              {!isAwaitingOtp ? 'Enter your email and password to login' : 'Enter the verification code sent to your email'}
+
+  if (isAwaitingOtp) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
+              <Mail className="h-6 w-6 text-blue-600" />
+            </div>
+            <CardTitle className="text-2xl">Enter Verification Code</CardTitle>
+            <CardDescription>
+              We've sent a 6-digit code to {currentEmail || email}
             </CardDescription>
           </CardHeader>
-          
           <CardContent>
-            {error && <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>}
-            
-            {/* Login Form */}
-            {!isAwaitingOtp && <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-5">
-                  <FormField control={loginForm.control} name="email" render={({
-                field
-              }) => <FormItem>
-                        <FormLabel className="text-gray-700">Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter your email" type="email" className="bg-gray-50" autoComplete="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <FormField control={loginForm.control} name="password" render={({
-                field
-              }) => <FormItem>
-                        <FormLabel className="text-gray-700">Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input placeholder="Enter your password" type={showPassword ? "text" : "password"} className="bg-gray-50 pr-10" autoComplete="current-password" {...field} />
-                            <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => setShowPassword(!showPassword)}>
-                              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>} />
-                  
-                  <Button type="submit" className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" disabled={isLoading}>
-                    <Mail className="mr-2 h-4 w-4" />
-                    {isLoading ? 'Authenticating...' : 'Login'}
-                  </Button>
-                </form>
-              </Form>}
-            
-            {/* OTP Verification Form */}
-            {isAwaitingOtp && <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-center mb-4">
-                    {`We've sent a verification code to ${currentEmail}`}
-                  </p>
-                  
-                  <Form {...otpForm}>
-                    <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-5">
-                      <FormField control={otpForm.control} name="otp" render={({
-                    field
-                  }) => <FormItem className="space-y-4">
-                            <FormLabel className="text-gray-700">Verification Code</FormLabel>
-                            <FormControl>
-                              <div className="flex justify-center">
-                                <InputOTP maxLength={6} {...field}>
-                                  <InputOTPGroup>
-                                    <InputOTPSlot index={0} />
-                                    <InputOTPSlot index={1} />
-                                    <InputOTPSlot index={2} />
-                                    <InputOTPSlot index={3} />
-                                    <InputOTPSlot index={4} />
-                                    <InputOTPSlot index={5} />
-                                  </InputOTPGroup>
-                                </InputOTP>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>} />
-                      
-                      <div className="pt-2 space-y-3">
-                        <Button type="submit" className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" disabled={isLoading}>
-                          <KeyRound className="mr-2 h-4 w-4" />
-                          {isLoading ? 'Verifying...' : 'Verify & Login'}
-                        </Button>
-                        
-                        <Button type="button" variant="outline" className="w-full" onClick={() => {
-                      loginForm.reset();
-                      otpForm.reset();
-                      setError(null);
-                    }}>
-                          <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back to Login
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
+            <form onSubmit={handleOtpVerification} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="otp">Verification Code</Label>
+                <div className="flex justify-center">
+                  <InputOTP
+                    value={otp}
+                    onChange={setOtp}
+                    maxLength={6}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
-                
-                <div className="text-center">
-                  <p className="text-xs text-gray-500">
-                    For testing: Use OTP <strong>123456</strong>
-                  </p>
-                </div>
-              </div>}
+              </div>
 
-            {/* Test Credentials Info */}
-            
+              {error && (
+                <p className="text-sm text-red-600 text-center">{error}</p>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? (
+                  <>
+                    <Shield className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Verify Code
+                  </>
+                )}
+              </Button>
+
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => window.location.reload()}
+                  className="text-sm"
+                >
+                  Back to Login
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
-    </div>;
-};
-export default LoginPage;
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 p-3 bg-indigo-100 rounded-full w-fit">
+            <Lock className="h-6 w-6 text-indigo-600" />
+          </div>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardDescription>
+            Sign in to your Audit Tracker account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleEmailLogin} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="pr-10"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-600">{error}</p>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Mail className="mr-2 h-4 w-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Sign In
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

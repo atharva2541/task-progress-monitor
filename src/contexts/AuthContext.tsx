@@ -10,10 +10,12 @@ interface AuthContextType {
   
   // Email/password + OTP authentication
   login: (email: string, password: string) => Promise<{success: boolean, message?: string}>;
-  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, message?: string}>;
+  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, message?: string, requiresPasswordChange?: boolean}>;
+  changePassword: (newPassword: string) => Promise<{success: boolean, message?: string}>;
   logout: () => void;
   isLoading: boolean;
   isAwaitingOtp: boolean;
+  requiresPasswordChange: boolean;
   currentEmail: string | null;
   
   // User management methods (admin only)
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAwaitingOtp, setIsAwaitingOtp] = useState<boolean>(false);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState<boolean>(false);
   const [currentEmail, setCurrentEmail] = useState<string | null>(null);
 
   // Email/password login function
@@ -65,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // OTP verification function
-  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, message?: string}> => {
+  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, message?: string, requiresPasswordChange?: boolean}> => {
     setIsLoading(true);
     
     try {
@@ -75,7 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Store the JWT token
         localStorage.setItem('token', response.data.token);
         
-        // Get user profile
+        // Check if password change is required
+        if (response.data.requiresPasswordChange) {
+          setRequiresPasswordChange(true);
+          setIsAwaitingOtp(false);
+          setIsLoading(false);
+          
+          toast({
+            title: "Password Change Required",
+            description: "Please change your password to complete the login process.",
+          });
+          
+          return { success: true, requiresPasswordChange: true };
+        }
+        
+        // Get user profile for normal login
         const profileResponse = await authApi.getProfile();
         const userData = profileResponse.data;
         
@@ -105,9 +122,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Change password function (for first-time users)
+  const changePassword = async (newPassword: string): Promise<{success: boolean, message?: string}> => {
+    setIsLoading(true);
+    
+    try {
+      const response = await authApi.changePassword(newPassword);
+      
+      if (response.data.success) {
+        // Get user profile after password change
+        const profileResponse = await authApi.getProfile();
+        const userData = profileResponse.data;
+        
+        setUser(userData);
+        localStorage.setItem('currentUser', JSON.stringify(userData));
+        setRequiresPasswordChange(false);
+        setCurrentEmail(null);
+        setIsLoading(false);
+        
+        toast({
+          title: "Welcome!",
+          description: `Password changed successfully. Welcome, ${userData.name}!`,
+        });
+        
+        return { success: true };
+      } else {
+        setIsLoading(false);
+        return { success: false, message: response.data.message || "Password change failed" };
+      }
+    } catch (error: any) {
+      console.error('Change password error:', error);
+      setIsLoading(false);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || "Password change failed" 
+      };
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setIsAwaitingOtp(false);
+    setRequiresPasswordChange(false);
     setCurrentEmail(null);
     localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
@@ -244,9 +300,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       users,
       login,
       verifyOtp,
+      changePassword,
       logout, 
       isLoading,
       isAwaitingOtp,
+      requiresPasswordChange,
       currentEmail,
       addUser,
       updateUser,

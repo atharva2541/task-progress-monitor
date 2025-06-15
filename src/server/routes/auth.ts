@@ -1,4 +1,3 @@
-
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -116,6 +115,9 @@ router.post('/verify-otp', async (req: express.Request, res: express.Response): 
       [user.id]
     );
 
+    // Check if this is first login
+    const requiresPasswordChange = user.is_first_login;
+
     // Generate JWT token
     const token = generateToken({
       id: user.id,
@@ -126,10 +128,64 @@ router.post('/verify-otp', async (req: express.Request, res: express.Response): 
     res.status(200).json({ 
       success: true, 
       token,
+      requiresPasswordChange,
       message: 'Login successful'
     });
   } catch (error) {
     console.error('OTP verification error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// Change password endpoint (for first-time users)
+router.post('/change-password', authenticateToken, async (req: express.Request, res: express.Response): Promise<void> => {
+  try {
+    const { newPassword } = req.body;
+    const userId = req.user!.id;
+
+    // Input validation
+    if (!newPassword) {
+      res.status(400).json({ success: false, message: 'New password is required' });
+      return;
+    }
+
+    // Password complexity validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'Password must be at least 8 characters with uppercase, lowercase, number, and special character' 
+      });
+      return;
+    }
+
+    // Get user to check if first login
+    const user = await queryOne<DbUser>(
+      'SELECT is_first_login FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const now = new Date().toISOString();
+
+    // Update password and mark first login as complete
+    await query(
+      'UPDATE users SET password_hash = ?, is_first_login = FALSE, updated_at = ? WHERE id = ?',
+      [hashedPassword, now, userId]
+    );
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Password changed successfully' 
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -209,10 +265,10 @@ router.post('/create-user', authenticateToken, async (req: express.Request, res:
     // Generate avatar URL
     const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8b5cf6&color=fff`;
 
-    // Insert user
+    // Insert user with is_first_login = TRUE
     await query(
-      `INSERT INTO users (id, name, email, password_hash, role, roles, avatar, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO users (id, name, email, password_hash, role, roles, avatar, is_first_login, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
       [userId, name, email.toLowerCase(), hashedPassword, role, JSON.stringify(roles || [role]), avatar, now, now]
     );
 

@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 // Determine the API base URL dynamically
@@ -51,6 +50,9 @@ export const authApi = {
   
   verifyOtp: (email: string, otp: string) => 
     apiClient.post('/auth/verify-otp', { email, otp }),
+  
+  changePassword: (newPassword: string) => 
+    apiClient.post('/auth/change-password', { newPassword }),
   
   getProfile: () => 
     apiClient.get('/auth/me'),
