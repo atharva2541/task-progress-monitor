@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Card, 
@@ -94,12 +93,7 @@ const UserManagementPage = () => {
       if (result.success) {
         toast({
           title: 'User Created Successfully',
-          description: (
-            <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              <span>{data.name} has been created and a welcome email with login instructions has been sent to {data.email}.</span>
-            </div>
-          ),
+          description: `${data.name} has been created and a welcome email with login instructions has been sent to ${data.email}.`,
         });
         setIsDialogOpen(false);
       } else {
