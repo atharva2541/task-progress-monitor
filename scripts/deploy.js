@@ -41,7 +41,7 @@ async function deploy() {
     console.log('   1. Update your .env file with actual values');
     console.log('   2. Run: npm run start:production');
     console.log('   3. Visit: http://localhost:5000');
-    console.log('   4. Login with: admin@yourdomain.com / Admin123!');
+    console.log('   4. Login with: atharva.kale@sbfc.com / Admin123!');
     console.log('   5. Configure AWS settings in admin panel');
 
   } catch (error) {
@@ -56,24 +56,41 @@ async function setupDatabase() {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     port: parseInt(process.env.DB_PORT || '3306'),
+    multipleStatements: true
   };
 
   const connection = await mysql.createConnection(dbConfig);
 
   // Create database if it doesn't exist
   const dbName = process.env.DB_NAME || 'audit_tracker';
-  await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
-  await connection.execute(`USE \`${dbName}\``);
+  await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+  await connection.query(`USE \`${dbName}\``);
 
   // Run schema
   console.log('Creating database tables...');
   const schemaPath = path.join(__dirname, '../src/server/schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
-  const statements = schema.split(';').filter(stmt => stmt.trim());
+  
+  // Clean and parse statements
+  const statements = schema
+    .split(';')
+    .map(stmt => stmt.trim())
+    .filter(stmt => stmt && !stmt.startsWith('--') && !stmt.startsWith('/*'));
   
   for (const statement of statements) {
     if (statement.trim()) {
-      await connection.execute(statement);
+      try {
+        console.log(`Executing: ${statement.substring(0, 50)}...`);
+        await connection.query(statement);
+      } catch (error) {
+        // Ignore "already exists" errors but log others
+        if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+          console.log(`ℹ️ Skipping: ${error.message}`);
+        } else {
+          console.error(`⚠️ Error executing statement: ${error.message}`);
+          throw error;
+        }
+      }
     }
   }
 
@@ -87,6 +104,7 @@ async function runMigrations() {
     password: process.env.DB_PASSWORD || '',
     port: parseInt(process.env.DB_PORT || '3306'),
     database: process.env.DB_NAME || 'audit_tracker',
+    multipleStatements: true
   };
 
   const connection = await mysql.createConnection(dbConfig);
@@ -95,19 +113,57 @@ async function runMigrations() {
   console.log('Adding AWS tables...');
   const migrationPath = path.join(__dirname, '../src/server/migrations/add-aws-tables.sql');
   const migration = fs.readFileSync(migrationPath, 'utf8');
-  const statements = migration.split(';').filter(stmt => stmt.trim());
+  
+  // Clean and parse statements
+  const statements = migration
+    .split(';')
+    .map(stmt => stmt.trim())
+    .filter(stmt => stmt && !stmt.startsWith('--') && !stmt.startsWith('/*'));
   
   for (const statement of statements) {
     if (statement.trim()) {
       try {
-        await connection.execute(statement);
+        console.log(`Executing migration: ${statement.substring(0, 50)}...`);
+        await connection.query(statement);
       } catch (error) {
-        // Ignore "already exists" errors
-        if (!error.message.includes('already exists')) {
-          throw error;
+        // Ignore "already exists" errors but log others
+        if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+          console.log(`ℹ️ Migration already applied: ${error.message}`);
+        } else {
+          console.error(`⚠️ Migration error: ${error.message}`);
+          // Don't throw here - migrations might partially exist
         }
       }
     }
+  }
+
+  // Run temporary password migration if exists
+  try {
+    const tempPasswordMigrationPath = path.join(__dirname, '../src/server/migrations/add-temporary-password-fields.sql');
+    if (fs.existsSync(tempPasswordMigrationPath)) {
+      console.log('Adding temporary password fields...');
+      const tempPasswordMigration = fs.readFileSync(tempPasswordMigrationPath, 'utf8');
+      const tempStatements = tempPasswordMigration
+        .split(';')
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt && !stmt.startsWith('--') && !stmt.startsWith('/*'));
+      
+      for (const statement of tempStatements) {
+        if (statement.trim()) {
+          try {
+            await connection.query(statement);
+          } catch (error) {
+            if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+              console.log(`ℹ️ Temporary password fields already exist`);
+            } else {
+              console.error(`⚠️ Temporary password migration error: ${error.message}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.log('ℹ️ Temporary password migration file not found, skipping...');
   }
 
   await connection.end();
@@ -127,7 +183,7 @@ async function setupAdminUser() {
   // Check if admin user exists
   const [existing] = await connection.execute(
     'SELECT id FROM users WHERE email = ?',
-    ['admin@yourdomain.com']
+    ['atharva.kale@sbfc.com']
   );
 
   if (existing.length === 0) {
@@ -143,7 +199,7 @@ async function setupAdminUser() {
     await connection.execute(
       `INSERT INTO users (id, name, email, password_hash, role, roles, avatar, password_expiry_date, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 DAY), ?, ?)`,
-      [userId, 'Admin User', 'admin@yourdomain.com', hashedPassword, 'admin', JSON.stringify(['admin']), avatar, now, now]
+      [userId, 'Admin User', 'atharva.kale@sbfc.com', hashedPassword, 'admin', JSON.stringify(['admin']), avatar, now, now]
     );
 
     console.log('✅ Admin user created successfully');
