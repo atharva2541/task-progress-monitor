@@ -29,8 +29,8 @@ export async function setupDatabase() {
   const schemaPath = path.join(__dirname, '../../src/server/schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   
-  // Parse SQL statements and separate table creation from indexes
-  const allStatements = schema
+  // Split by semicolon and clean up statements
+  const statements = schema
     .split(';')
     .map(stmt => stmt.trim())
     .filter(stmt => stmt && !stmt.startsWith('--') && !stmt.startsWith('/*'));
@@ -39,30 +39,37 @@ export async function setupDatabase() {
   const createTableStatements = [];
   const otherStatements = [];
   
-  for (const statement of allStatements) {
+  for (const statement of statements) {
     if (statement.trim()) {
-      const upperStatement = statement.toUpperCase();
-      if (upperStatement.includes('CREATE TABLE')) {
+      // Normalize whitespace and check for CREATE TABLE
+      const normalizedStatement = statement.replace(/\s+/g, ' ').toUpperCase();
+      if (normalizedStatement.includes('CREATE TABLE')) {
         createTableStatements.push(statement);
-      } else if (upperStatement.includes('CREATE INDEX') || 
-                 upperStatement.includes('ALTER TABLE') ||
-                 upperStatement.includes('INSERT INTO')) {
+        console.log(`Found CREATE TABLE statement: ${statement.substring(0, 50)}...`);
+      } else if (normalizedStatement.includes('CREATE INDEX') || 
+                 normalizedStatement.includes('ALTER TABLE') ||
+                 normalizedStatement.includes('INSERT INTO')) {
         otherStatements.push(statement);
       }
     }
   }
   
+  console.log(`Found ${createTableStatements.length} CREATE TABLE statements`);
+  console.log(`Found ${otherStatements.length} other statements`);
+  
   // Execute CREATE TABLE statements first
   console.log('Creating tables...');
-  for (const statement of createTableStatements) {
+  for (let i = 0; i < createTableStatements.length; i++) {
+    const statement = createTableStatements[i];
     try {
-      console.log(`Creating table: ${statement.substring(0, 50)}...`);
+      console.log(`Creating table ${i + 1}/${createTableStatements.length}: ${statement.substring(0, 50)}...`);
       await connection.query(statement);
+      console.log(`✅ Table created successfully`);
     } catch (error) {
       if (error.message.includes('already exists')) {
         console.log(`ℹ️ Table already exists, skipping...`);
       } else {
-        console.error(`⚠️ Error creating table: ${error.message}`);
+        console.error(`❌ Error creating table: ${error.message}`);
         throw error;
       }
     }
@@ -70,10 +77,12 @@ export async function setupDatabase() {
   
   // Execute other statements (indexes, etc.) after tables are created
   console.log('Creating indexes and constraints...');
-  for (const statement of otherStatements) {
+  for (let i = 0; i < otherStatements.length; i++) {
+    const statement = otherStatements[i];
     try {
-      console.log(`Executing: ${statement.substring(0, 50)}...`);
+      console.log(`Executing ${i + 1}/${otherStatements.length}: ${statement.substring(0, 50)}...`);
       await connection.query(statement);
+      console.log(`✅ Statement executed successfully`);
     } catch (error) {
       if (error.message.includes('already exists') || error.message.includes('duplicate')) {
         console.log(`ℹ️ Already exists, skipping: ${error.message}`);
