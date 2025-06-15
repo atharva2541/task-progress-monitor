@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { toast } from '@/components/ui/use-toast';
@@ -47,9 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAwaitingOtp(true);
         setIsLoading(false);
         
+        const message = response.data.isTemporaryPassword 
+          ? "Please check your email for the verification code. You'll need to change your password after verification."
+          : "Please check your email for the OTP verification code.";
+        
         toast({
           title: "Login Successful",
-          description: "Please check your email for the OTP verification code.",
+          description: message,
         });
         
         return { success: true, message: "OTP sent to your email" };
@@ -122,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Change password function (for first-time users)
+  // Change password function (for first-time users and temporary password users)
   const changePassword = async (newPassword: string): Promise<{success: boolean, message?: string}> => {
     setIsLoading(true);
     
@@ -186,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.data.success) {
         // Refresh users list
         await loadUsers();
-        return { success: true, message: "User created successfully" };
+        return { success: true, message: "User created successfully and welcome email sent" };
       } else {
         return { success: false, message: response.data.message || "Failed to create user" };
       }

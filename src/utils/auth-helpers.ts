@@ -37,35 +37,53 @@ export const generateStrongPassword = (): string => {
 };
 
 /**
- * Send welcome email to newly created user
+ * Send welcome email to newly created user with temporary password
  * @param to Email address of the recipient
  * @param name Name of the recipient
- * @param password Temporary password
+ * @param temporaryPassword Temporary password for first login
  * @returns Promise resolving to the email sending result
  */
-export const sendWelcomeEmail = async (to: string, name: string, password: string): Promise<any> => {
+export const sendWelcomeEmail = async (to: string, name: string, temporaryPassword: string): Promise<any> => {
   const subject = "Welcome to Audit Tracker - Your Account Information";
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
       <h2 style="color: #5a3FFF;">Welcome to Audit Tracker</h2>
       <p>Hello ${name},</p>
       <p>Your account has been created in Audit Tracker. Here are your login details:</p>
-      <ul>
-        <li><strong>Email:</strong> ${to}</li>
-        <li><strong>Temporary Password:</strong> ${password}</li>
-      </ul>
+      
       <div style="background-color: #f7f7f7; padding: 15px; margin: 20px 0; border-radius: 5px;">
-        <p><strong>Important:</strong> For security reasons, you will be required to change your password on your first login.</p>
-        <p>Your new password must include:</p>
+        <p><strong>Email:</strong> ${to}</p>
+        <p><strong>Temporary Password:</strong> <code style="background-color: #e9e9e9; padding: 2px 6px; border-radius: 3px; font-size: 14px;">${temporaryPassword}</code></p>
+      </div>
+      
+      <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px;">
+        <h3 style="color: #856404; margin-top: 0;">🔒 Important Security Information</h3>
+        <p style="color: #856404; margin-bottom: 10px;"><strong>This is a temporary password that expires in 7 days.</strong></p>
+        <p style="color: #856404; margin-bottom: 0;">You will be required to change your password on your first login for security reasons.</p>
+      </div>
+      
+      <h3>Login Steps:</h3>
+      <ol>
+        <li>Go to the Audit Tracker login page</li>
+        <li>Enter your email and temporary password</li>
+        <li>Check your email for a verification code (OTP)</li>
+        <li>Enter the verification code</li>
+        <li>Create a new secure password</li>
+        <li>Start using Audit Tracker!</li>
+      </ol>
+      
+      <div style="background-color: #f7f7f7; padding: 15px; margin: 20px 0; border-radius: 5px;">
+        <p><strong>Your new password must include:</strong></p>
         <ul>
           <li>At least 8 characters</li>
-          <li>At least one uppercase letter</li>
-          <li>At least one lowercase letter</li>
-          <li>At least one number</li>
-          <li>At least one special character</li>
+          <li>At least one uppercase letter (A-Z)</li>
+          <li>At least one lowercase letter (a-z)</li>
+          <li>At least one number (0-9)</li>
+          <li>At least one special character (@$!%*?&)</li>
         </ul>
       </div>
-      <p>If you have any questions, please contact your administrator.</p>
+      
+      <p>If you have any questions or need assistance, please contact your administrator.</p>
       <p>Thank you,<br/>Audit Tracker Team</p>
     </div>
   `;
@@ -81,21 +99,20 @@ export const sendWelcomeEmail = async (to: string, name: string, password: strin
  * @returns Promise resolving to the email sending result
  */
 export const sendPasswordResetEmail = async (to: string, name: string, otp: string): Promise<any> => {
-  const subject = "Audit Tracker - Password Reset Request";
+  const subject = "Audit Tracker - Login Verification Code";
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-      <h2 style="color: #5a3FFF;">Password Reset Request</h2>
+      <h2 style="color: #5a3FFF;">Login Verification Code</h2>
       <p>Hello ${name},</p>
-      <p>We received a request to reset your password for your Audit Tracker account. Please use the verification code below to reset your password:</p>
+      <p>Please use the verification code below to complete your login:</p>
       <div style="background-color: #f7f7f7; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0; border-radius: 5px;">
         <strong>${otp}</strong>
       </div>
       <p>This code will expire in 10 minutes.</p>
-      <p>If you did not request a password reset, please ignore this email or contact your administrator.</p>
+      <p>If you did not attempt to log in, please ignore this email or contact your administrator.</p>
       <p>Thank you,<br/>Audit Tracker Team</p>
     </div>
   `;
 
   return sendEmail(to, subject, htmlBody);
 };
-
