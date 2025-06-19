@@ -18,15 +18,20 @@ export class SupabaseService {
     return data;
   }
 
-  static async createTask(task: Partial<Task>) {
+  static async createTask(task: { title: string; description?: string; assigned_to?: string; status?: Task['status']; priority?: Task['priority']; due_date?: string }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
     const { data, error } = await supabase
       .from('tasks')
       .insert({
-        ...task,
-        created_by: user.id
+        title: task.title,
+        description: task.description,
+        assigned_to: task.assigned_to,
+        created_by: user.id,
+        status: task.status || 'pending',
+        priority: task.priority || 'medium',
+        due_date: task.due_date
       })
       .select()
       .single();

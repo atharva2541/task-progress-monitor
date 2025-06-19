@@ -39,7 +39,15 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               .eq('id', session.user.id)
               .single();
             
-            setProfile(profileData);
+            if (profileData) {
+              // Convert roles from Json to string[]
+              const convertedProfile: Profile = {
+                ...profileData,
+                roles: Array.isArray(profileData.roles) ? profileData.roles : [profileData.role],
+                avatar: profileData.avatar || undefined
+              };
+              setProfile(convertedProfile);
+            }
           }, 0);
         } else {
           setProfile(null);
