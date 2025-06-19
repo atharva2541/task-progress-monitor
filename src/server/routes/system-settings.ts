@@ -1,7 +1,7 @@
 
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
-import { db } from '../../utils/db-connection.js';
+import pool from '../../utils/db-connection.js';
 import { validateRequest } from '../middleware/validation.js';
 import { z } from 'zod';
 
@@ -18,7 +18,7 @@ const fileSettingsSchema = z.object({
 // Get file management settings
 router.get('/file-management', authenticateToken, async (req, res) => {
   try {
-    const [settings] = await db.execute(`
+    const [settings] = await pool.execute(`
       SELECT setting_key, setting_value, setting_type 
       FROM system_settings 
       WHERE setting_key IN ('max_file_size_kb', 'allowed_file_types', 'max_files_per_task', 'enable_file_uploads')
@@ -74,7 +74,7 @@ router.post('/file-management', authenticateToken, validateRequest(fileSettingsS
     ];
 
     for (const [key, value, type] of updates) {
-      await db.execute(`
+      await pool.execute(`
         INSERT INTO system_settings (setting_key, setting_value, setting_type, created_at, updated_at)
         VALUES (?, ?, ?, NOW(), NOW())
         ON DUPLICATE KEY UPDATE 
@@ -95,7 +95,7 @@ router.get('/setting/:key', authenticateToken, async (req, res) => {
   try {
     const { key } = req.params;
     
-    const [rows] = await db.execute(
+    const [rows] = await pool.execute(
       'SELECT setting_value, setting_type FROM system_settings WHERE setting_key = ?',
       [key]
     );
