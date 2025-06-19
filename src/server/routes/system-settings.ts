@@ -1,4 +1,5 @@
 
+
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import pool from '../../utils/db-connection.js';
@@ -22,7 +23,7 @@ router.get('/file-management', authenticateToken, async (req, res) => {
       SELECT setting_key, setting_value, setting_type 
       FROM system_settings 
       WHERE setting_key IN ('max_file_size_kb', 'allowed_file_types', 'max_files_per_task', 'enable_file_uploads')
-    `);
+    `) as [any[], any];
 
     const fileSettings = {
       maxFileSizeKb: 1,
@@ -98,7 +99,7 @@ router.get('/setting/:key', authenticateToken, async (req, res) => {
     const [rows] = await pool.execute(
       'SELECT setting_value, setting_type FROM system_settings WHERE setting_key = ?',
       [key]
-    );
+    ) as [any[], any];
 
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Setting not found' });
@@ -128,3 +129,4 @@ router.get('/setting/:key', authenticateToken, async (req, res) => {
 });
 
 export default router;
+
