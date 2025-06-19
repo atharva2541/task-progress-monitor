@@ -40,10 +40,17 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               .single();
             
             if (profileData) {
-              // Convert roles from Json to string[]
+              // Properly convert roles from Json to string[]
+              let roles: string[] = [];
+              if (Array.isArray(profileData.roles)) {
+                roles = profileData.roles.map(role => String(role));
+              } else if (profileData.role) {
+                roles = [profileData.role];
+              }
+
               const convertedProfile: Profile = {
                 ...profileData,
-                roles: Array.isArray(profileData.roles) ? profileData.roles : [profileData.role],
+                roles: roles,
                 avatar: profileData.avatar || undefined
               };
               setProfile(convertedProfile);
