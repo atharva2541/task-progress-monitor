@@ -1,4 +1,3 @@
-
 // Load environment variables FIRST before any other imports
 import dotenv from 'dotenv';
 dotenv.config();
@@ -12,8 +11,9 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import taskRoutes from './routes/tasks';
 import awsRoutes from './routes/aws';
-import logsRoutes from './routes/logs';
+import logRoutes from './routes/logs';
 import notificationRoutes from './routes/notifications';
+import systemSettingsRoutes from './routes/system-settings.js';
 import { generalLimiter } from './middleware/rate-limiter';
 
 const app = express();
@@ -86,11 +86,12 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/tasks', taskRoutes);
 app.use('/api/aws', awsRoutes);
-app.use('/api/logs', logsRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/logs', logRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/system/settings', systemSettingsRoutes);
 
 // Catch-all handler for frontend routes in production
 if (process.env.NODE_ENV === 'production') {
