@@ -9,7 +9,7 @@ import { Task, TaskFrequency } from '@/types';
 import { TaskFormValues } from '@/utils/TaskFormManager';
 import { useTask } from '@/contexts/TaskContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const TaskList: React.FC = () => {
   const { tasks, addTask, updateTask, deleteTask } = useTask();
@@ -131,7 +131,7 @@ const TaskList: React.FC = () => {
       <TaskTable 
         tasks={tasks} 
         onEditTask={isAdmin ? handleEditRequest : undefined} 
-        onDeleteTask={isAdmin ? handleDeleteTask : undefined} // Pass delete handler only if admin
+        onDeleteTask={isAdmin ? handleDeleteTask : undefined}
       />
 
       {/* Edit Dialog - only accessible to admins */}

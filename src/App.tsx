@@ -1,3 +1,4 @@
+
 import { Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -13,18 +14,18 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const Index = lazy(() => import('./pages/Index'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TaskList = lazy(() => import('./pages/tasks/TaskList'));
-const TaskDetail = lazy(() => import('./pages/tasks/TaskDetail'));
+const TaskList = lazy(() => import('./pages/TaskList'));
+const TaskDetail = lazy(() => import('./pages/TaskDetail'));
 const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
 const TasksToReviewPage = lazy(() => import('./pages/tasks/TasksToReviewPage'));
-const TaskHistoryPage = lazy(() => import('./pages/tasks/TaskHistoryPage'));
-const CalendarPage = lazy(() => import('./pages/calendar/CalendarPage'));
+const TaskHistoryPage = lazy(() => import('./pages/TaskHistoryPage'));
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
 const AdminCalendarPage = lazy(() => import('./pages/calendar/AdminCalendarPage'));
 const MakerCalendarPage = lazy(() => import('./pages/calendar/MakerCalendarPage'));
 const Checker1CalendarPage = lazy(() => import('./pages/calendar/Checker1CalendarPage'));
 const Checker2CalendarPage = lazy(() => import('./pages/calendar/Checker2CalendarPage'));
 const EscalationsPage = lazy(() => import('./pages/escalations/EscalationsPage'));
-const TeamDashboardPage = lazy(() => import('./pages/team/TeamDashboardPage'));
+const TeamDashboardPage = lazy(() => import('./pages/dashboard/TeamDashboardPage'));
 const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage'));
 const AdminTasksPage = lazy(() => import('./pages/admin/AdminTasksPage'));
 const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));

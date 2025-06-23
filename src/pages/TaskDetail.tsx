@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTask } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { 
   Card, 
   CardContent, 

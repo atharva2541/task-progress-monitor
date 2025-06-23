@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import AdminCalendarPage from '@/pages/calendar/AdminCalendarPage';
 import MakerCalendarPage from '@/pages/calendar/MakerCalendarPage';
 import Checker1CalendarPage from '@/pages/calendar/Checker1CalendarPage';
