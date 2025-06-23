@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Notification, NotificationPreferences } from '@/types';
 import axios from 'axios';
-import { useAuth } from './AuthContext';
+import { useAuth } from './SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 
 interface NotificationContextType {

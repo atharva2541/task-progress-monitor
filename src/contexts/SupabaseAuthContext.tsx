@@ -21,11 +21,17 @@ interface AuthContextType {
   user: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
+  isPasswordExpired: boolean;
+  isFirstLogin: boolean;
   login: (email: string, password: string) => Promise<{ error: any }>;
   logout: () => Promise<void>;
   signUp: (email: string, password: string, userData: Partial<UserProfile>) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ error: any }>;
+  requestOtp: (email: string) => Promise<boolean>;
+  verifyOtp: (email: string, otp: string) => Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}>;
+  resetPassword: (email: string, newPassword: string) => Promise<boolean>;
+  checkPasswordStrength: (password: string) => 'weak' | 'medium' | 'strong';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +52,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordExpired, setIsPasswordExpired] = useState(false);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
 
   // Helper function to safely convert Json to string
   const jsonToString = (value: any): string => {
@@ -54,6 +62,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (typeof value === 'boolean') return value.toString();
     if (value && typeof value === 'object') return JSON.stringify(value);
     return '';
+  };
+
+  // Function to check password strength
+  const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
+    if (password.length < 8) return 'weak';
+    
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    
+    if (hasUppercase && hasLowercase && hasNumber && hasSpecial) {
+      return 'strong';
+    } else if ((hasUppercase || hasLowercase) && hasNumber) {
+      return 'medium';
+    } else {
+      return 'weak';
+    }
   };
 
   // Fetch user profile from profiles table
@@ -157,6 +183,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Mock OTP methods for compatibility with existing Login page
+  const requestOtp = async (email: string): Promise<boolean> => {
+    // For now, just return true to allow the flow to continue
+    console.log('Mock requestOtp called for:', email);
+    return true;
+  };
+
+  const verifyOtp = async (email: string, otp: string): Promise<{success: boolean, passwordExpired: boolean, isFirstLogin: boolean}> => {
+    // For now, just return success to allow the flow to continue
+    console.log('Mock verifyOtp called for:', email, otp);
+    return { success: true, passwordExpired: false, isFirstLogin: false };
+  };
+
+  const resetPassword = async (email: string, newPassword: string): Promise<boolean> => {
+    // For now, just return true to allow the flow to continue
+    console.log('Mock resetPassword called for:', email);
+    return true;
   };
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
@@ -334,11 +379,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user,
     session,
     isLoading,
+    isPasswordExpired,
+    isFirstLogin,
     login,
     logout,
     signUp,
     updatePassword,
     updateProfile,
+    requestOtp,
+    verifyOtp,
+    resetPassword,
+    checkPasswordStrength,
   };
 
   return (
