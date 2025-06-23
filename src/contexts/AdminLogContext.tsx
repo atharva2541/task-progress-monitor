@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { ActivityLog, ActivityLogActionType } from '@/types';
-import { useAuth } from './AuthContext';
+import { useAuth } from './SupabaseAuthContext';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
