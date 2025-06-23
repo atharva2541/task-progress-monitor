@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const Index = () => {
   const { user, isLoading } = useAuth();
@@ -14,7 +14,7 @@ const Index = () => {
     if (!isLoading) {
       if (user) {
         console.log("Index: User is authenticated, navigating to dashboard");
-        navigate('/');
+        navigate('/dashboard');
       } else {
         console.log("Index: User is not authenticated, navigating to login");
         navigate('/login');
