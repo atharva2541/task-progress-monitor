@@ -1,224 +1,945 @@
-
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChangePasswordForm } from '@/components/auth/ChangePasswordForm';
+import { CheckSquare, AlertCircle, Mail, ArrowLeft, KeyRound, LockKeyhole, Shield, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Eye, EyeOff, Mail, Lock, Shield } from 'lucide-react';
+import { 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent
+} from '@/components/ui/card';
+import { 
+  Form, 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage,
+  FormDescription 
+} from '@/components/ui/form';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { 
+  InputOTP, 
+  InputOTPGroup, 
+  InputOTPSlot 
+} from '@/components/ui/input-otp';
+import { Progress } from '@/components/ui/progress';
 
-export default function Login() {
+// Initial login form schema with email and password
+const loginFormSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: z.string().min(1, { message: 'Password is required' })
+});
+
+// OTP validation schema
+const otpFormSchema = z.object({
+  otp: z.string().length(6, { message: 'OTP must be 6 digits' })
+});
+
+// Forgot password email schema
+const forgotPasswordEmailSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' })
+});
+
+// Strong password schema with custom validation
+const passwordSchema = z.string()
+  .min(8, { message: 'Password must be at least 8 characters' })
+  .refine((val) => /[A-Z]/.test(val), {
+    message: 'Password must contain at least one uppercase letter',
+  })
+  .refine((val) => /[a-z]/.test(val), {
+    message: 'Password must contain at least one lowercase letter',
+  })
+  .refine((val) => /[0-9]/.test(val), {
+    message: 'Password must contain at least one number',
+  })
+  .refine((val) => /[^A-Za-z0-9]/.test(val), {
+    message: 'Password must contain at least one special character',
+  });
+
+// Reset password form schema with strong password requirements
+const resetFormSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address' }),
+  password: passwordSchema,
+  confirmPassword: z.string().min(8, { message: 'Please confirm your password' })
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"]
+});
+
+// Login page states
+type LoginPageState = 'LOGIN' | 'REQUEST_OTP' | 'VERIFY_OTP' | 'RESET_PASSWORD' | 'FIRST_LOGIN' | 'FORGOT_PASSWORD' | 'FORGOT_PASSWORD_OTP' | 'FORGOT_PASSWORD_RESET';
+
+const LoginPage = () => {
+  const { requestOtp, verifyOtp, resetPassword, isLoading, isPasswordExpired, isFirstLogin, checkPasswordStrength } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
-  
-  const { 
-    user, 
-    login, 
-    verifyOtp, 
-    isLoading, 
-    isAwaitingOtp, 
-    requiresPasswordChange,
-    currentEmail 
-  } = useAuth();
+  const [loginState, setLoginState] = useState<LoginPageState>('LOGIN');
+  const [passwordStrength, setPasswordStrength] = useState(0);
 
-  // Reset error when switching between forms
+  // Form for initial login
+  const loginForm = useForm<z.infer<typeof loginFormSchema>>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: { 
+      email: '', 
+      password: '' 
+    },
+  });
+
+  // Form for OTP verification
+  const otpForm = useForm<z.infer<typeof otpFormSchema>>({
+    resolver: zodResolver(otpFormSchema),
+    defaultValues: { otp: '' },
+  });
+
+  // Form for password reset or first login
+  const resetForm = useForm<z.infer<typeof resetFormSchema>>({
+    resolver: zodResolver(resetFormSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: ''
+    },
+  });
+
+  // Form for forgot password email
+  const forgotPasswordEmailForm = useForm<z.infer<typeof forgotPasswordEmailSchema>>({
+    resolver: zodResolver(forgotPasswordEmailSchema),
+    defaultValues: {
+      email: ''
+    },
+  });
+
+  // Update password strength meter when password changes
   useEffect(() => {
-    setError('');
-  }, [isAwaitingOtp, requiresPasswordChange]);
-
-  // Redirect if user is already logged in
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Show password change form if required
-  if (requiresPasswordChange) {
-    return <ChangePasswordForm />;
-  }
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+    const subscription = resetForm.watch((value, { name }) => {
+      if (name === 'password' && value.password) {
+        const password = value.password as string;
+        const strength = checkPasswordStrength(password);
+        
+        if (strength === 'weak') setPasswordStrength(33);
+        else if (strength === 'medium') setPasswordStrength(66);
+        else setPasswordStrength(100);
+      }
+    });
     
-    const result = await login(email, password);
-    if (!result.success) {
-      setError(result.message || 'Login failed');
+    return () => subscription.unsubscribe();
+  }, [resetForm, checkPasswordStrength]);
+
+  // Check if user needs to reset password or it's their first login
+  useEffect(() => {
+    if (isPasswordExpired) {
+      setLoginState('RESET_PASSWORD');
+    } else if (isFirstLogin) {
+      setLoginState('FIRST_LOGIN');
+    }
+  }, [isPasswordExpired, isFirstLogin]);
+
+  // Handle initial login submission
+  const onLogin = async (values: z.infer<typeof loginFormSchema>) => {
+    setError(null);
+    setEmail(values.email);
+    
+    try {
+      // In a real app, validate password against server first
+      // For demo, we're just checking if the user exists before sending OTP
+      const success = await requestOtp(values.email);
+      
+      if (success) {
+        setLoginState('VERIFY_OTP');
+      } else {
+        setError('User not found. Please check your email address.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
     }
   };
 
-  const handleOtpVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  // Handle OTP verification
+  const onVerifyOtp = async (values: z.infer<typeof otpFormSchema>) => {
+    setError(null);
     
-    if (otp.length !== 6) {
-      setError('Please enter a valid 6-digit code');
-      return;
-    }
-    
-    const result = await verifyOtp(currentEmail || email, otp);
-    if (!result.success) {
-      setError(result.message || 'OTP verification failed');
+    try {
+      const result = await verifyOtp(email, values.otp);
+      
+      if (result.success) {
+        if (result.passwordExpired) {
+          // Password is expired, redirect to reset password
+          setLoginState('RESET_PASSWORD');
+          resetForm.setValue('email', email);
+          toast({
+            title: 'Password Reset Required',
+            description: 'Your password has expired. Please create a new one.',
+          });
+        } else if (result.isFirstLogin) {
+          // First login, needs to set a new password
+          setLoginState('FIRST_LOGIN');
+          resetForm.setValue('email', email);
+          toast({
+            title: 'Password Setup Required',
+            description: 'This is your first login. Please set a new secure password.',
+          });
+        } else {
+          // Login successful, redirect to dashboard
+          toast({
+            title: 'Login successful',
+            description: 'Welcome to Audit Tracker!',
+            variant: 'default',
+          });
+          navigate('/');
+        }
+      } else {
+        setError('Invalid OTP. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred during verification. Please try again.');
     }
   };
 
-  if (isAwaitingOtp) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
-              <Mail className="h-6 w-6 text-blue-600" />
-            </div>
-            <CardTitle className="text-2xl">Enter Verification Code</CardTitle>
-            <CardDescription>
-              We've sent a 6-digit code to {currentEmail || email}
+  // Handle password reset
+  const onResetPassword = async (values: z.infer<typeof resetFormSchema>) => {
+    setError(null);
+    
+    try {
+      const success = await resetPassword(values.email, values.password);
+      
+      if (success) {
+        toast({
+          title: 'Password Updated',
+          description: 'Your password has been successfully updated.',
+          variant: 'default',
+        });
+        navigate('/');
+      } else {
+        setError('Failed to update password. Please make sure it meets all requirements.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
+  // Handle first login password setup - uses the same flow as reset password
+  const onSetInitialPassword = async (values: z.infer<typeof resetFormSchema>) => {
+    return onResetPassword(values);
+  };
+
+  // Handle forgot password email submission
+  const onForgotPasswordEmailSubmit = async (values: z.infer<typeof forgotPasswordEmailSchema>) => {
+    setError(null);
+    setEmail(values.email);
+    
+    try {
+      // Request OTP for password reset
+      const success = await requestOtp(values.email);
+      
+      if (success) {
+        setLoginState('FORGOT_PASSWORD_OTP');
+        toast({
+          title: 'Verification Code Sent',
+          description: `A verification code has been sent to ${values.email}`,
+        });
+      } else {
+        setError('User not found. Please check your email address.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
+  // Handle forgot password OTP verification
+  const onVerifyForgotPasswordOtp = async (values: z.infer<typeof otpFormSchema>) => {
+    setError(null);
+    
+    try {
+      const result = await verifyOtp(email, values.otp);
+      
+      if (result.success) {
+        // Move to reset password form
+        setLoginState('FORGOT_PASSWORD_RESET');
+        resetForm.setValue('email', email);
+        toast({
+          title: 'OTP Verified',
+          description: 'Please set your new password',
+        });
+      } else {
+        setError('Invalid OTP. Please try again.');
+      }
+    } catch (err) {
+      setError('An error occurred during verification. Please try again.');
+    }
+  };
+
+  // Handle forgot password reset
+  const onForgotPasswordReset = async (values: z.infer<typeof resetFormSchema>) => {
+    setError(null);
+    
+    try {
+      const success = await resetPassword(values.email, values.password);
+      
+      if (success) {
+        toast({
+          title: 'Password Updated',
+          description: 'Your password has been successfully reset. You can now login with your new password.',
+          variant: 'default',
+        });
+        setLoginState('LOGIN');
+        loginForm.reset();
+      } else {
+        setError('Failed to update password. Please make sure it meets all requirements.');
+      }
+    } catch (err) {
+      setError('An error occurred. Please try again.');
+    }
+  };
+
+  // Get password strength indicator color
+  const getPasswordStrengthColor = (): string => {
+    if (passwordStrength <= 33) return "bg-destructive";
+    if (passwordStrength <= 66) return "bg-yellow-500";
+    return "bg-green-500";
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-audit-purple-50 p-4">
+      <div className="w-full max-w-md">
+        <div className="flex justify-center mb-8">
+          <div className="rounded-full bg-audit-purple-100 p-4 shadow-md">
+            <CheckSquare className="h-12 w-12 text-audit-purple-600" />
+          </div>
+        </div>
+        
+        <Card className="border-0 shadow-xl">
+          <CardHeader className="space-y-2 text-center pb-6">
+            <CardTitle className="text-2xl font-bold text-gray-800">Audit Tracker</CardTitle>
+            <CardDescription className="text-gray-500">
+              {loginState === 'LOGIN' && 'Enter your credentials to login'}
+              {loginState === 'VERIFY_OTP' && 'Enter the verification code sent to your email'}
+              {loginState === 'RESET_PASSWORD' && 'Create a new password'}
+              {loginState === 'FIRST_LOGIN' && 'Set your new password for first time login'}
+              {loginState === 'FORGOT_PASSWORD' && 'Enter your email to reset password'}
+              {loginState === 'FORGOT_PASSWORD_OTP' && 'Enter the verification code sent to your email'}
+              {loginState === 'FORGOT_PASSWORD_RESET' && 'Create a new password'}
             </CardDescription>
           </CardHeader>
+          
           <CardContent>
-            <form onSubmit={handleOtpVerification} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="otp">Verification Code</Label>
-                <div className="flex justify-center">
-                  <InputOTP
-                    value={otp}
-                    onChange={setOtp}
-                    maxLength={6}
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            
+            {/* Login Form */}
+            {loginState === 'LOGIN' && (
+              <>
+                <Form {...loginForm}>
+                  <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-5">
+                    <FormField
+                      control={loginForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-700">Email</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your email" 
+                              type="email" 
+                              className="bg-gray-50"
+                              autoComplete="email"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={loginForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-700">Password</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="Enter your password" 
+                              type="password" 
+                              className="bg-gray-50"
+                              autoComplete="current-password"
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                      disabled={isLoading}
+                    >
+                      <LockKeyhole className="mr-2 h-4 w-4" />
+                      {isLoading ? 'Authenticating...' : 'Sign In with OTP'}
+                    </Button>
+                  </form>
+                </Form>
+                
+                {/* Forgot Password Link */}
+                <div className="mt-4 text-center">
+                  <button 
+                    onClick={() => {
+                      setLoginState('FORGOT_PASSWORD');
+                      setError(null);
+                      forgotPasswordEmailForm.reset();
+                    }}
+                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline"
                   >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
+                    Forgot your password?
+                  </button>
+                </div>
+              </>
+            )}
+            
+            {/* OTP Verification Form */}
+            {loginState === 'VERIFY_OTP' && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-center mb-4">{`We've sent a verification code to ${email}`}</p>
+                  
+                  <Form {...otpForm}>
+                    <form onSubmit={otpForm.handleSubmit(onVerifyOtp)} className="space-y-5">
+                      <FormField
+                        control={otpForm.control}
+                        name="otp"
+                        render={({ field }) => (
+                          <FormItem className="space-y-4">
+                            <FormLabel className="text-gray-700">Verification Code</FormLabel>
+                            <FormControl>
+                              <div className="flex justify-center">
+                                <InputOTP maxLength={6} {...field}>
+                                  <InputOTPGroup>
+                                    <InputOTPSlot index={0} />
+                                    <InputOTPSlot index={1} />
+                                    <InputOTPSlot index={2} />
+                                    <InputOTPSlot index={3} />
+                                    <InputOTPSlot index={4} />
+                                    <InputOTPSlot index={5} />
+                                  </InputOTPGroup>
+                                </InputOTP>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="pt-2 space-y-3">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                          disabled={isLoading}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" />
+                          {isLoading ? 'Verifying...' : 'Verify OTP'}
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setLoginState('LOGIN');
+                            otpForm.reset();
+                          }}
+                        >
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+                
+                <div className="text-center">
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      const success = await requestOtp(email);
+                      if (success) {
+                        toast({
+                          title: 'OTP Sent',
+                          description: `A verification code has been sent to ${email}`,
+                          variant: 'default',
+                        });
+                      }
+                    }}
+                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Sending...' : "Didn't receive a code? Send again"}
+                  </button>
                 </div>
               </div>
-
-              {error && (
-                <p className="text-sm text-red-600 text-center">{error}</p>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={isLoading || otp.length !== 6}
-              >
-                {isLoading ? (
-                  <>
-                    <Shield className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  <>
+            )}
+            
+            {/* First Time Login Password Form */}
+            {loginState === 'FIRST_LOGIN' && (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(onSetInitialPassword)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertTitle>First Time Login</AlertTitle>
+                      <AlertDescription>
+                        You need to set a strong password for your account.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            readOnly
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">New Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Confirm your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                    disabled={isLoading || passwordStrength <= 33}
+                  >
                     <Shield className="mr-2 h-4 w-4" />
-                    Verify Code
-                  </>
-                )}
-              </Button>
-
-              <div className="text-center">
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => window.location.reload()}
-                  className="text-sm"
-                >
-                  Back to Login
-                </Button>
+                    {isLoading ? 'Setting Password...' : 'Set Password & Login'}
+                  </Button>
+                </form>
+              </Form>
+            )}
+            
+            {/* Reset Password Form */}
+            {loginState === 'RESET_PASSWORD' && (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(onResetPassword)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <ShieldCheck className="h-4 w-4" />
+                      <AlertTitle>Password Reset Required</AlertTitle>
+                      <AlertDescription>
+                        Your password has expired. Please set a new strong password.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            readOnly
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">New Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Confirm your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                    disabled={isLoading || passwordStrength <= 33}
+                  >
+                    {isLoading ? 'Updating...' : 'Update Password'}
+                  </Button>
+                </form>
+              </Form>
+            )}
+            
+            {/* Forgot Password Email Form */}
+            {loginState === 'FORGOT_PASSWORD' && (
+              <Form {...forgotPasswordEmailForm}>
+                <form onSubmit={forgotPasswordEmailForm.handleSubmit(onForgotPasswordEmailSubmit)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <Mail className="h-4 w-4" />
+                      <AlertTitle>Password Reset</AlertTitle>
+                      <AlertDescription>
+                        Enter your email address and we'll send you a verification code to reset your password.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={forgotPasswordEmailForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="pt-2 space-y-3">
+                    <Button 
+                      type="submit" 
+                      className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                      disabled={isLoading}
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      {isLoading ? 'Sending...' : 'Send Reset Code'}
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        setLoginState('LOGIN');
+                        forgotPasswordEmailForm.reset();
+                      }}
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Login
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+            
+            {/* Forgot Password OTP Verification Form */}
+            {loginState === 'FORGOT_PASSWORD_OTP' && (
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-center mb-4">{`We've sent a verification code to ${email}`}</p>
+                  
+                  <Form {...otpForm}>
+                    <form onSubmit={otpForm.handleSubmit(onVerifyForgotPasswordOtp)} className="space-y-5">
+                      <FormField
+                        control={otpForm.control}
+                        name="otp"
+                        render={({ field }) => (
+                          <FormItem className="space-y-4">
+                            <FormLabel className="text-gray-700">Verification Code</FormLabel>
+                            <FormControl>
+                              <div className="flex justify-center">
+                                <InputOTP maxLength={6} {...field}>
+                                  <InputOTPGroup>
+                                    <InputOTPSlot index={0} />
+                                    <InputOTPSlot index={1} />
+                                    <InputOTPSlot index={2} />
+                                    <InputOTPSlot index={3} />
+                                    <InputOTPSlot index={4} />
+                                    <InputOTPSlot index={5} />
+                                  </InputOTPGroup>
+                                </InputOTP>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="pt-2 space-y-3">
+                        <Button 
+                          type="submit" 
+                          className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                          disabled={isLoading}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" />
+                          {isLoading ? 'Verifying...' : 'Verify Code'}
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            setLoginState('FORGOT_PASSWORD');
+                            otpForm.reset();
+                          }}
+                        >
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </div>
+                
+                <div className="text-center">
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      const success = await requestOtp(email);
+                      if (success) {
+                        toast({
+                          title: 'Code Sent',
+                          description: `A verification code has been sent to ${email}`,
+                          variant: 'default',
+                        });
+                      }
+                    }}
+                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline transition-colors"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Sending...' : "Didn't receive a code? Send again"}
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
+            
+            {/* Forgot Password Reset Form */}
+            {loginState === 'FORGOT_PASSWORD_RESET' && (
+              <Form {...resetForm}>
+                <form onSubmit={resetForm.handleSubmit(onForgotPasswordReset)} className="space-y-5">
+                  <div className="mb-4">
+                    <Alert>
+                      <Shield className="h-4 w-4" />
+                      <AlertTitle>Set New Password</AlertTitle>
+                      <AlertDescription>
+                        Create a new strong password for your account.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email" 
+                            type="email" 
+                            className="bg-gray-50"
+                            autoComplete="email"
+                            readOnly
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">New Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription className="text-xs">
+                          Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                        </FormDescription>
+                        <div className="mt-2">
+                          <div className="flex items-center gap-2">
+                            <Progress value={passwordStrength} className={`h-2 ${getPasswordStrengthColor()}`} />
+                            <span className="text-xs">
+                              {passwordStrength <= 33 && <span className="text-destructive">Weak</span>}
+                              {passwordStrength > 33 && passwordStrength <= 66 && <span className="text-yellow-600">Medium</span>}
+                              {passwordStrength > 66 && <span className="text-green-600">Strong</span>}
+                            </span>
+                          </div>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={resetForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Confirm your new password" 
+                            type="password" 
+                            className="bg-gray-50"
+                            autoComplete="new-password"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-audit-purple-600 hover:bg-audit-purple-700 transition-all py-6" 
+                    disabled={isLoading || passwordStrength <= 33}
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Updating Password...' : 'Reset Password & Login'}
+                  </Button>
+                </form>
+              </Form>
+            )}
           </CardContent>
         </Card>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 p-3 bg-indigo-100 rounded-full w-fit">
-            <Lock className="h-6 w-6 text-indigo-600" />
-          </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>
-            Sign in to your Audit Tracker account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleEmailLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="pr-10"
-                  required
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Mail className="mr-2 h-4 w-4 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                <>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Sign In
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
-}
+};
+
+export default LoginPage;

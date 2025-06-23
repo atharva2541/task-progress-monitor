@@ -28,12 +28,9 @@ export interface DbUser {
   roles: string; // JSON string of roles array
   avatar?: string;
   password_hash?: string;
-  temporary_password?: string; // Added temporary password field
-  temp_password_expiry?: string; // Added temporary password expiry field
   password_expiry_date: string;
   is_first_login: boolean;
   last_otp?: string;
-  otp_expiry?: string; // Added OTP expiry field
   created_at: string;
   updated_at: string;
 }

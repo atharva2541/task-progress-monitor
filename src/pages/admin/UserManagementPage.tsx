@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   Card, 
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { User } from '@/types';
-import { Users, Mail } from 'lucide-react';
+import { Users } from 'lucide-react';
 import UserList from '@/components/admin/users/UserList';
 import UserFormDialog, { UserFormValues } from '@/components/admin/users/UserFormDialog';
 import DeleteUserDialog from '@/components/admin/users/DeleteUserDialog';
@@ -35,7 +36,7 @@ const UserManagementPage = () => {
   };
 
   // Handle form submission
-  const handleSubmit = async (data: UserFormValues) => {
+  const handleSubmit = (data: UserFormValues) => {
     // Reset previous email error
     setEmailError(null);
     
@@ -61,24 +62,17 @@ const UserManagementPage = () => {
     
     if (userToEdit) {
       // Update existing user
-      const result = await updateUser(userToEdit.id, {
+      updateUser(userToEdit.id, {
         name: data.name,
         email: data.email,
         role: finalRole,
         roles: finalRoles
       });
-      
-      if (result.success) {
-        toast({
-          title: 'User Updated',
-          description: `${data.name} has been updated successfully.`,
-        });
-        setUserToEdit(null);
-        setIsDialogOpen(false);
-      } else {
-        setEmailError(result.message || 'Failed to update user');
-        return;
-      }
+      toast({
+        title: 'User Updated',
+        description: `${data.name} has been updated successfully.`,
+      });
+      setUserToEdit(null);
     } else {
       // Create new user
       const newUser: Omit<User, 'id'> = {
@@ -88,39 +82,23 @@ const UserManagementPage = () => {
         roles: finalRoles
       };
       
-      const result = await addUser(newUser);
-      
-      if (result.success) {
-        toast({
-          title: 'User Created Successfully',
-          description: `${data.name} has been created and a welcome email with login instructions has been sent to ${data.email}.`,
-        });
-        setIsDialogOpen(false);
-      } else {
-        setEmailError(result.message || 'Failed to create user');
-        return;
-      }
+      addUser(newUser);
+      toast({
+        title: 'User Created',
+        description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
+      });
     }
+    setIsDialogOpen(false);
   };
 
   // Handle delete confirmation
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = () => {
     if (userToDelete) {
-      const result = await deleteUser(userToDelete.id);
-      
-      if (result.success) {
-        toast({
-          title: 'User Deleted',
-          description: `${userToDelete.name} has been deleted successfully.`,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: result.message || 'Failed to delete user',
-          variant: 'destructive',
-        });
-      }
-      
+      deleteUser(userToDelete.id);
+      toast({
+        title: 'User Deleted',
+        description: `${userToDelete.name} has been deleted successfully.`,
+      });
       setUserToDelete(null);
       setIsDeleteDialogOpen(false);
     }
@@ -150,7 +128,7 @@ const UserManagementPage = () => {
         <CardHeader>
           <CardTitle>Users</CardTitle>
           <CardDescription>
-            View and manage all users in the system. New users will receive welcome emails with login instructions.
+            View and manage all users in the system
           </CardDescription>
         </CardHeader>
         <CardContent>

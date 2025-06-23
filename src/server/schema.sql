@@ -199,17 +199,6 @@ CREATE TABLE aws_credentials (
   updated_at DATETIME NOT NULL
 );
 
--- System Settings Table
-CREATE TABLE system_settings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  setting_key VARCHAR(100) NOT NULL UNIQUE,
-  setting_value TEXT NOT NULL,
-  setting_type VARCHAR(50) NOT NULL DEFAULT 'string',
-  description TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
 -- Create indexes for better performance
 CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 CREATE INDEX idx_tasks_status ON tasks(status);
@@ -221,4 +210,3 @@ CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_notifications_type ON notifications(notification_type);
 CREATE INDEX idx_notifications_priority ON notifications(priority);
-CREATE INDEX idx_system_settings_key ON system_settings(setting_key);

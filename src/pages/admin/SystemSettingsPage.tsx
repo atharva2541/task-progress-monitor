@@ -5,7 +5,6 @@ import { AwsSettings } from "@/components/settings/AwsSettings";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { DataManagementSettings } from "@/components/settings/DataManagementSettings";
 import { SystemMonitoringSettings } from "@/components/settings/SystemMonitoringSettings";
-import { FileManagementSettings } from "@/components/settings/FileManagementSettings";
 
 const SystemSettingsPage = () => {
   const [activeTab, setActiveTab] = useState("aws");
@@ -18,9 +17,8 @@ const SystemSettingsPage = () => {
       </div>
 
       <Tabs defaultValue="aws" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 md:w-auto">
+        <TabsList className="grid w-full grid-cols-4 md:w-auto">
           <TabsTrigger value="aws">AWS Integration</TabsTrigger>
-          <TabsTrigger value="files">File Management</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="data">Data Management</TabsTrigger>
           <TabsTrigger value="monitoring">System Monitoring</TabsTrigger>
@@ -28,10 +26,6 @@ const SystemSettingsPage = () => {
 
         <TabsContent value="aws" className="space-y-4">
           <AwsSettings />
-        </TabsContent>
-
-        <TabsContent value="files" className="space-y-4">
-          <FileManagementSettings />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-4">

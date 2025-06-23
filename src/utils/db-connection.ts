@@ -4,11 +4,10 @@ import mysql from 'mysql2/promise';
 
 // Connection pool for MySQL database
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'audit_tracker',
-  port: Number(process.env.DB_PORT) || 3306,
+  host: import.meta.env.VITE_DB_HOST || 'localhost',
+  user: import.meta.env.VITE_DB_USER || 'root',
+  password: import.meta.env.VITE_DB_PASSWORD || '',
+  database: import.meta.env.VITE_DB_NAME || 'audit_tracker',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
@@ -72,17 +71,4 @@ export const commitTransaction = async (connection: mysql.PoolConnection) => {
 export const rollbackTransaction = async (connection: mysql.PoolConnection) => {
   await connection.rollback();
   connection.release();
-};
-
-// Function to test database connection
-export const testConnection = async (): Promise<boolean> => {
-  try {
-    const connection = await pool.getConnection();
-    console.log('Database connection successful');
-    connection.release();
-    return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    return false;
-  }
 };

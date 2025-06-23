@@ -2,41 +2,6 @@
 import { Request, Response } from 'express';
 import { query, queryOne } from '../../../utils/db-connection';
 import { DbUser } from '../../../types/database';
-import bcrypt from 'bcryptjs';
-import { sendWelcomeEmail } from '../../../utils/auth-helpers';
-import crypto from 'crypto';
-
-// Generate secure temporary password
-const generateTemporaryPassword = (): string => {
-  const uppercaseChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lowercaseChars = 'abcdefghijkmnopqrstuvwxyz';
-  const numberChars = '23456789';
-  const specialChars = '!@#$%^&*';
-
-  // Generate at least one of each type of character
-  const getRandomChar = (charset: string) => charset.charAt(Math.floor(Math.random() * charset.length));
-  
-  const password = [
-    getRandomChar(uppercaseChars),
-    getRandomChar(lowercaseChars),
-    getRandomChar(numberChars),
-    getRandomChar(specialChars),
-  ];
-
-  // Add 8 more random characters for a total length of 12
-  const allChars = uppercaseChars + lowercaseChars + numberChars + specialChars;
-  for (let i = 0; i < 8; i++) {
-    password.push(getRandomChar(allChars));
-  }
-
-  // Shuffle the array
-  for (let i = password.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [password[i], password[j]] = [password[j], password[i]];
-  }
-
-  return password.join('');
-};
 
 // Create a new user (admin only)
 export const createUser = async (req: Request, res: Response): Promise<void> => {
@@ -60,36 +25,20 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 
     // Generate a unique ID
-    const id = `user_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+    const id = `user_${Date.now()}`;
 
-    // Generate temporary password
-    const temporaryPassword = generateTemporaryPassword();
-    const hashedTempPassword = await bcrypt.hash(temporaryPassword, 12);
-    
-    // Set temporary password expiry (7 days)
-    const tempPasswordExpiry = new Date();
-    tempPasswordExpiry.setDate(tempPasswordExpiry.getDate() + 7);
+    // Set default values
+    const passwordExpiryDate = new Date();
+    passwordExpiryDate.setDate(passwordExpiryDate.getDate() + 90);
     
     // Convert roles array to JSON string
     const rolesJson = JSON.stringify(roles || []);
-    
-    // Generate avatar URL
-    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8b5cf6&color=fff`;
 
-    // Insert new user with temporary password
+    // Insert new user
     await query(
-      'INSERT INTO users (id, name, email, temporary_password, temp_password_expiry, role, roles, avatar, is_first_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, name, email, hashedTempPassword, tempPasswordExpiry.toISOString(), role, rolesJson, avatar, true, new Date().toISOString(), new Date().toISOString()]
+      'INSERT INTO users (id, name, email, role, roles, password_expiry_date, is_first_login, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, email, role, rolesJson, passwordExpiryDate.toISOString(), true, new Date().toISOString(), new Date().toISOString()]
     );
-
-    // Send welcome email with temporary password
-    try {
-      await sendWelcomeEmail(email, name, temporaryPassword);
-      console.log(`Welcome email sent successfully to ${email}`);
-    } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
-      // Don't fail user creation if email fails
-    }
 
     res.status(201).json({
       id,
@@ -98,8 +47,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       role,
       roles: roles || [],
       isFirstLogin: true,
-      temporaryPasswordExpiry: tempPasswordExpiry.toISOString(),
-      emailSent: true
+      passwordExpiryDate: passwordExpiryDate.toISOString()
     });
   } catch (error) {
     console.error('Create user error:', error);
