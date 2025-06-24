@@ -35,18 +35,16 @@ const App = () => (
               <Routes>
                 <Route path="/auth" element={<AuthPage />} />
                 <Route element={<ProtectedRoute />}>
-                  <Route element={<AppLayout />}>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/tasks" element={<TasksPage />} />
-                    <Route path="/tasks-to-review" element={<TasksToReviewPage />} />
-                    <Route path="/calendar" element={<CalendarPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/admin/users" element={<UserManagementPage />} />
-                    <Route path="/admin/tasks" element={<AdminTasksPage />} />
-                    <Route path="/admin/productivity" element={<ProductivityAnalyticsPage />} />
-                    <Route path="/admin/logs" element={<AdminLogsPage />} />
-                    <Route path="/system-settings" element={<SystemSettingsPage />} />
-                  </Route>
+                  <Route path="/" element={<AppLayout><Dashboard /></AppLayout>} />
+                  <Route path="/tasks" element={<AppLayout><TasksPage /></AppLayout>} />
+                  <Route path="/tasks-to-review" element={<AppLayout><TasksToReviewPage /></AppLayout>} />
+                  <Route path="/calendar" element={<AppLayout><CalendarPage /></AppLayout>} />
+                  <Route path="/settings" element={<AppLayout><SettingsPage /></AppLayout>} />
+                  <Route path="/admin/users" element={<AppLayout><UserManagementPage /></AppLayout>} />
+                  <Route path="/admin/tasks" element={<AppLayout><AdminTasksPage /></AppLayout>} />
+                  <Route path="/admin/productivity" element={<AppLayout><ProductivityAnalyticsPage /></AppLayout>} />
+                  <Route path="/admin/logs" element={<AppLayout><AdminLogsPage /></AppLayout>} />
+                  <Route path="/system-settings" element={<AppLayout><SystemSettingsPage /></AppLayout>} />
                 </Route>
               </Routes>
             </BrowserRouter>
