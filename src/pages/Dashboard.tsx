@@ -1,16 +1,16 @@
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { MakerDashboard } from '@/components/dashboard/MakerDashboard';
 import { CheckerDashboard } from '@/components/dashboard/CheckerDashboard';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { profile } = useSupabaseAuth();
 
-  if (!user) return null;
+  if (!profile) return null;
 
   // Render the appropriate dashboard based on user role
-  switch (user.role) {
+  switch (profile.role) {
     case 'admin':
       return <AdminDashboard />;
     case 'maker':
