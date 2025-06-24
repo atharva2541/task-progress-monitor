@@ -1,4 +1,5 @@
-import { useAuth } from '@/contexts/AuthContext';
+
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import {
   Sidebar,
   SidebarContent,
@@ -24,7 +25,7 @@ import {
 import { Link } from 'react-router-dom';
 
 export function AppSidebar() {
-  const { user } = useAuth();
+  const { profile } = useSupabaseAuth();
 
   // Define menu items based on user role
   const getMenuItems = () => {
@@ -52,9 +53,9 @@ export function AppSidebar() {
       ],
     };
 
-    if (!user) return commonItems;
+    if (!profile) return commonItems;
     
-    return [...commonItems, ...(roleSpecificItems[user.role] || [])];
+    return [...commonItems, ...(roleSpecificItems[profile.role] || [])];
   };
 
   const menuItems = getMenuItems();
@@ -87,7 +88,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         
-        {user?.role === 'admin' && (
+        {profile?.role === 'admin' && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
             <SidebarGroupContent>
