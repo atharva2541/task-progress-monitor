@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Notification, NotificationPreferences } from '@/types';
 import axios from 'axios';
-import { useAuth } from './AuthContext';
+import { useSupabaseAuth } from './SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
 
 interface NotificationContextType {
@@ -22,7 +22,7 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [loadingPreferences, setLoadingPreferences] = useState(false);

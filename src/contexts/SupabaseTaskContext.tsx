@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from './SupabaseAuthContext';
@@ -67,7 +66,6 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
         assignedTo: task.assigned_to,
         checker1: task.checker1,
         checker2: task.checker2,
-        createdBy: task.created_by,
         observationStatus: task.observation_status,
         isEscalated: task.is_escalated,
         escalationPriority: task.escalation_priority,
@@ -324,8 +322,7 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
     return tasks.filter(task => 
       task.assignedTo === userId || 
       task.checker1 === userId || 
-      task.checker2 === userId ||
-      task.createdBy === userId
+      task.checker2 === userId
     );
   };
 
