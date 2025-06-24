@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
@@ -21,14 +20,21 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
+import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { Plus, Search, Filter } from 'lucide-react';
+import { TaskFormValues } from '@/utils/TaskFormManager';
+import { TaskFrequency } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 const AdminTasksPage = () => {
-  const { tasks, isLoading } = useSupabaseTasks();
+  const { tasks, isLoading, createTask } = useSupabaseTasks();
   const { profile } = useSupabaseAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   // Only allow admins to access this page
   if (profile?.role !== 'admin') {
@@ -41,6 +47,44 @@ const AdminTasksPage = () => {
       </div>
     );
   }
+
+  const handleCreateTask = async (formData: TaskFormValues) => {
+    try {
+      const { error } = await createTask({
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        assignedTo: formData.assignedTo,
+        checker1: formData.checker1,
+        checker2: formData.checker2,
+        priority: formData.priority,
+        frequency: formData.frequency as TaskFrequency,
+        isRecurring: formData.isRecurring,
+        dueDate: formData.dueDate,
+        status: 'pending',
+        observationStatus: formData.observationStatus,
+        attachments: [],
+        comments: [],
+        isEscalated: false,
+        isTemplate: formData.isRecurring,
+      });
+      
+      if (error) throw error;
+      
+      setIsCreateDialogOpen(false);
+      toast({
+        title: "Success",
+        description: "Task created successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive",
+      });
+      console.error("Error creating task:", error);
+    }
+  };
 
   // Filter tasks based on search and filters
   const filteredTasks = tasks.filter(task => {
@@ -91,10 +135,18 @@ const AdminTasksPage = () => {
           <h2 className="text-3xl font-bold tracking-tight">Task Management</h2>
           <p className="text-muted-foreground">Manage all tasks in the system</p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus size={16} />
-          <span>Create Task</span>
-        </Button>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus size={16} />
+              <span>Create Task</span>
+            </Button>
+          </DialogTrigger>
+          <DialogHeader>
+            <DialogTitle>Create New Task</DialogTitle>
+          </DialogHeader>
+          <CreateTaskDialog onCreateTask={handleCreateTask} />
+        </Dialog>
       </div>
 
       {/* Filters */}
