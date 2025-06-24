@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -121,12 +122,23 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     // For testing purposes, we'll do a simple password check
     // In production, this should be handled by Supabase Auth properly
     if (email === 'atharva.kale@sbfc.com' && password === 'Admin123!') {
-      // Create a session-like object for testing
-      const mockUser = {
+      // Create a proper mock User object that matches Supabase's User type
+      const mockUser: User = {
         id: profileData.id,
+        aud: 'authenticated',
+        role: 'authenticated',
         email: profileData.email,
-        user_metadata: { name: profileData.name }
-      } as User;
+        email_confirmed_at: new Date().toISOString(),
+        phone: '',
+        confirmed_at: new Date().toISOString(),
+        last_sign_in_at: new Date().toISOString(),
+        app_metadata: {},
+        user_metadata: { name: profileData.name },
+        identities: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_anonymous: false
+      };
 
       // Simulate successful login
       setUser(mockUser);
