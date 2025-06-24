@@ -43,99 +43,90 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  console.log('SupabaseAuthProvider render - loading:', loading, 'user:', !!user, 'session:', !!session);
+
   useEffect(() => {
+    console.log('Auth initialization starting...');
     let mounted = true;
 
-    const initializeAuth = async () => {
+    const handleAuthStateChange = (event: string, session: Session | null) => {
+      console.log('Auth state change event:', event, 'session exists:', !!session, 'user exists:', !!session?.user);
+      
+      if (!mounted) {
+        console.log('Component unmounted, ignoring auth state change');
+        return;
+      }
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        console.log('User authenticated, fetching profile...');
+        // Fetch profile in background
+        setTimeout(async () => {
+          if (!mounted) return;
+          
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (profileData && !profileError && mounted) {
+              console.log('Profile loaded:', profileData);
+              setProfile(profileData);
+            } else {
+              console.log('Profile fetch failed or no profile found:', profileError);
+            }
+          } catch (err) {
+            console.log('Profile fetch error:', err);
+          }
+        }, 100);
+      } else {
+        console.log('No user, clearing profile');
+        setProfile(null);
+      }
+      
+      // Always set loading to false after processing auth state
+      if (mounted) {
+        console.log('Setting loading to false');
+        setLoading(false);
+      }
+    };
+
+    // Set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+
+    // Then get initial session
+    const getInitialSession = async () => {
       try {
-        console.log('Initializing auth...');
-        
-        // Get initial session
+        console.log('Getting initial session...');
         const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting initial session:', error);
-          if (mounted) {
+        } else {
+          console.log('Initial session retrieved:', !!initialSession);
+          // The auth state change handler will be called automatically
+          // But if no session exists, we need to set loading to false manually
+          if (!initialSession && mounted) {
+            console.log('No initial session, setting loading to false');
             setLoading(false);
           }
-          return;
-        }
-
-        console.log('Initial session:', initialSession ? 'Found' : 'None');
-        
-        if (mounted) {
-          setSession(initialSession);
-          setUser(initialSession?.user ?? null);
-          
-          // If we have a user, try to fetch their profile
-          if (initialSession?.user) {
-            try {
-              const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', initialSession.user.id)
-                .single();
-              
-              if (profileData && !profileError && mounted) {
-                setProfile(profileData);
-              }
-            } catch (profileErr) {
-              console.log('Profile fetch failed, continuing without profile:', profileErr);
-            }
-          }
-          
-          setLoading(false);
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        console.error('Session initialization error:', error);
         if (mounted) {
           setLoading(false);
         }
       }
     };
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email || 'no user');
-        
-        if (!mounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch profile in background, don't block the auth flow
-          setTimeout(async () => {
-            try {
-              const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-              
-              if (profileData && !profileError && mounted) {
-                setProfile(profileData);
-              }
-            } catch (err) {
-              console.log('Background profile fetch failed:', err);
-            }
-          }, 100);
-        } else {
-          setProfile(null);
-        }
-        
-        // Ensure loading is false after auth state changes
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    );
-
-    // Initialize auth
-    initializeAuth();
+    getInitialSession();
 
     return () => {
+      console.log('Auth context cleanup');
       mounted = false;
       subscription.unsubscribe();
     };
@@ -298,6 +289,8 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       return { error };
     }, 2);
   };
+
+  console.log('SupabaseAuthProvider providing context - loading:', loading, 'user:', !!user);
 
   return (
     <SupabaseAuthContext.Provider value={{
