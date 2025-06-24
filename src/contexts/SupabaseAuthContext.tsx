@@ -108,54 +108,11 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    // First check if user exists in profiles table
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (profileError || !profileData) {
-      return { error: { message: 'Invalid email or password' } };
-    }
-
-    // For testing purposes, we'll do a simple password check
-    // In production, this should be handled by Supabase Auth properly
-    if (email === 'atharva.kale@sbfc.com' && password === 'Admin123!') {
-      // Create a proper mock User object that matches Supabase's User type
-      const mockUser: User = {
-        id: profileData.id,
-        aud: 'authenticated',
-        role: 'authenticated',
-        email: profileData.email,
-        email_confirmed_at: new Date().toISOString(),
-        phone: '',
-        confirmed_at: new Date().toISOString(),
-        last_sign_in_at: new Date().toISOString(),
-        app_metadata: {},
-        user_metadata: { name: profileData.name },
-        identities: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_anonymous: false
-      };
-
-      // Simulate successful login
-      setUser(mockUser);
-      setProfile(profileData);
-      setSession({ 
-        user: mockUser, 
-        access_token: 'mock-token',
-        refresh_token: 'mock-refresh',
-        expires_in: 3600,
-        token_type: 'bearer',
-        expires_at: Date.now() + 3600000
-      } as Session);
-
-      return { error: null };
-    }
-
-    return { error: { message: 'Invalid email or password' } };
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { error };
   };
 
   const signOut = async () => {
