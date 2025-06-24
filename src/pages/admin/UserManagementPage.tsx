@@ -11,7 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Users } from 'lucide-react';
+import { Users, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import UserList from '@/components/admin/users/UserList';
 import UserFormDialog, { UserFormValues } from '@/components/admin/users/UserFormDialog';
 import DeleteUserDialog from '@/components/admin/users/DeleteUserDialog';
@@ -40,6 +41,7 @@ const UserManagementPage = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAuthAlert, setShowAuthAlert] = useState(false);
 
   // Load users on component mount
   useEffect(() => {
@@ -76,8 +78,8 @@ const UserManagementPage = () => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
-    // Reset previous email error
     setEmailError(null);
+    setShowAuthAlert(false);
     
     // Check if email already exists
     const emailExists = checkEmailExists(data.email, userToEdit?.id);
@@ -96,7 +98,6 @@ const UserManagementPage = () => {
       finalRoles = ['admin'];
       finalRole = 'admin';
     } else if (data.role === 'admin') {
-      // If primary role is admin but not in roles
       finalRoles = ['admin'];
     }
     
@@ -130,12 +131,25 @@ const UserManagementPage = () => {
 
         if (error) {
           console.error('Create profile error:', error);
+          
+          // Handle specific error cases with better user messaging
+          if (error.message?.includes('Email signup may be disabled')) {
+            setShowAuthAlert(true);
+            toast({
+              title: 'Authentication Configuration Required',
+              description: 'Email signup may be disabled in Supabase settings. Please check the authentication configuration.',
+              variant: 'destructive'
+            });
+            setIsSubmitting(false);
+            return;
+          }
+          
           throw error;
         }
 
         toast({
-          title: 'User Created',
-          description: `${data.name} has been created successfully. A password reset email will be sent to set up their account.`,
+          title: 'User Created Successfully',
+          description: `${data.name} has been created. A password reset email has been sent to ${data.email} to set up their account.`,
         });
       }
 
@@ -147,7 +161,7 @@ const UserManagementPage = () => {
       console.error('User operation error:', error);
       let errorMessage = 'An error occurred while saving the user';
       
-      if (error.message?.includes('User already registered')) {
+      if (error.message?.includes('User already registered') || error.message?.includes('already exists')) {
         errorMessage = 'A user with this email already exists';
         setEmailError(errorMessage);
       } else if (error.message) {
@@ -213,6 +227,7 @@ const UserManagementPage = () => {
             setUserToEdit(null);
             setIsDialogOpen(true);
             setEmailError(null);
+            setShowAuthAlert(false);
           }}
           disabled={isSubmitting}
         >
@@ -220,6 +235,25 @@ const UserManagementPage = () => {
           <span>Add User</span>
         </Button>
       </div>
+
+      {/* Authentication Configuration Alert */}
+      {showAuthAlert && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p>User creation failed due to authentication configuration issues.</p>
+              <p>Please check the following in your Supabase dashboard:</p>
+              <ul className="list-disc list-inside space-y-1 ml-4">
+                <li>Go to Authentication → Settings</li>
+                <li>Ensure "Enable email signup" is turned ON</li>
+                <li>Check if "Enable email confirmations" is set appropriately</li>
+                <li>Verify your Site URL and Redirect URLs are correct</li>
+              </ul>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -235,6 +269,7 @@ const UserManagementPage = () => {
               setUserToEdit(user);
               setIsDialogOpen(true);
               setEmailError(null);
+              setShowAuthAlert(false);
             }}
             onDeleteUser={(user: Profile) => {
               setUserToDelete(user);

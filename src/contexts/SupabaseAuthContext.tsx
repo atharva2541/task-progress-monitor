@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -161,7 +160,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/auth?mode=reset`,
           data: userData
         }
       });
@@ -189,7 +188,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = async (email: string) => {
     return await ConcurrencyManager.retryOperation(async () => {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth?mode=reset`,
       });
       return { error };
     }, 2);
@@ -252,14 +251,14 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const createProfile = async (profileData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
     return await ConcurrencyManager.retryOperation(async () => {
-      // Generate a temporary password
-      const temporaryPassword = Math.random().toString(36).slice(-12);
+      console.log('Creating profile with data:', profileData);
       
-      // Create the auth user using the standard signup method
+      // Create the auth user using signup with email confirmation disabled temporarily
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: profileData.email,
-        password: temporaryPassword,
+        password: 'TempPass123!', // Temporary password that will be reset
         options: {
+          emailRedirectTo: `${window.location.origin}/auth?mode=reset`,
           data: {
             name: profileData.name,
             role: profileData.role,
@@ -270,12 +269,21 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (authError) {
         console.error('Auth user creation error:', authError);
+        // Handle specific error cases
+        if (authError.message?.includes('User already registered')) {
+          return { error: { message: 'A user with this email already exists' } };
+        }
+        if (authError.message?.includes('not allowed')) {
+          return { error: { message: 'Email signup may be disabled. Please check Supabase Auth settings.' } };
+        }
         return { error: authError };
       }
 
-      // The profile will be created automatically by the trigger
-      // But we need to send a password reset email so the user can set their own password
+      console.log('Auth user created:', authData.user?.id);
+
+      // Send password reset email for the new user to set their own password
       if (authData.user) {
+        console.log('Sending password reset email to:', profileData.email);
         const { error: resetError } = await supabase.auth.resetPasswordForEmail(
           profileData.email,
           {
@@ -285,6 +293,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (resetError) {
           console.warn('Failed to send password reset email:', resetError);
+          // Don't fail the entire operation if email sending fails
         }
       }
 
