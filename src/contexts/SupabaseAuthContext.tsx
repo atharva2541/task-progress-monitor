@@ -20,6 +20,7 @@ interface Profile {
 interface SupabaseAuthContextType {
   user: User | null;
   profile: Profile | null;
+  profiles: Profile[];
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any }>;
@@ -40,10 +41,17 @@ const SupabaseAuthContext = createContext<SupabaseAuthContextType | undefined>(u
 export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   console.log('SupabaseAuthProvider render - loading:', loading, 'user:', !!user, 'session:', !!session);
+
+  // Fetch all profiles for admin functions
+  const fetchProfiles = async () => {
+    const profilesData = await getAllProfiles();
+    setProfiles(profilesData);
+  };
 
   useEffect(() => {
     console.log('Auth initialization starting...');
@@ -76,6 +84,11 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
             if (profileData && !profileError && mounted) {
               console.log('Profile loaded:', profileData);
               setProfile(profileData);
+              
+              // If user is admin, fetch all profiles
+              if (profileData.role === 'admin') {
+                fetchProfiles();
+              }
             } else {
               console.log('Profile fetch failed or no profile found:', profileError);
             }
@@ -86,6 +99,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         console.log('No user, clearing profile');
         setProfile(null);
+        setProfiles([]);
       }
       
       // Always set loading to false after processing auth state
@@ -141,6 +155,10 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       if (payload.new && payload.new.id === user.id) {
         setProfile(payload.new);
       }
+      // Refresh profiles list if admin
+      if (profile?.role === 'admin') {
+        fetchProfiles();
+      }
     };
 
     const channel = RealtimeManager.subscribeToTable(
@@ -152,7 +170,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       RealtimeManager.unsubscribeFromTable('profiles', { column: 'id', value: user.id });
     };
-  }, [user]);
+  }, [user, profile]);
 
   const signUp = async (email: string, password: string, userData?: any) => {
     return await ConcurrencyManager.retryOperation(async () => {
@@ -337,6 +355,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     <SupabaseAuthContext.Provider value={{
       user,
       profile,
+      profiles,
       session,
       loading,
       signUp,
