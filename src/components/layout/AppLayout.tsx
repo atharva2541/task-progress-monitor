@@ -1,6 +1,6 @@
 
 import { ReactNode } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { Sidebar, SidebarContent, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { TopNavigation } from './TopNavigation';
@@ -10,7 +10,7 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
 
   if (!user) {
     return <>{children}</>; // Return content without layout for unauthenticated users

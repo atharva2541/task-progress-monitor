@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
-import { useTask } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from 'react';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardSummaryCards } from './DashboardSummaryCards';
 import { TaskStatusChart } from './TaskStatusChart';
@@ -10,10 +10,16 @@ import { RecentTasksList } from './RecentTasksList';
 import { TeamPerformanceChart } from './TeamPerformanceChart';
 
 export function AdminDashboard() {
-  const { tasks } = useTask();
-  const { users } = useAuth();
+  const { tasks } = useSupabaseTasks();
+  const { getAllProfiles } = useSupabaseAuth();
   
   const [selectedTab, setSelectedTab] = useState('overview');
+  const [profiles, setProfiles] = useState<any[]>([]);
+  
+  // Load profiles for user count
+  React.useEffect(() => {
+    getAllProfiles().then(setProfiles);
+  }, [getAllProfiles]);
   
   // Calculate task statistics
   const totalTasks = tasks.length;
@@ -60,7 +66,7 @@ export function AdminDashboard() {
 
       <DashboardSummaryCards 
         totalTasks={totalTasks}
-        usersLength={users.length}
+        usersLength={profiles.length}
         approvedTasks={approvedTasks}
         totalTasks2={totalTasks}
       />
