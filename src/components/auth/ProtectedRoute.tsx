@@ -11,6 +11,8 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useSupabaseAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute state:', { loading, hasUser: !!user, path: location.pathname });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -23,9 +25,11 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   if (!user) {
+    console.log('No user, redirecting to auth');
     return <Navigate to="/auth" replace state={{ from: location }} />;
   }
 
+  console.log('User authenticated, rendering protected content');
   return children ? <>{children}</> : <Outlet />;
 };
 

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -45,86 +44,101 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener with better error handling
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        console.log('Initializing auth...');
+        
+        // Get initial session
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting initial session:', error);
+          if (mounted) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log('Initial session:', initialSession ? 'Found' : 'None');
+        
+        if (mounted) {
+          setSession(initialSession);
+          setUser(initialSession?.user ?? null);
+          
+          // If we have a user, try to fetch their profile
+          if (initialSession?.user) {
+            try {
+              const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', initialSession.user.id)
+                .single();
+              
+              if (profileData && !profileError && mounted) {
+                setProfile(profileData);
+              }
+            } catch (profileErr) {
+              console.log('Profile fetch failed, continuing without profile:', profileErr);
+            }
+          }
+          
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+        console.log('Auth state change:', event, session?.user?.email || 'no user');
         
-        try {
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user) {
-            // Retry profile fetch with concurrency handling
-            await ConcurrencyManager.retryOperation(async () => {
-              const { data: profileData, error } = await supabase
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch profile in background, don't block the auth flow
+          setTimeout(async () => {
+            try {
+              const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', session.user.id)
                 .single();
               
-              if (profileData && !error) {
+              if (profileData && !profileError && mounted) {
                 setProfile(profileData);
-              } else if (error) {
-                console.error('Profile fetch error:', error);
-                toast({
-                  title: "Profile Loading Error",
-                  description: "Unable to load user profile. Please refresh the page.",
-                  variant: "destructive"
-                });
               }
-            }, 3);
-          } else {
-            setProfile(null);
-          }
-        } catch (error: any) {
-          console.error('Auth state change error:', error);
-          if (!ConcurrencyManager.isOptimisticLockError(error)) {
-            toast({
-              title: "Authentication Error",
-              description: "There was an issue with authentication. Please try again.",
-              variant: "destructive"
-            });
-          }
-        } finally {
+            } catch (err) {
+              console.log('Background profile fetch failed:', err);
+            }
+          }, 100);
+        } else {
+          setProfile(null);
+        }
+        
+        // Ensure loading is false after auth state changes
+        if (mounted) {
           setLoading(false);
         }
       }
     );
 
-    // Get initial session with retry logic
-    const initializeAuth = async () => {
-      try {
-        await ConcurrencyManager.retryOperation(async () => {
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) throw error;
-          
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          if (session?.user) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (profileData && !profileError) {
-              setProfile(profileData);
-            }
-          }
-        }, 3);
-      } catch (error: any) {
-        console.error('Initial auth error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+    // Initialize auth
     initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Real-time subscription for profile updates
