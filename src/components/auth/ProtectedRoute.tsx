@@ -1,7 +1,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children?: ReactNode;

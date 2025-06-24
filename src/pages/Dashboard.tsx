@@ -1,5 +1,5 @@
 
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { MakerDashboard } from '@/components/dashboard/MakerDashboard';
 import { CheckerDashboard } from '@/components/dashboard/CheckerDashboard';

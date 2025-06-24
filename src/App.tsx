@@ -1,91 +1,243 @@
 
-import { Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./contexts/SupabaseAuthContext";
-import { TaskProvider } from "./contexts/TaskContext";
-import { NotificationProvider } from "./contexts/NotificationContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { AdminLogProvider } from "./contexts/AdminLogContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 
-const Index = lazy(() => import('./pages/Index'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const TaskList = lazy(() => import('./pages/TaskList'));
-const TaskDetail = lazy(() => import('./pages/TaskDetail'));
-const MyTasksPage = lazy(() => import('./pages/tasks/MyTasksPage'));
-const TasksToReviewPage = lazy(() => import('./pages/tasks/TasksToReviewPage'));
-const TaskHistoryPage = lazy(() => import('./pages/TaskHistoryPage'));
-const CalendarPage = lazy(() => import('./pages/CalendarPage'));
-const AdminCalendarPage = lazy(() => import('./pages/calendar/AdminCalendarPage'));
-const MakerCalendarPage = lazy(() => import('./pages/calendar/MakerCalendarPage'));
-const Checker1CalendarPage = lazy(() => import('./pages/calendar/Checker1CalendarPage'));
-const Checker2CalendarPage = lazy(() => import('./pages/calendar/Checker2CalendarPage'));
-const EscalationsPage = lazy(() => import('./pages/escalations/EscalationsPage'));
-const TeamDashboardPage = lazy(() => import('./pages/dashboard/TeamDashboardPage'));
-const UserManagementPage = lazy(() => import('./pages/admin/UserManagementPage'));
-const AdminTasksPage = lazy(() => import('./pages/admin/AdminTasksPage'));
-const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'));
-const SystemSettingsPage = lazy(() => import('./pages/admin/SystemSettingsPage'));
-const AdminLogsPage = lazy(() => import('./pages/admin/AdminLogsPage'));
-const ProductivityAnalyticsPage = lazy(() => import('./pages/admin/ProductivityAnalyticsPage'));
-const UserSettingsPage = lazy(() => import('./pages/UserSettingsPage'));
-const Login = lazy(() => import('./pages/Login'));
-const NotFound = lazy(() => import('./pages/NotFound'));
+import { AuthProvider } from "@/contexts/AuthContext";
+import { TaskProvider } from "@/contexts/TaskContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import { AppLayout } from "@/components/layout/AppLayout";
+import Dashboard from "@/pages/Dashboard";
+import TaskList from "@/pages/TaskList";
+import TaskDetail from "@/pages/TaskDetail";
+import TaskHistoryPage from "@/pages/TaskHistoryPage"; 
+import AdminTasksPage from "@/pages/admin/AdminTasksPage";
+import UserManagementPage from "@/pages/admin/UserManagementPage";
+import SettingsPage from "@/pages/admin/SettingsPage";
+import SystemSettingsPage from "@/pages/admin/SystemSettingsPage";
+import ProductivityAnalyticsPage from "@/pages/admin/ProductivityAnalyticsPage";
+import CalendarPage from "@/pages/CalendarPage";
+import Login from "@/pages/Login";
+import Index from "@/pages/Index";
+import NotFound from "./pages/NotFound";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { ThemeProvider } from './contexts/ThemeContext';
+import UserSettingsPage from './pages/UserSettingsPage';
+import MyTasksPage from './pages/tasks/MyTasksPage';
+import TasksToReviewPage from './pages/tasks/TasksToReviewPage';
+import TeamDashboardPage from './pages/dashboard/TeamDashboardPage';
+import EscalationsPage from './pages/escalations/EscalationsPage';
+import AdminLogsPage from './pages/admin/AdminLogsPage';
+import { AdminLogProvider } from './contexts/AdminLogContext';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      retryDelay: 500,
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+function App() {
+  return (
     <ThemeProvider>
-      <TooltipProvider>
-        <AuthProvider>
-          <NotificationProvider>
-            <AdminLogProvider>
-              <TaskProvider>
-                <BrowserRouter>
-                  <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-900">
-                    <Suspense fallback={<div className="flex items-center justify-center h-screen text-white">Loading...</div>}>
-                      <Routes>
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                        <Route path="/tasks" element={<ProtectedRoute><TaskList /></ProtectedRoute>} />
-                        <Route path="/tasks/:id" element={<ProtectedRoute><TaskDetail /></ProtectedRoute>} />
-                        <Route path="/tasks/my-tasks" element={<ProtectedRoute><MyTasksPage /></ProtectedRoute>} />
-                        <Route path="/tasks/review" element={<ProtectedRoute><TasksToReviewPage /></ProtectedRoute>} />
-                        <Route path="/tasks/history" element={<ProtectedRoute><TaskHistoryPage /></ProtectedRoute>} />
-                        <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
-                        <Route path="/calendar/admin" element={<ProtectedRoute><AdminCalendarPage /></ProtectedRoute>} />
-                        <Route path="/calendar/maker" element={<ProtectedRoute><MakerCalendarPage /></ProtectedRoute>} />
-                        <Route path="/calendar/checker1" element={<ProtectedRoute><Checker1CalendarPage /></ProtectedRoute>} />
-                        <Route path="/calendar/checker2" element={<ProtectedRoute><Checker2CalendarPage /></ProtectedRoute>} />
-                        <Route path="/escalations" element={<ProtectedRoute><EscalationsPage /></ProtectedRoute>} />
-                        <Route path="/dashboard/team" element={<ProtectedRoute><TeamDashboardPage /></ProtectedRoute>} />
-                        <Route path="/admin/users" element={<ProtectedRoute><UserManagementPage /></ProtectedRoute>} />
-                        <Route path="/admin/tasks" element={<ProtectedRoute><AdminTasksPage /></ProtectedRoute>} />
-                        <Route path="/admin/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-                        <Route path="/admin/system-settings" element={<ProtectedRoute><SystemSettingsPage /></ProtectedRoute>} />
-                        <Route path="/admin/logs" element={<ProtectedRoute><AdminLogsPage /></ProtectedRoute>} />
-                        <Route path="/admin/analytics" element={<ProtectedRoute><ProductivityAnalyticsPage /></ProtectedRoute>} />
-                        <Route path="/settings" element={<ProtectedRoute><UserSettingsPage /></ProtectedRoute>} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </Suspense>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <NotificationProvider>
+                <TaskProvider>
+                  <AdminLogProvider>
                     <Toaster />
                     <Sonner />
-                  </div>
-                </BrowserRouter>
-              </TaskProvider>
-            </AdminLogProvider>
-          </NotificationProvider>
-        </AuthProvider>
-      </TooltipProvider>
+                    <Routes>
+                      {/* Public routes */}
+                      <Route path="/login" element={<Login />} />
+                      
+                      {/* Root route that redirects based on auth status */}
+                      <Route path="/" element={
+                        <ProtectedRoute>
+                          <AppLayout>
+                            <Dashboard />
+                          </AppLayout>
+                        </ProtectedRoute>
+                      } />
+                      
+                      {/* Protected routes */}
+                      <Route
+                        path="/tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskList />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/tasks/:taskId"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskDetail />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      {/* New route for task history */}
+                      <Route
+                        path="/tasks/:taskId/history"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TaskHistoryPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/my-tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <MyTasksPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/tasks-to-review"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TasksToReviewPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/team-dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <TeamDashboardPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/escalations"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <EscalationsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/tasks"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <AdminTasksPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/users"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <UserManagementPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/productivity"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <ProductivityAnalyticsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/calendar"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <CalendarPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/admin/logs"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <AdminLogsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      {/* Settings routes */}
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <SettingsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      <Route
+                        path="/system-settings"
+                        element={
+                          <ProtectedRoute>
+                            <AppLayout>
+                              <SystemSettingsPage />
+                            </AppLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      
+                      {/* Catch-all route */}
+                      <Route path="*" element={<NotFound />} />
+                      
+                      {/* User settings route */}
+                      <Route path="/user-settings" element={<ProtectedRoute><AppLayout><UserSettingsPage /></AppLayout></ProtectedRoute>} />
+                    </Routes>
+                  </AdminLogProvider>
+                </TaskProvider>
+              </NotificationProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
     </ThemeProvider>
-  </QueryClientProvider>
-);
+  );
+}
 
 export default App;

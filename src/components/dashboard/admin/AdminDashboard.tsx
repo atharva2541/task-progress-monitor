@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useTask } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DashboardSummaryCards } from './DashboardSummaryCards';
 import { TaskStatusChart } from './TaskStatusChart';
@@ -11,7 +11,7 @@ import { TeamPerformanceChart } from './TeamPerformanceChart';
 
 export function AdminDashboard() {
   const { tasks } = useTask();
-  const { user } = useAuth();
+  const { users } = useAuth();
   
   const [selectedTab, setSelectedTab] = useState('overview');
   
@@ -51,9 +51,6 @@ export function AdminDashboard() {
     { name: 'Team D', completed: 18, inProgress: 6, rejected: 0 }
   ];
 
-  // Create a mock users array since SupabaseAuthContext doesn't have users array
-  const mockUsersCount = 4; // This should ideally come from a proper user management context
-
   return (
     <div className="space-y-6">
       <div>
@@ -63,7 +60,7 @@ export function AdminDashboard() {
 
       <DashboardSummaryCards 
         totalTasks={totalTasks}
-        usersLength={mockUsersCount}
+        usersLength={users.length}
         approvedTasks={approvedTasks}
         totalTasks2={totalTasks}
       />
