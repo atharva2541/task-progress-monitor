@@ -10,7 +10,6 @@ export interface UserProfile {
   name: string;
   email: string;
   role: 'admin' | 'maker' | 'checker1' | 'checker2';
-  department?: string;
   isFirstLogin: boolean;
   passwordExpiryDate?: string;
   createdAt: string;
@@ -102,7 +101,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           name: jsonToString(data.name),
           email: jsonToString(data.email),
           role: data.role as 'admin' | 'maker' | 'checker1' | 'checker2',
-          department: data.department ? jsonToString(data.department) : undefined,
           isFirstLogin: Boolean(data.is_first_login),
           passwordExpiryDate: data.password_expiry_date ? jsonToString(data.password_expiry_date) : undefined,
           createdAt: jsonToString(data.created_at),
@@ -219,7 +217,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           data: {
             name: userData.name || '',
             role: userData.role || 'maker',
-            department: userData.department || '',
           }
         }
       });
@@ -340,7 +337,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('profiles')
         .update({
           name: updates.name,
-          department: updates.department,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
