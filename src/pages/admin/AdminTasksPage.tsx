@@ -142,12 +142,7 @@ const AdminTasksPage = () => {
               <span>Create Task</span>
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Task</DialogTitle>
-            </DialogHeader>
-            <CreateTaskDialog onCreateTask={handleCreateTask} />
-          </DialogContent>
+          <CreateTaskDialog onCreateTask={handleCreateTask} />
         </Dialog>
       </div>
 
