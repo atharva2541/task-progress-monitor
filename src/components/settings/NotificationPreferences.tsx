@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { TimePickerInput } from "@/components/ui/time-picker-input";
 import { Separator } from "@/components/ui/separator";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import axios from 'axios';
+import { supabase } from '@/integrations/supabase/client';
 import type { NotificationPreferences as NotificationPreferencesType } from '@/types';
 
 const formSchema = z.object({
@@ -28,7 +28,7 @@ const formSchema = z.object({
 });
 
 export function NotificationPreferences() {
-  const { user } = useAuth();
+  const { user } = useSupabaseAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -52,19 +52,29 @@ export function NotificationPreferences() {
       
       try {
         setIsLoading(true);
-        const response = await axios.get<NotificationPreferencesType>('/api/notifications/preferences');
+        const { data, error } = await supabase
+          .from('user_notification_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
         
-        form.reset({
-          emailEnabled: response.data.emailEnabled,
-          inAppEnabled: response.data.inAppEnabled,
-          taskAssignment: response.data.taskAssignment,
-          taskUpdates: response.data.taskUpdates,
-          dueDateReminders: response.data.dueDateReminders,
-          systemNotifications: response.data.systemNotifications,
-          digestFrequency: response.data.digestFrequency,
-          quietHoursStart: response.data.quietHoursStart || null,
-          quietHoursEnd: response.data.quietHoursEnd || null,
-        });
+        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+          throw error;
+        }
+
+        if (data) {
+          form.reset({
+            emailEnabled: data.email_enabled,
+            inAppEnabled: data.in_app_enabled,
+            taskAssignment: data.task_assignment,
+            taskUpdates: data.task_updates,
+            dueDateReminders: data.due_date_reminders,
+            systemNotifications: data.system_notifications,
+            digestFrequency: data.digest_frequency,
+            quietHoursStart: data.quiet_hours_start || null,
+            quietHoursEnd: data.quiet_hours_end || null,
+          });
+        }
       } catch (error) {
         console.error('Failed to fetch notification preferences:', error);
         toast({
@@ -81,9 +91,20 @@ export function NotificationPreferences() {
   }, [user, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!user) return;
+
     try {
       setIsLoading(true);
-      await axios.put('/api/notifications/preferences', {
+      
+      // Check if preferences exist
+      const { data: existingData } = await supabase
+        .from('user_notification_preferences')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const preferenceData = {
+        user_id: user.id,
         email_enabled: values.emailEnabled,
         in_app_enabled: values.inAppEnabled,
         task_assignment: values.taskAssignment,
@@ -93,7 +114,25 @@ export function NotificationPreferences() {
         digest_frequency: values.digestFrequency,
         quiet_hours_start: values.quietHoursStart,
         quiet_hours_end: values.quietHoursEnd,
-      });
+      };
+
+      let error;
+      if (existingData) {
+        // Update existing preferences
+        const { error: updateError } = await supabase
+          .from('user_notification_preferences')
+          .update(preferenceData)
+          .eq('user_id', user.id);
+        error = updateError;
+      } else {
+        // Create new preferences
+        const { error: insertError } = await supabase
+          .from('user_notification_preferences')
+          .insert(preferenceData);
+        error = insertError;
+      }
+
+      if (error) throw error;
 
       toast({
         title: 'Preferences Updated',

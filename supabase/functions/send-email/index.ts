@@ -27,8 +27,14 @@ serve(async (req) => {
     const SES_FROM_EMAIL = Deno.env.get('SES_FROM_EMAIL');
 
     if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !SES_FROM_EMAIL) {
-      throw new Error('Missing AWS SES configuration');
+      console.error('Missing AWS SES configuration');
+      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    console.log(`Sending email to ${to} with subject: ${subject}`);
 
     // Create AWS SES request
     const sesEndpoint = `https://email.${AWS_REGION}.amazonaws.com`;
@@ -93,6 +99,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`SES Error: ${response.status} ${errorText}`);
       throw new Error(`SES Error: ${response.status} ${errorText}`);
     }
 
