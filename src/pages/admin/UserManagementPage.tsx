@@ -39,6 +39,7 @@ const UserManagementPage = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Load users on component mount
   useEffect(() => {
@@ -72,6 +73,9 @@ const UserManagementPage = () => {
 
   // Handle form submission
   const handleSubmit = async (data: UserFormValues) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     // Reset previous email error
     setEmailError(null);
     
@@ -80,6 +84,7 @@ const UserManagementPage = () => {
     
     if (emailExists) {
       setEmailError(`A user with the email ${data.email} already exists`);
+      setIsSubmitting(false);
       return;
     }
     
@@ -123,11 +128,14 @@ const UserManagementPage = () => {
           is_first_login: true
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Create profile error:', error);
+          throw error;
+        }
 
         toast({
           title: 'User Created',
-          description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
+          description: `${data.name} has been created successfully. A password reset email will be sent to set up their account.`,
         });
       }
 
@@ -136,11 +144,23 @@ const UserManagementPage = () => {
       setUsers(profiles);
       setIsDialogOpen(false);
     } catch (error: any) {
+      console.error('User operation error:', error);
+      let errorMessage = 'An error occurred while saving the user';
+      
+      if (error.message?.includes('User already registered')) {
+        errorMessage = 'A user with this email already exists';
+        setEmailError(errorMessage);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: 'Error',
-        description: error.message || 'An error occurred while saving the user',
+        description: errorMessage,
         variant: 'destructive'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -194,6 +214,7 @@ const UserManagementPage = () => {
             setIsDialogOpen(true);
             setEmailError(null);
           }}
+          disabled={isSubmitting}
         >
           <Users size={16} />
           <span>Add User</span>

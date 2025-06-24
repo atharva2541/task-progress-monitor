@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -251,23 +252,42 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const createProfile = async (profileData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
     return await ConcurrencyManager.retryOperation(async () => {
-      // First create the auth user
-      const temporaryPassword = ConcurrencyManager.generateVersion().substring(0, 12);
+      // Generate a temporary password
+      const temporaryPassword = Math.random().toString(36).slice(-12);
       
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Create the auth user using the standard signup method
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: profileData.email,
         password: temporaryPassword,
-        email_confirm: true,
-        user_metadata: {
-          name: profileData.name,
-          role: profileData.role,
-          roles: profileData.roles
+        options: {
+          data: {
+            name: profileData.name,
+            role: profileData.role,
+            roles: profileData.roles
+          }
         }
       });
 
-      if (authError) return { error: authError };
+      if (authError) {
+        console.error('Auth user creation error:', authError);
+        return { error: authError };
+      }
 
-      // Profile will be created automatically by the trigger
+      // The profile will be created automatically by the trigger
+      // But we need to send a password reset email so the user can set their own password
+      if (authData.user) {
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+          profileData.email,
+          {
+            redirectTo: `${window.location.origin}/auth?mode=reset`
+          }
+        );
+        
+        if (resetError) {
+          console.warn('Failed to send password reset email:', resetError);
+        }
+      }
+
       return { error: null };
     }, 2);
   };
@@ -285,8 +305,20 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteProfile = async (id: string) => {
     return await ConcurrencyManager.retryOperation(async () => {
-      const { error } = await supabase.auth.admin.deleteUser(id);
-      return { error };
+      // First delete the profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (profileError) {
+        return { error: profileError };
+      }
+
+      // Note: We can't delete the auth user from client side with anon key
+      // This would need to be handled server-side with service role key
+      // For now, we'll just delete the profile
+      return { error: null };
     }, 2);
   };
 
