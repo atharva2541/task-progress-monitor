@@ -5,7 +5,7 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 
 const Checker2CalendarPage = () => {
-  const { tasks, loading: isCalendarLoading } = useSupabaseTasks();
+  const { tasks, isLoading: isCalendarLoading } = useSupabaseTasks();
   const { profile: user } = useSupabaseAuth();
   
   if (!user) return null;

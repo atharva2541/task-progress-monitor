@@ -16,7 +16,7 @@ import { Shield } from 'lucide-react';
 
 const AdminCalendarPage = () => {
   const { profile: user, getAllProfiles } = useSupabaseAuth();
-  const { tasks, loading: isCalendarLoading } = useSupabaseTasks();
+  const { tasks, isLoading: isCalendarLoading } = useSupabaseTasks();
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [profiles, setProfiles] = useState<any[]>([]);
   
@@ -45,7 +45,7 @@ const AdminCalendarPage = () => {
   const filteredTasks = tasks.filter(task => {
     // Filter by selected user if not "all"
     if (selectedUserId !== 'all' && 
-        task.assigned_to !== selectedUserId && 
+        task.assignedTo !== selectedUserId && 
         task.checker1 !== selectedUserId && 
         task.checker2 !== selectedUserId) {
       return false;

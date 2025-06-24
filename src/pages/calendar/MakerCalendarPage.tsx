@@ -5,13 +5,13 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 
 const MakerCalendarPage = () => {
-  const { tasks, loading: isCalendarLoading } = useSupabaseTasks();
+  const { tasks, isLoading: isCalendarLoading } = useSupabaseTasks();
   const { profile: user } = useSupabaseAuth();
   
   if (!user) return null;
   
   // Get tasks assigned to this maker - ensuring we only get tasks where the user is the maker
-  const makerTasks = tasks.filter(task => task.assigned_to === user.id);
+  const makerTasks = tasks.filter(task => task.assignedTo === user.id);
   
   return (
     <TaskCalendar

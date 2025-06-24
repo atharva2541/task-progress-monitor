@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const CalendarPage = () => {
   const { profile: user } = useSupabaseAuth();
-  const { loading: isCalendarLoading } = useSupabaseTasks();
+  const { isLoading: isCalendarLoading } = useSupabaseTasks();
 
   if (!user) return null;
 
