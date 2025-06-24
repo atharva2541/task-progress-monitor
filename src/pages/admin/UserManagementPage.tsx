@@ -210,12 +210,12 @@ const UserManagementPage = () => {
         <CardContent>
           <UserList
             users={users}
-            onEditUser={(user) => {
+            onEditUser={(user: Profile) => {
               setUserToEdit(user);
               setIsDialogOpen(true);
               setEmailError(null);
             }}
-            onDeleteUser={(user) => {
+            onDeleteUser={(user: Profile) => {
               setUserToDelete(user);
               setIsDeleteDialogOpen(true);
             }}
