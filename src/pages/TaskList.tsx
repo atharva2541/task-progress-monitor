@@ -7,24 +7,24 @@ import { EditTaskDialog } from '@/components/tasks/EditTaskDialog';
 import { TaskTable } from '@/components/tasks/review/TaskTable';
 import { Task, TaskFrequency } from '@/types';
 import { TaskFormValues } from '@/utils/TaskFormManager';
-import { useTask } from '@/contexts/TaskContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 
 const TaskList: React.FC = () => {
-  const { tasks, addTask, updateTask, deleteTask } = useTask();
+  const { tasks, createTask, updateTask, deleteTask } = useSupabaseTasks();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { profile: user } = useSupabaseAuth();
 
   const isAdmin = user?.role === 'admin';
 
-  const handleCreateTask = (formData: TaskFormValues) => {
+  const handleCreateTask = async (formData: TaskFormValues) => {
     try {
-      // Only admin can create tasks (this already exists)
-      addTask({
+      // Only admin can create tasks
+      const { error } = await createTask({
         name: formData.name,
         description: formData.description,
         category: formData.category,
@@ -32,16 +32,18 @@ const TaskList: React.FC = () => {
         checker1: formData.checker1,
         checker2: formData.checker2,
         priority: formData.priority,
-        frequency: formData.frequency as TaskFrequency, // Cast to proper TaskFrequency
+        frequency: formData.frequency as TaskFrequency,
         isRecurring: formData.isRecurring,
         dueDate: formData.dueDate,
-        status: 'pending', // Set the default status to 'pending'
-        observationStatus: formData.observationStatus, // Ensure observationStatus is set
-        attachments: [], // Initialize empty attachments array
-        comments: [], // Initialize empty comments array
-        isEscalated: false, // Added required field
-        isTemplate: formData.isRecurring, // Added required field
+        status: 'pending',
+        observationStatus: formData.observationStatus,
+        attachments: [],
+        comments: [],
+        isEscalated: false,
+        isTemplate: formData.isRecurring,
       });
+      
+      if (error) throw error;
       
       setIsCreateDialogOpen(false);
       toast({
@@ -58,16 +60,18 @@ const TaskList: React.FC = () => {
     }
   };
 
-  const handleEditTask = (formData: TaskFormValues) => {
-    if (!selectedTask || !isAdmin) return; // Ensure only admin can edit
+  const handleEditTask = async (formData: TaskFormValues) => {
+    if (!selectedTask || !isAdmin) return;
     try {
-      // Cast frequency to proper TaskFrequency type
       const updatedTask = {
         ...formData,
         frequency: formData.frequency as TaskFrequency
       };
       
-      updateTask(selectedTask.id, updatedTask);
+      const { error } = await updateTask(selectedTask.id, updatedTask);
+      
+      if (error) throw error;
+      
       setIsEditDialogOpen(false);
       setSelectedTask(null);
       toast({
@@ -84,10 +88,13 @@ const TaskList: React.FC = () => {
     }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    if (!isAdmin) return; // Ensure only admin can delete
+  const handleDeleteTask = async (taskId: string) => {
+    if (!isAdmin) return;
     try {
-      deleteTask(taskId);
+      const { error } = await deleteTask(taskId);
+      
+      if (error) throw error;
+      
       toast({
         title: "Success",
         description: "Task deleted successfully",
@@ -131,7 +138,7 @@ const TaskList: React.FC = () => {
       <TaskTable 
         tasks={tasks} 
         onEditTask={isAdmin ? handleEditRequest : undefined} 
-        onDeleteTask={isAdmin ? handleDeleteTask : undefined} // Pass delete handler only if admin
+        onDeleteTask={isAdmin ? handleDeleteTask : undefined}
       />
 
       {/* Edit Dialog - only accessible to admins */}

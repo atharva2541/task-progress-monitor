@@ -1,8 +1,8 @@
 
 import React, { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
-import { useAuthorizedTasks } from '@/contexts/TaskContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
 import { 
   Card,
   CardContent, 
@@ -26,10 +26,8 @@ import { useNavigate } from 'react-router-dom';
 import { calculateDaysOverdue } from '@/utils/date-utils';
 
 const MyTasksPage = () => {
-  // Fixed: Use the task context with authorized tasks
-  const taskContext = useAuthorizedTasks();
-  const { tasks } = taskContext;
-  const { user } = useAuth();
+  const { tasks } = useSupabaseTasks();
+  const { profile: user } = useSupabaseAuth();
   const { addNotification } = useNotification();
   const navigate = useNavigate();
   
@@ -57,8 +55,8 @@ const MyTasksPage = () => {
           title: `Task Due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}`,
           message: `Your task "${task.name}" is due in ${daysUntilDue} day${daysUntilDue !== 1 ? 's' : ''}.`,
           type: 'warning',
-          isRead: false, // Changed from read to isRead
-          timestamp: new Date().toISOString() // Added timestamp
+          isRead: false,
+          timestamp: new Date().toISOString()
         });
         
         // In a real app, we would also send an email here
@@ -73,8 +71,8 @@ const MyTasksPage = () => {
           title: 'Task Overdue',
           message: `Your task "${task.name}" is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
           type: 'error',
-          isRead: false, // Changed from read to isRead
-          timestamp: new Date().toISOString() // Added timestamp
+          isRead: false,
+          timestamp: new Date().toISOString()
         });
         
         // Check if we can access the correct checker users through the task context
@@ -84,8 +82,8 @@ const MyTasksPage = () => {
             title: 'Task Overdue',
             message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
             type: 'error',
-            isRead: false, // Changed from read to isRead
-            timestamp: new Date().toISOString() // Added timestamp
+            isRead: false,
+            timestamp: new Date().toISOString()
           });
           
           // After one day overdue, also notify checker2
@@ -95,8 +93,8 @@ const MyTasksPage = () => {
               title: 'Task Overdue',
               message: `A task "${task.name}" assigned to ${user.name} is overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''}.`,
               type: 'error',
-              isRead: false, // Changed from read to isRead
-              timestamp: new Date().toISOString() // Added timestamp
+              isRead: false,
+              timestamp: new Date().toISOString()
             });
           }
         }

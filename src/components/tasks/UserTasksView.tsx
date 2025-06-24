@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
-import { useAuthorizedTasks } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { 
   Card,
   CardContent, 
@@ -29,13 +30,16 @@ interface UserTasksViewProps {
 }
 
 export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
-  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
+  const { tasks } = useSupabaseTasks();
   const navigate = useNavigate();
-  const { users, user: currentUser } = useAuth();
-  const user = users.find(u => u.id === userId);
+  const { profile: currentUser } = useSupabaseAuth();
   
   const [activeTab, setActiveTab] = useState<'my-tasks' | 'to-review'>('my-tasks');
   
+  // For now, we'll create a mock user object since we don't have a users list
+  // In a real implementation, you'd fetch user details from your profiles table
+  const user = { id: userId, name: `User ${userId}` };
+
   if (!user) {
     return (
       <div className="p-8 text-center">
@@ -64,11 +68,26 @@ export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
     );
   }
 
+  // Filter tasks based on user role and access
+  const getUserAccessibleTasks = () => {
+    if (currentUser?.role === 'admin') {
+      return tasks;
+    }
+    
+    return tasks.filter(task => 
+      task.assignedTo === currentUser?.id || 
+      task.checker1 === currentUser?.id || 
+      task.checker2 === currentUser?.id
+    );
+  };
+
+  const accessibleTasks = getUserAccessibleTasks();
+
   // Get tasks assigned to this user (maker role)
-  const myTasks = tasks.filter(task => task.assignedTo === userId);
+  const myTasks = accessibleTasks.filter(task => task.assignedTo === userId);
   
   // Get tasks where user is checker1 or checker2
-  const tasksToReview = tasks.filter(
+  const tasksToReview = accessibleTasks.filter(
     task => task.checker1 === userId || task.checker2 === userId
   );
 

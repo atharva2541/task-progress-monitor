@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
-import { useAuthorizedTasks } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NoCheckerRoleMessage } from '@/components/tasks/review/NoCheckerRoleMessage';
 import { TaskTabContent } from '@/components/tasks/review/TaskTabContent';
 
 const TasksToReviewPage = () => {
-  const { tasks } = useAuthorizedTasks(); // Using authorized tasks
-  const { user } = useAuth();
+  const { tasks } = useSupabaseTasks();
+  const { profile: user } = useSupabaseAuth();
   const [activeTab, setActiveTab] = useState<'checker1' | 'checker2'>('checker1');
   
   if (!user) return null;
