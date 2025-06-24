@@ -1,16 +1,16 @@
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import AdminCalendarPage from '@/pages/calendar/AdminCalendarPage';
 import MakerCalendarPage from '@/pages/calendar/MakerCalendarPage';
 import Checker1CalendarPage from '@/pages/calendar/Checker1CalendarPage';
 import Checker2CalendarPage from '@/pages/calendar/Checker2CalendarPage';
-import { useAuthorizedTasks } from '@/contexts/TaskContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
 import { Card, CardContent } from '@/components/ui/card';
 
 const CalendarPage = () => {
-  const { user } = useAuth();
-  const { isCalendarLoading } = useAuthorizedTasks();
+  const { profile: user } = useSupabaseAuth();
+  const { loading: isCalendarLoading } = useSupabaseTasks();
 
   if (!user) return null;
 

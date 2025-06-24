@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useTask, useAuthorizedTasks } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 import { 
   Select, 
@@ -15,14 +15,19 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Shield } from 'lucide-react';
 
 const AdminCalendarPage = () => {
-  // Use regular tasks for admin, authorized tasks for non-admin
-  const { user } = useAuth();
-  const { calendarTasks, isCalendarLoading } = user?.role === 'admin' ? useTask() : useAuthorizedTasks();
-  const { users } = useAuth();
+  const { profile: user, getAllProfiles } = useSupabaseAuth();
+  const { tasks, loading: isCalendarLoading } = useSupabaseTasks();
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [profiles, setProfiles] = useState<any[]>([]);
   
   // Only admins should have full visibility
   const isAdmin = user?.role === 'admin';
+  
+  React.useEffect(() => {
+    if (isAdmin) {
+      getAllProfiles().then(setProfiles);
+    }
+  }, [isAdmin, getAllProfiles]);
   
   if (!isAdmin) {
     return (
@@ -37,10 +42,10 @@ const AdminCalendarPage = () => {
   }
   
   // Filter tasks based on selected user
-  const filteredTasks = calendarTasks.filter(task => {
+  const filteredTasks = tasks.filter(task => {
     // Filter by selected user if not "all"
     if (selectedUserId !== 'all' && 
-        task.assignedTo !== selectedUserId && 
+        task.assigned_to !== selectedUserId && 
         task.checker1 !== selectedUserId && 
         task.checker2 !== selectedUserId) {
       return false;
@@ -65,8 +70,10 @@ const AdminCalendarPage = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Users</SelectItem>
-                  {users.map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
+                  {profiles.map(profile => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.name} ({profile.role})
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -81,7 +88,7 @@ const AdminCalendarPage = () => {
         description={
           selectedUserId === 'all'
             ? 'Viewing all tasks across the organization'
-            : `Viewing tasks for ${users.find(u => u.id === selectedUserId)?.name || 'selected user'}`
+            : `Viewing tasks for ${profiles.find(u => u.id === selectedUserId)?.name || 'selected user'}`
         }
         isLoading={isCalendarLoading}
       />

@@ -1,17 +1,17 @@
 
 import React from 'react';
-import { useAuthorizedTasks } from '@/contexts/TaskContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { TaskCalendar } from '@/components/calendar/TaskCalendar';
 
 const Checker2CalendarPage = () => {
-  const { calendarTasks, isCalendarLoading } = useAuthorizedTasks(); // Using authorized tasks
-  const { user } = useAuth();
+  const { tasks, loading: isCalendarLoading } = useSupabaseTasks();
+  const { profile: user } = useSupabaseAuth();
   
   if (!user) return null;
   
   // Get tasks assigned to this checker2 - ensure we only get tasks where the user is checker2
-  const checker2Tasks = calendarTasks.filter(task => 
+  const checker2Tasks = tasks.filter(task => 
     task.checker2 === user.id && 
     (task.status === 'checker1-approved' || task.status === 'approved' || task.status === 'rejected')
   );
