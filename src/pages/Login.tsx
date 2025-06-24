@@ -396,18 +396,21 @@ const LoginPage = () => {
                   </form>
                 </Form>
                 
-                {/* Forgot Password Link */}
-                <div className="mt-4 text-center">
-                  <button 
+                {/* Forgot Password Button */}
+                <div className="mt-6">
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    className="w-full"
                     onClick={() => {
                       setLoginState('FORGOT_PASSWORD');
                       setError(null);
                       forgotPasswordEmailForm.reset();
                     }}
-                    className="text-sm text-audit-purple-600 hover:text-audit-purple-800 hover:underline"
                   >
-                    Forgot your password?
-                  </button>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Forgot Password?
+                  </Button>
                 </div>
               </>
             )}
