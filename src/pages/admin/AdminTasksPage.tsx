@@ -20,7 +20,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CreateTaskDialog } from '@/components/tasks/CreateTaskDialog';
 import { Plus, Search, Filter } from 'lucide-react';
 import { TaskFormValues } from '@/utils/TaskFormManager';
@@ -142,10 +142,12 @@ const AdminTasksPage = () => {
               <span>Create Task</span>
             </Button>
           </DialogTrigger>
-          <DialogHeader>
-            <DialogTitle>Create New Task</DialogTitle>
-          </DialogHeader>
-          <CreateTaskDialog onCreateTask={handleCreateTask} />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Task</DialogTitle>
+            </DialogHeader>
+            <CreateTaskDialog onCreateTask={handleCreateTask} />
+          </DialogContent>
         </Dialog>
       </div>
 
