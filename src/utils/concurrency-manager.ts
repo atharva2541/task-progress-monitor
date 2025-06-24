@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -61,8 +60,7 @@ export class ConcurrencyManager {
     toast({
       title: "Concurrent Modification Detected",
       description: `This ${entityName} was modified by another user. Please refresh and try again.`,
-      variant: "destructive",
-      duration: 5000
+      variant: "destructive"
     });
   }
 
