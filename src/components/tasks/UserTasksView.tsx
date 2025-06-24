@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useSupabaseTasks } from '@/contexts/SupabaseTaskContext';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { 
@@ -32,13 +31,22 @@ interface UserTasksViewProps {
 export function UserTasksView({ userId, onBack }: UserTasksViewProps) {
   const { tasks } = useSupabaseTasks();
   const navigate = useNavigate();
-  const { profile: currentUser } = useSupabaseAuth();
+  const { profile: currentUser, getAllProfiles } = useSupabaseAuth();
   
   const [activeTab, setActiveTab] = useState<'my-tasks' | 'to-review'>('my-tasks');
+  const [profiles, setProfiles] = useState<any[]>([]);
   
-  // For now, we'll create a mock user object since we don't have a users list
-  // In a real implementation, you'd fetch user details from your profiles table
-  const user = { id: userId, name: `User ${userId}` };
+  // Fetch profiles to get user names
+  React.useEffect(() => {
+    const fetchProfiles = async () => {
+      const allProfiles = await getAllProfiles();
+      setProfiles(allProfiles);
+    };
+    fetchProfiles();
+  }, [getAllProfiles]);
+  
+  // Find the user whose tasks we're viewing
+  const user = profiles.find(p => p.id === userId) || { id: userId, name: `User ${userId}` };
 
   if (!user) {
     return (

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -9,22 +9,57 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { User } from '@/types';
 import { Users } from 'lucide-react';
 import UserList from '@/components/admin/users/UserList';
 import UserFormDialog, { UserFormValues } from '@/components/admin/users/UserFormDialog';
 import DeleteUserDialog from '@/components/admin/users/DeleteUserDialog';
 
+interface Profile {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'maker' | 'checker1' | 'checker2';
+  roles: string[];
+  avatar?: string;
+  password_expiry_date: string;
+  is_first_login: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const UserManagementPage = () => {
-  const { users, addUser, updateUser, deleteUser } = useAuth();
+  const { getAllProfiles, createProfile, updateUserProfile, deleteProfile } = useSupabaseAuth();
   const { toast } = useToast();
-  const [userToEdit, setUserToEdit] = useState<User | null>(null);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [userToEdit, setUserToEdit] = useState<Profile | null>(null);
+  const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load users on component mount
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const profiles = await getAllProfiles();
+        setUsers(profiles);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        toast({
+          title: "Error loading users",
+          description: "Failed to load user profiles",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, [getAllProfiles, toast]);
 
   // Function to check if email already exists
   const checkEmailExists = (email: string, userId?: string): boolean => {
@@ -36,7 +71,7 @@ const UserManagementPage = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (data: UserFormValues) => {
+  const handleSubmit = async (data: UserFormValues) => {
     // Reset previous email error
     setEmailError(null);
     
@@ -60,49 +95,90 @@ const UserManagementPage = () => {
       finalRoles = ['admin'];
     }
     
-    if (userToEdit) {
-      // Update existing user
-      updateUser(userToEdit.id, {
-        name: data.name,
-        email: data.email,
-        role: finalRole,
-        roles: finalRoles
-      });
+    try {
+      if (userToEdit) {
+        // Update existing user
+        const { error } = await updateUserProfile(userToEdit.id, {
+          name: data.name,
+          email: data.email,
+          role: finalRole,
+          roles: finalRoles
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'User Updated',
+          description: `${data.name} has been updated successfully.`,
+        });
+        setUserToEdit(null);
+      } else {
+        // Create new user
+        const { error } = await createProfile({
+          name: data.name,
+          email: data.email,
+          role: finalRole,
+          roles: finalRoles,
+          password_expiry_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+          is_first_login: true
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: 'User Created',
+          description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
+        });
+      }
+
+      // Refresh user list
+      const profiles = await getAllProfiles();
+      setUsers(profiles);
+      setIsDialogOpen(false);
+    } catch (error: any) {
       toast({
-        title: 'User Updated',
-        description: `${data.name} has been updated successfully.`,
-      });
-      setUserToEdit(null);
-    } else {
-      // Create new user
-      const newUser: Omit<User, 'id'> = {
-        name: data.name,
-        email: data.email,
-        role: finalRole,
-        roles: finalRoles
-      };
-      
-      addUser(newUser);
-      toast({
-        title: 'User Created',
-        description: `${data.name} has been created successfully. An email has been sent with login instructions.`,
+        title: 'Error',
+        description: error.message || 'An error occurred while saving the user',
+        variant: 'destructive'
       });
     }
-    setIsDialogOpen(false);
   };
 
   // Handle delete confirmation
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (userToDelete) {
-      deleteUser(userToDelete.id);
-      toast({
-        title: 'User Deleted',
-        description: `${userToDelete.name} has been deleted successfully.`,
-      });
-      setUserToDelete(null);
-      setIsDeleteDialogOpen(false);
+      try {
+        const { error } = await deleteProfile(userToDelete.id);
+        
+        if (error) throw error;
+
+        toast({
+          title: 'User Deleted',
+          description: `${userToDelete.name} has been deleted successfully.`,
+        });
+
+        // Refresh user list
+        const profiles = await getAllProfiles();
+        setUsers(profiles);
+        setUserToDelete(null);
+        setIsDeleteDialogOpen(false);
+      } catch (error: any) {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to delete user',
+          variant: 'destructive'
+        });
+      }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
