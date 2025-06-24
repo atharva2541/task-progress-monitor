@@ -4,12 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangleIcon } from "lucide-react";
 
 export const TaskFormFields = ({ form }) => {
-  const { users } = useAuth();
+  const { profiles } = useSupabaseAuth();
   const [showMakerCheckerWarning, setShowMakerCheckerWarning] = useState(false);
   const [showMakerChecker2Warning, setShowMakerChecker2Warning] = useState(false);
 
@@ -252,9 +252,9 @@ export const TaskFormFields = ({ form }) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {users?.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
+                  {profiles?.map((profile) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -289,14 +289,14 @@ export const TaskFormFields = ({ form }) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {users?.map((user) => (
+                  {profiles?.map((profile) => (
                     <SelectItem 
-                      key={user.id} 
-                      value={user.id}
-                      disabled={user.id === selectedMakerId}
-                      className={user.id === selectedMakerId ? "text-gray-400 line-through" : ""}
+                      key={profile.id} 
+                      value={profile.id}
+                      disabled={profile.id === selectedMakerId}
+                      className={profile.id === selectedMakerId ? "text-gray-400 line-through" : ""}
                     >
-                      {user.name} {user.id === selectedMakerId ? "(Cannot be Maker)" : ""}
+                      {profile.name} {profile.id === selectedMakerId ? "(Cannot be Maker)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -336,14 +336,14 @@ export const TaskFormFields = ({ form }) => {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {users?.map((user) => (
+                  {profiles?.map((profile) => (
                     <SelectItem 
-                      key={user.id} 
-                      value={user.id}
-                      disabled={user.id === selectedMakerId}
-                      className={user.id === selectedMakerId ? "text-gray-400 line-through" : ""}
+                      key={profile.id} 
+                      value={profile.id}
+                      disabled={profile.id === selectedMakerId}
+                      className={profile.id === selectedMakerId ? "text-gray-400 line-through" : ""}
                     >
-                      {user.name} {user.id === selectedMakerId ? "(Cannot be Maker)" : ""}
+                      {profile.name} {profile.id === selectedMakerId ? "(Cannot be Maker)" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
