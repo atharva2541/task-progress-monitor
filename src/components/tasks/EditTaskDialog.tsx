@@ -2,7 +2,7 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { Task } from "@/types";
@@ -10,6 +10,7 @@ import { TaskFormFields } from "./TaskFormFields";
 import { TaskNotificationSection } from "./TaskNotificationSection";
 import { TaskFormManager, taskFormSchema, TaskFormValues } from "@/utils/TaskFormManager";
 import { useToast } from "@/hooks/use-toast";
+import { ConcurrentActivityIndicator } from "@/components/ConcurrentActivityIndicator";
 
 interface EditTaskDialogProps {
   task: Task;
@@ -20,7 +21,7 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, onUpdateTa
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: TaskFormManager.getDefaultValues(),
-    mode: "onChange", // Add immediate validation
+    mode: "onChange",
   });
   
   const { toast } = useToast();
@@ -82,6 +83,13 @@ export const EditTaskDialog: React.FC<EditTaskDialogProps> = ({ task, onUpdateTa
 
   return (
     <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <div className="flex items-center justify-between">
+          <DialogTitle>Edit Task</DialogTitle>
+          <ConcurrentActivityIndicator taskId={task.id} />
+        </div>
+      </DialogHeader>
+      
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <TaskFormFields form={form} />

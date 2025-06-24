@@ -1,8 +1,10 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSupabaseAuth } from './SupabaseAuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Task, TaskStatus, TaskInstance, TaskAttachment, TaskComment } from '@/types';
+import { ConcurrencyManager, RealtimeManager } from '@/utils/concurrency-manager';
 
 interface SupabaseTaskContextType {
   tasks: Task[];
@@ -29,6 +31,24 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isCalendarLoading, setIsCalendarLoading] = useState(false);
   const { user, profile } = useSupabaseAuth();
+
+  // Real-time subscription for task updates
+  useEffect(() => {
+    if (!user) return;
+
+    const handleTaskChange = (payload: any) => {
+      console.log('Real-time task update:', payload);
+      // Refresh tasks when changes occur
+      refreshTasks();
+    };
+
+    // Subscribe to task changes
+    const channel = RealtimeManager.subscribeToTable('tasks', handleTaskChange);
+
+    return () => {
+      RealtimeManager.unsubscribeFromTable('tasks');
+    };
+  }, [user]);
 
   const refreshTasks = async () => {
     if (!user) return;
@@ -96,6 +116,7 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
 
       setTasks(formattedTasks);
     } catch (error: any) {
+      console.error('Error loading tasks:', error);
       toast({
         title: "Error loading tasks",
         description: error.message,
@@ -109,209 +130,246 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
   const createTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return { error: 'Not authenticated' };
 
-    const { error } = await supabase
-      .from('tasks')
-      .insert({
-        name: taskData.name,
-        description: taskData.description,
-        category: taskData.category,
-        status: taskData.status,
-        priority: taskData.priority,
-        due_date: taskData.dueDate,
-        frequency: taskData.frequency,
-        is_recurring: taskData.isRecurring,
-        assigned_to: taskData.assignedTo,
-        checker1: taskData.checker1,
-        checker2: taskData.checker2,
-        created_by: user.id,
-        observation_status: taskData.observationStatus,
-        is_template: taskData.isTemplate
-      });
+    return await ConcurrencyManager.retryOperation(async () => {
+      const { error } = await supabase
+        .from('tasks')
+        .insert({
+          name: taskData.name,
+          description: taskData.description,
+          category: taskData.category,
+          status: taskData.status,
+          priority: taskData.priority,
+          due_date: taskData.dueDate,
+          frequency: taskData.frequency,
+          is_recurring: taskData.isRecurring,
+          assigned_to: taskData.assignedTo,
+          checker1: taskData.checker1,
+          checker2: taskData.checker2,
+          created_by: user.id,
+          observation_status: taskData.observationStatus,
+          is_template: taskData.isTemplate
+        });
 
-    if (!error) {
-      await refreshTasks();
-      toast({
-        title: "Task created",
-        description: `Task "${taskData.name}" has been created successfully.`
-      });
-    }
+      if (!error) {
+        await refreshTasks();
+        toast({
+          title: "Task created",
+          description: `Task "${taskData.name}" has been created successfully.`
+        });
+      }
 
-    return { error };
+      return { error };
+    }, 2);
   };
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
-    const { error } = await supabase
-      .from('tasks')
-      .update({
-        name: updates.name,
-        description: updates.description,
-        category: updates.category,
-        status: updates.status,
-        priority: updates.priority,
-        due_date: updates.dueDate,
-        frequency: updates.frequency,
-        is_recurring: updates.isRecurring,
-        assigned_to: updates.assignedTo,
-        checker1: updates.checker1,
-        checker2: updates.checker2,
-        observation_status: updates.observationStatus,
-        is_escalated: updates.isEscalated,
-        escalation_priority: updates.escalationPriority,
-        escalation_reason: updates.escalationReason,
-        submitted_at: updates.status === 'submitted' ? new Date().toISOString() : undefined
-      })
-      .eq('id', id);
+    return await ConcurrencyManager.retryOperation(async () => {
+      // Get current task to check for concurrent modifications
+      const { data: currentTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select('updated_at')
+        .eq('id', id)
+        .single();
 
-    if (!error) {
-      await refreshTasks();
-      toast({
-        title: "Task updated",
-        description: "Task has been updated successfully."
-      });
-    }
+      if (fetchError) {
+        return { error: fetchError };
+      }
 
-    return { error };
+      // Check if task was modified since last fetch (optimistic locking)
+      const currentTaskInMemory = tasks.find(t => t.id === id);
+      if (currentTaskInMemory && currentTask.updated_at !== currentTaskInMemory.updatedAt) {
+        const conflictError = ConcurrencyManager.createOptimisticLockError(
+          currentTask.updated_at,
+          currentTaskInMemory.updatedAt
+        );
+        ConcurrencyManager.showConflictResolution('task');
+        return { error: conflictError };
+      }
+
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          category: updates.category,
+          status: updates.status,
+          priority: updates.priority,
+          due_date: updates.dueDate,
+          frequency: updates.frequency,
+          is_recurring: updates.isRecurring,
+          assigned_to: updates.assignedTo,
+          checker1: updates.checker1,
+          checker2: updates.checker2,
+          observation_status: updates.observationStatus,
+          is_escalated: updates.isEscalated,
+          escalation_priority: updates.escalationPriority,
+          escalation_reason: updates.escalationReason,
+          submitted_at: updates.status === 'submitted' ? new Date().toISOString() : undefined
+        })
+        .eq('id', id);
+
+      if (!error) {
+        await refreshTasks();
+        toast({
+          title: "Task updated",
+          description: "Task has been updated successfully."
+        });
+      }
+
+      return { error };
+    }, 2);
   };
 
   const deleteTask = async (id: string) => {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', id);
+    return await ConcurrencyManager.retryOperation(async () => {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
 
-    if (!error) {
-      await refreshTasks();
-      toast({
-        title: "Task deleted",
-        description: "Task has been deleted successfully.",
-        variant: "destructive"
-      });
-    }
+      if (!error) {
+        await refreshTasks();
+        toast({
+          title: "Task deleted",
+          description: "Task has been deleted successfully.",
+          variant: "destructive"
+        });
+      }
 
-    return { error };
+      return { error };
+    }, 2);
   };
 
   const updateTaskStatus = async (taskId: string, status: TaskStatus, comment?: string) => {
-    const updateData: any = { status };
-    
-    if (status === 'submitted') {
-      updateData.submitted_at = new Date().toISOString();
-    }
-
-    const { error } = await supabase
-      .from('tasks')
-      .update(updateData)
-      .eq('id', taskId);
-
-    if (!error && comment) {
-      await addTaskComment(taskId, comment);
-    }
-
-    if (!error) {
-      await refreshTasks();
-      const statusMessages = {
-        'pending': 'Task marked as pending',
-        'in-progress': 'Task started',
-        'submitted': 'Task submitted for review',
-        'approved': 'Task approved',
-        'rejected': 'Task rejected'
-      };
+    return await ConcurrencyManager.retryOperation(async () => {
+      const updateData: any = { status };
       
-      toast({
-        title: statusMessages[status] || 'Task status updated',
-        description: `The task status has been updated to ${status}.`,
-        variant: status === 'rejected' ? 'destructive' : 'default'
-      });
-    }
+      if (status === 'submitted') {
+        updateData.submitted_at = new Date().toISOString();
+      }
 
-    return { error };
+      const { error } = await supabase
+        .from('tasks')
+        .update(updateData)
+        .eq('id', taskId);
+
+      if (!error && comment) {
+        await addTaskComment(taskId, comment);
+      }
+
+      if (!error) {
+        await refreshTasks();
+        const statusMessages = {
+          'pending': 'Task marked as pending',
+          'in-progress': 'Task started',
+          'submitted': 'Task submitted for review',
+          'approved': 'Task approved',
+          'rejected': 'Task rejected'
+        };
+        
+        toast({
+          title: statusMessages[status] || 'Task status updated',
+          description: `The task status has been updated to ${status}.`,
+          variant: status === 'rejected' ? 'destructive' : 'default'
+        });
+      }
+
+      return { error };
+    }, 2);
   };
 
   const uploadTaskAttachment = async (taskId: string, file: File) => {
     if (!user) return { error: 'Not authenticated' };
 
-    // Get max file size from system settings
-    const { data: settingsData } = await supabase
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'max_file_size')
-      .single();
+    return await ConcurrencyManager.retryOperation(async () => {
+      // Get max file size from system settings
+      const { data: settingsData } = await supabase
+        .from('system_settings')
+        .select('setting_value')
+        .eq('setting_key', 'max_file_size')
+        .single();
 
-    const maxSize = settingsData ? parseInt(settingsData.setting_value) : 5120; // Default 5KB
+      const maxSize = settingsData ? parseInt(settingsData.setting_value) : 5120;
 
-    if (file.size > maxSize) {
-      return { error: `File size exceeds maximum allowed size of ${maxSize} bytes` };
-    }
+      if (file.size > maxSize) {
+        return { error: `File size exceeds maximum allowed size of ${maxSize} bytes` };
+      }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${taskId}/${Date.now()}.${fileExt}`;
+      const fileExt = file.name.split('.').pop();
+      // Use UUID-based naming to prevent conflicts
+      const fileName = `${user.id}/${taskId}/${ConcurrencyManager.generateVersion()}.${fileExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from('task-attachments')
-      .upload(fileName, file);
+      const { error: uploadError } = await supabase.storage
+        .from('task-attachments')
+        .upload(fileName, file);
 
-    if (uploadError) return { error: uploadError };
+      if (uploadError) return { error: uploadError };
 
-    const { data: urlData } = supabase.storage
-      .from('task-attachments')
-      .getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage
+        .from('task-attachments')
+        .getPublicUrl(fileName);
 
-    const { error: dbError } = await supabase
-      .from('task_attachments')
-      .insert({
-        task_id: taskId,
-        user_id: user.id,
-        file_name: file.name,
-        file_type: file.type,
-        file_url: urlData.publicUrl,
-        file_size: file.size,
-        storage_path: fileName
-      });
+      const { error: dbError } = await supabase
+        .from('task_attachments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          file_name: file.name,
+          file_type: file.type,
+          file_url: urlData.publicUrl,
+          file_size: file.size,
+          storage_path: fileName
+        });
 
-    if (!dbError) {
-      await refreshTasks();
-    }
+      if (!dbError) {
+        await refreshTasks();
+      }
 
-    return { error: dbError };
+      return { error: dbError };
+    }, 2);
   };
 
   const deleteTaskAttachment = async (taskId: string, attachmentId: string) => {
-    const { data: attachment } = await supabase
-      .from('task_attachments')
-      .select('storage_path')
-      .eq('id', attachmentId)
-      .single();
+    return await ConcurrencyManager.retryOperation(async () => {
+      const { data: attachment } = await supabase
+        .from('task_attachments')
+        .select('storage_path')
+        .eq('id', attachmentId)
+        .single();
 
-    if (attachment?.storage_path) {
-      await supabase.storage
-        .from('task-attachments')
-        .remove([attachment.storage_path]);
-    }
+      if (attachment?.storage_path) {
+        await supabase.storage
+          .from('task-attachments')
+          .remove([attachment.storage_path]);
+      }
 
-    const { error } = await supabase
-      .from('task_attachments')
-      .delete()
-      .eq('id', attachmentId);
+      const { error } = await supabase
+        .from('task_attachments')
+        .delete()
+        .eq('id', attachmentId);
 
-    if (!error) {
-      await refreshTasks();
-    }
+      if (!error) {
+        await refreshTasks();
+      }
 
-    return { error };
+      return { error };
+    }, 2);
   };
 
   const addTaskComment = async (taskId: string, comment: string) => {
     if (!user) return { error: 'Not authenticated' };
 
-    const { error } = await supabase
-      .from('task_comments')
-      .insert({
-        task_id: taskId,
-        user_id: user.id,
-        comment
-      });
+    return await ConcurrencyManager.retryOperation(async () => {
+      const { error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          user_id: user.id,
+          comment
+        });
 
-    return { error };
+      return { error };
+    }, 2);
   };
 
   const getTaskById = (id: string) => tasks.find(task => task.id === id);
@@ -325,6 +383,13 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
       task.checker2 === userId
     );
   };
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      RealtimeManager.cleanup();
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
