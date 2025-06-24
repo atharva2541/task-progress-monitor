@@ -52,7 +52,7 @@ export const SupabaseTaskProvider = ({ children }: { children: ReactNode }) => {
 
       const formattedTasks: Task[] = (data || []).map(task => ({
         id: task.id,
-        name: task.name || task.title,
+        name: task.name,
         description: task.description,
         category: task.category,
         status: task.status,
