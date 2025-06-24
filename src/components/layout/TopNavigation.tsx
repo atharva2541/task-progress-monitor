@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useNotification } from '@/contexts/NotificationContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Search, LogOut, Settings, AlertTriangle, Info, X, CheckCircle } from 'lucide-react';
@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 export function TopNavigation() {
-  const { user, logout } = useAuth();
+  const { profile, signOut } = useSupabaseAuth();
   const navigate = useNavigate();
   const {
     notifications,
@@ -24,7 +24,7 @@ export function TopNavigation() {
   } = useNotification();
 
   // Check if user is admin
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = profile?.role === 'admin';
 
   const getInitials = (name?: string): string => {
     if (!name) return 'U';
@@ -55,10 +55,16 @@ export function TopNavigation() {
     }
   };
 
-  const userNotifications = user ? notifications.filter(n => n.userId === user.id) : [];
-  const userUnreadCount = userNotifications.filter(n => !n.isRead).length; // Changed from read to isRead
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  const userNotifications = profile ? notifications.filter(n => n.userId === profile.id) : [];
+  const userUnreadCount = userNotifications.filter(n => !n.isRead).length;
   
-  return <nav className="bg-white border-b px-4 py-2 flex items-center justify-between">
+  return (
+    <nav className="bg-white border-b px-4 py-2 flex items-center justify-between">
       <div className="flex items-center gap-4">
         <SidebarTrigger />
         
@@ -75,9 +81,11 @@ export function TopNavigation() {
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              {userUnreadCount > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-audit-purple-500">
+              {userUnreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-audit-purple-500">
                   {userUnreadCount}
-                </Badge>}
+                </Badge>
+              )}
             </Button>
           </SheetTrigger>
           <SheetContent className="w-[400px] sm:max-w-none">
@@ -87,30 +95,40 @@ export function TopNavigation() {
                 <p className="text-sm text-muted-foreground">
                   You have {userUnreadCount} unread notification{userUnreadCount !== 1 ? 's' : ''}
                 </p>
-                {userUnreadCount > 0 && <Button variant="ghost" size="sm" onClick={markAllAsRead}>
+                {userUnreadCount > 0 && (
+                  <Button variant="ghost" size="sm" onClick={markAllAsRead}>
                     Mark all as read
-                  </Button>}
+                  </Button>
+                )}
               </div>
             </SheetHeader>
             <div className="mt-4 space-y-4">
-              {userNotifications.length > 0 ? userNotifications.map(notification => <div key={notification.id} className={`p-3 rounded-md ${!notification.isRead ? 'bg-muted' : ''}`}> {/* Changed from read to isRead */}
+              {userNotifications.length > 0 ? (
+                userNotifications.map(notification => (
+                  <div key={notification.id} className={`p-3 rounded-md ${!notification.isRead ? 'bg-muted' : ''}`}>
                     <div className="flex gap-3">
                       {getNotificationIcon(notification.type)}
                       <div className="flex-1">
                         <h4 className="text-sm font-medium">{notification.title}</h4>
                         <p className="text-sm text-muted-foreground">{notification.message}</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(notification.timestamp).toLocaleString()} {/* Changed from createdAt to timestamp */}
+                          {new Date(notification.timestamp).toLocaleString()}
                         </p>
                       </div>
-                      {!notification.isRead && <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}> {/* Changed from read to isRead */}
+                      {!notification.isRead && (
+                        <Button variant="ghost" size="sm" onClick={() => markAsRead(notification.id)}>
                           Mark read
-                        </Button>}
+                        </Button>
+                      )}
                     </div>
-                  </div>) : <div className="text-center py-8 text-muted-foreground">
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
                   <Bell className="h-8 w-8 mx-auto mb-2" />
                   <p>No notifications yet</p>
-                </div>}
+                </div>
+              )}
             </div>
             <SheetFooter className="mt-4">
               <SheetClose asChild>
@@ -124,16 +142,16 @@ export function TopNavigation() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatar} alt={user?.name || 'User'} />
-                <AvatarFallback>{getInitials(user?.name)}</AvatarFallback>
+                <AvatarImage src={profile?.avatar} alt={profile?.name || 'User'} />
+                <AvatarFallback>{getInitials(profile?.name)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col space-y-1 leading-none">
-                <p className="font-medium">{user?.name}</p>
-                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                <p className="font-medium">{profile?.name}</p>
+                <p className="text-sm text-muted-foreground">{profile?.email}</p>
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -142,12 +160,13 @@ export function TopNavigation() {
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer" onClick={() => logout()}>
+            <DropdownMenuItem className="cursor-pointer" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </nav>;
+    </nav>
+  );
 }
