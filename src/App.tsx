@@ -8,7 +8,6 @@ import { SupabaseAuthProvider } from "@/contexts/SupabaseAuthContext";
 import { SupabaseTaskProvider } from "@/contexts/SupabaseTaskContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import Layout from "@/components/Layout";
-import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import TasksPage from "./pages/TasksPage";
 import TasksToReviewPage from "./pages/tasks/TasksToReviewPage";

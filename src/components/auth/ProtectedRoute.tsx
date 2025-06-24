@@ -22,7 +22,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div className="flex items-center justify-center h-screen">
         <div className="space-y-4 text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-xl">Loading...</p>
+          <p className="text-xl">Authenticating...</p>
         </div>
       </div>
     );
