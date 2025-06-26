@@ -137,6 +137,8 @@ const UserManagementPage = () => {
         setUserToEdit(null);
       } else {
         // Create new user
+        console.log('Creating new user with data:', { finalRole, finalRoles });
+        
         const { error } = await createProfile({
           name: data.name,
           email: data.email,
@@ -157,6 +159,18 @@ const UserManagementPage = () => {
               description: 'Email signup may be disabled in Supabase settings. Please check the authentication configuration.',
               variant: 'destructive'
             });
+            setIsSubmitting(false);
+            return;
+          }
+          
+          if (error.message?.includes('email sending failed')) {
+            toast({
+              title: 'User Created - Email Issue',
+              description: `${data.name} has been created but the password reset email could not be sent. Please check your email configuration in Supabase.`,
+              variant: 'destructive'
+            });
+            await refreshUsers();
+            setIsDialogOpen(false);
             setIsSubmitting(false);
             return;
           }
