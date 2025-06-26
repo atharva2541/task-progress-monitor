@@ -321,12 +321,26 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserProfile = async (id: string, updates: Partial<Profile>) => {
     return await ConcurrencyManager.retryOperation(async () => {
+      console.log('Updating user profile:', id, updates);
+      
       const { error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', id);
 
-      return { error };
+      if (error) {
+        console.error('Error updating user profile:', error);
+        return { error };
+      }
+
+      console.log('User profile updated successfully');
+      
+      // Refresh the profiles list to reflect the changes
+      if (profile?.role === 'admin') {
+        await fetchProfiles();
+      }
+
+      return { error: null };
     }, 2);
   };
 
