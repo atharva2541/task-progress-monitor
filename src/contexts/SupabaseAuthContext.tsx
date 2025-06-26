@@ -280,39 +280,56 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Creating profile with data:', profileData);
       
       try {
-        // Create the auth user using signup
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        // First check if user already exists
+        const { data: existingUser } = await supabase.auth.admin.listUsers();
+        const userExists = existingUser.users.some(u => u.email === profileData.email);
+        
+        if (userExists) {
+          console.log('User already exists with this email');
+          return { error: { message: 'A user with this email already exists' } };
+        }
+
+        // Create the auth user using admin.createUser for better control
+        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email: profileData.email,
-          password: 'TempPass123!', // Temporary password that will be reset
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth?mode=reset`,
-            data: {
-              name: profileData.name,
-              role: profileData.role,
-              roles: profileData.roles
-            }
+          password: 'TempPass123!', // Temporary password
+          email_confirm: true, // Auto-confirm email to avoid confirmation step
+          user_metadata: {
+            name: profileData.name,
+            role: profileData.role,
+            roles: profileData.roles
           }
         });
 
         if (authError) {
           console.error('Auth user creation error:', authError);
-          // Handle specific error cases
-          if (authError.message?.includes('User already registered')) {
-            return { error: { message: 'A user with this email already exists' } };
-          }
-          if (authError.message?.includes('not allowed') || authError.message?.includes('signup')) {
-            return { error: { message: 'Email signup may be disabled. Please check Supabase Auth settings.' } };
-          }
           return { error: authError };
         }
 
-        console.log('Auth user created:', authData.user?.id);
+        console.log('Auth user created successfully:', authData.user?.id);
 
-        // Wait a moment for the user to be created and the trigger to run
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for the profile to be created by the trigger
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Send password reset email for the new user to set their own password
+        // Update the profile with the correct data
         if (authData.user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+              name: profileData.name,
+              role: profileData.role,
+              roles: profileData.roles,
+              password_expiry_date: profileData.password_expiry_date,
+              is_first_login: profileData.is_first_login
+            })
+            .eq('id', authData.user.id);
+
+          if (updateError) {
+            console.error('Profile update error:', updateError);
+            return { error: updateError };
+          }
+
+          // Send password reset email
           console.log('Sending password reset email to:', profileData.email);
           
           const { error: resetError } = await supabase.auth.resetPasswordForEmail(
@@ -324,15 +341,12 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
           
           if (resetError) {
             console.error('Failed to send password reset email:', resetError);
-            
-            // If email sending fails, show a specific error message
+            // Don't fail the entire operation if email fails
             toast({
-              title: 'User Created but Email Failed',
-              description: `User ${profileData.name} was created but the password reset email could not be sent. Please check email configuration or send a manual reset email.`,
+              title: 'User Created - Email Issue',
+              description: `User ${profileData.name} was created but the password reset email could not be sent.`,
               variant: 'destructive'
             });
-            
-            return { error: { message: 'User created but email sending failed: ' + resetError.message } };
           } else {
             console.log('Password reset email sent successfully');
           }
