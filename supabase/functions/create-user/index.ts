@@ -28,16 +28,13 @@ serve(async (req) => {
 
     console.log('Creating user with data:', { name, email, role, roles })
 
-    // Check if user already exists
-    const { data: existingProfiles, error: checkError } = await supabaseAdmin
-      .from('profiles')
-      .select('email')
-      .eq('email', email)
-
-    if (checkError) {
-      console.error('Error checking existing profiles:', checkError)
+    // Check if user already exists in auth.users
+    const { data: existingUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+    
+    if (listError) {
+      console.error('Error checking existing users:', listError)
       return new Response(
-        JSON.stringify({ error: checkError }),
+        JSON.stringify({ error: listError }),
         { 
           status: 400, 
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -45,7 +42,9 @@ serve(async (req) => {
       )
     }
 
-    if (existingProfiles && existingProfiles.length > 0) {
+    const userExists = existingUsers?.users?.some(user => user.email === email)
+    
+    if (userExists) {
       console.log('User already exists with this email')
       return new Response(
         JSON.stringify({ error: { message: 'A user with this email already exists' } }),
