@@ -280,83 +280,37 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Creating profile with data:', profileData);
       
       try {
-        // Check if user already exists by checking profiles table
-        const { data: existingProfiles, error: checkError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('email', profileData.email);
-        
-        if (checkError) {
-          console.error('Error checking existing profiles:', checkError);
-          return { error: checkError };
-        }
-        
-        if (existingProfiles && existingProfiles.length > 0) {
-          console.log('User already exists with this email');
-          return { error: { message: 'A user with this email already exists' } };
-        }
-
-        // Create the auth user using admin.createUser for better control
-        const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-          email: profileData.email,
-          password: 'TempPass123!', // Temporary password
-          email_confirm: true, // Auto-confirm email to avoid confirmation step
-          user_metadata: {
+        // Call the edge function to create the user
+        const { data, error } = await supabase.functions.invoke('create-user', {
+          body: {
             name: profileData.name,
+            email: profileData.email,
             role: profileData.role,
-            roles: profileData.roles
+            roles: profileData.roles,
+            password_expiry_date: profileData.password_expiry_date,
+            is_first_login: profileData.is_first_login
           }
         });
 
-        if (authError) {
-          console.error('Auth user creation error:', authError);
-          return { error: authError };
+        if (error) {
+          console.error('Edge function error:', error);
+          return { error };
         }
 
-        console.log('Auth user created successfully:', authData.user?.id);
+        if (data?.error) {
+          console.error('User creation error from edge function:', data.error);
+          return { error: data.error };
+        }
 
-        // Wait for the profile to be created by the trigger
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // Update the profile with the correct data
-        if (authData.user) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-              name: profileData.name,
-              role: profileData.role,
-              roles: profileData.roles,
-              password_expiry_date: profileData.password_expiry_date,
-              is_first_login: profileData.is_first_login
-            })
-            .eq('id', authData.user.id);
-
-          if (updateError) {
-            console.error('Profile update error:', updateError);
-            return { error: updateError };
-          }
-
-          // Send password reset email
-          console.log('Sending password reset email to:', profileData.email);
-          
-          const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-            profileData.email,
-            {
-              redirectTo: `${window.location.origin}/auth?mode=reset`
-            }
-          );
-          
-          if (resetError) {
-            console.error('Failed to send password reset email:', resetError);
-            // Don't fail the entire operation if email fails
-            toast({
-              title: 'User Created - Email Issue',
-              description: `User ${profileData.name} was created but the password reset email could not be sent.`,
-              variant: 'destructive'
-            });
-          } else {
-            console.log('Password reset email sent successfully');
-          }
+        if (data?.warning) {
+          console.log('User created with warning:', data.warning);
+          toast({
+            title: 'User Created - Email Issue',
+            description: `${profileData.name} was created but the password reset email could not be sent.`,
+            variant: 'destructive'
+          });
+        } else {
+          console.log('User created successfully');
         }
 
         return { error: null };
