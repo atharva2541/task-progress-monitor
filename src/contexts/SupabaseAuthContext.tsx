@@ -49,8 +49,16 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Fetch all profiles for admin functions
   const fetchProfiles = async () => {
-    const profilesData = await getAllProfiles();
-    setProfiles(profilesData);
+    try {
+      console.log('Fetching all profiles...');
+      const profilesData = await getAllProfiles();
+      console.log('Fetched profiles:', profilesData);
+      setProfiles(profilesData);
+      return profilesData;
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -335,9 +343,16 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('User profile updated successfully');
       
-      // Refresh the profiles list to reflect the changes
-      if (profile?.role === 'admin') {
-        await fetchProfiles();
+      // Update local profiles state immediately
+      setProfiles(prevProfiles => 
+        prevProfiles.map(p => 
+          p.id === id ? { ...p, ...updates } : p
+        )
+      );
+      
+      // If we're updating the current user's profile, update that too
+      if (profile && profile.id === id) {
+        setProfile(prev => prev ? { ...prev, ...updates } : null);
       }
 
       return { error: null };

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -42,6 +41,18 @@ const UserManagementPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAuthAlert, setShowAuthAlert] = useState(false);
+
+  // Function to refresh users list
+  const refreshUsers = async () => {
+    try {
+      console.log('Refreshing users list...');
+      const profiles = await getAllProfiles();
+      console.log('Updated profiles:', profiles);
+      setUsers(profiles);
+    } catch (error) {
+      console.error('Failed to refresh users:', error);
+    }
+  };
 
   // Load users on component mount
   useEffect(() => {
@@ -104,6 +115,8 @@ const UserManagementPage = () => {
     try {
       if (userToEdit) {
         // Update existing user
+        console.log('Updating user with data:', { id: userToEdit.id, finalRole, finalRoles });
+        
         const { error } = await updateUserProfile(userToEdit.id, {
           name: data.name,
           email: data.email,
@@ -117,6 +130,10 @@ const UserManagementPage = () => {
           title: 'User Updated',
           description: `${data.name} has been updated successfully.`,
         });
+        
+        // Refresh the users list to show the updated data
+        await refreshUsers();
+        
         setUserToEdit(null);
       } else {
         // Create new user
@@ -151,11 +168,11 @@ const UserManagementPage = () => {
           title: 'User Created Successfully',
           description: `${data.name} has been created. A password reset email has been sent to ${data.email} to set up their account.`,
         });
+        
+        // Refresh the users list to show the new user
+        await refreshUsers();
       }
 
-      // Refresh user list
-      const profiles = await getAllProfiles();
-      setUsers(profiles);
       setIsDialogOpen(false);
     } catch (error: any) {
       console.error('User operation error:', error);
@@ -191,9 +208,9 @@ const UserManagementPage = () => {
           description: `${userToDelete.name} has been deleted successfully.`,
         });
 
-        // Refresh user list
-        const profiles = await getAllProfiles();
-        setUsers(profiles);
+        // Refresh the users list to show the deletion
+        await refreshUsers();
+        
         setUserToDelete(null);
         setIsDeleteDialogOpen(false);
       } catch (error: any) {
