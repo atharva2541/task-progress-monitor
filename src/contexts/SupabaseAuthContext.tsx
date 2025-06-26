@@ -280,11 +280,18 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Creating profile with data:', profileData);
       
       try {
-        // First check if user already exists
-        const { data: existingUser } = await supabase.auth.admin.listUsers();
-        const userExists = existingUser.users.some(u => u.email === profileData.email);
+        // Check if user already exists by checking profiles table
+        const { data: existingProfiles, error: checkError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', profileData.email);
         
-        if (userExists) {
+        if (checkError) {
+          console.error('Error checking existing profiles:', checkError);
+          return { error: checkError };
+        }
+        
+        if (existingProfiles && existingProfiles.length > 0) {
           console.log('User already exists with this email');
           return { error: { message: 'A user with this email already exists' } };
         }
