@@ -160,60 +160,53 @@ serve(async (req) => {
         )
       }
 
-      // Send password reset email - simplified approach
-      console.log('Attempting to send password reset email to:', email)
+      // Generate password reset link using the correct Admin API method
+      console.log('Generating password reset link for:', email)
       
       try {
-        // First, try the standard password reset approach
-        const { error: resetError } = await supabaseAdmin.auth.admin.resetPasswordForEmail(email, {
-          redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('/v1', '')}/auth/reset-password`
+        const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email,
         })
         
-        if (resetError) {
-          console.error('Password reset email failed:', resetError)
-          
-          // Try alternative approach - generate recovery link
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'recovery',
-            email: email,
-          })
-          
-          if (linkError) {
-            console.error('Recovery link generation failed:', linkError)
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                warning: `User ${name} created successfully, but password reset email could not be sent. Please manually send the password reset link or have the user request a password reset.`,
-                user: authData.user 
-              }),
-              { 
-                status: 200, 
-                headers: { 'Content-Type': 'application/json', ...corsHeaders }
-              }
-            )
-          } else {
-            console.log('Recovery link generated:', linkData?.properties?.action_link)
-            return new Response(
-              JSON.stringify({ 
-                success: true, 
-                warning: `User ${name} created successfully. Recovery link generated but automatic email sending may not be configured. Recovery link: ${linkData?.properties?.action_link}`,
-                user: authData.user 
-              }),
-              { 
-                status: 200, 
-                headers: { 'Content-Type': 'application/json', ...corsHeaders }
-              }
-            )
-          }
+        if (linkError) {
+          console.error('Recovery link generation failed:', linkError)
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              warning: `User ${name} created successfully, but password reset link could not be generated. Error: ${linkError.message}. Please have the user request a password reset manually.`,
+              user: authData.user 
+            }),
+            { 
+              status: 200, 
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            }
+          )
         } else {
-          console.log('Password reset email sent successfully')
+          console.log('Recovery link generated successfully:', linkData?.properties?.action_link)
+          
+          // The recovery link is generated but Supabase doesn't automatically send emails
+          // unless SMTP is properly configured in the Supabase dashboard
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: `User ${name} created successfully. Password reset link generated.`,
+              warning: `If the user doesn't receive an email, please check your Supabase email configuration in Authentication > Email Templates.`,
+              recovery_link: linkData?.properties?.action_link,
+              user: authData.user 
+            }),
+            { 
+              status: 200, 
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            }
+          )
         }
       } catch (emailError) {
-        console.error('Unexpected error during email process:', emailError)
+        console.error('Unexpected error during recovery link generation:', emailError)
         return new Response(
           JSON.stringify({ 
             success: true, 
-            warning: `User ${name} created successfully, but there was an issue with the email configuration. Please check your Supabase email settings.`,
+            warning: `User ${name} created successfully, but there was an issue generating the password reset link. Please check your Supabase configuration.`,
             user: authData.user 
           }),
           { 
