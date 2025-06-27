@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -185,21 +184,76 @@ serve(async (req) => {
         } else {
           console.log('Recovery link generated successfully:', linkData?.properties?.action_link)
           
-          // The recovery link is generated but Supabase doesn't automatically send emails
-          // unless SMTP is properly configured in the Supabase dashboard
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: `User ${name} created successfully. Password reset link generated.`,
-              warning: `If the user doesn't receive an email, please check your Supabase email configuration in Authentication > Email Templates.`,
-              recovery_link: linkData?.properties?.action_link,
-              user: authData.user 
-            }),
-            { 
-              status: 200, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          // Send email via AWS SES using the send-email edge function
+          try {
+            console.log('Sending password reset email via AWS SES to:', email)
+            
+            const emailHtml = `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                <h2 style="color: #5a3FFF;">Welcome to Audit Tracker</h2>
+                <p>Hello ${name},</p>
+                <p>Your account has been created successfully. To complete your account setup, please click the link below to set your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${linkData?.properties?.action_link}" 
+                     style="background-color: #5a3FFF; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                    Set Your Password
+                  </a>
+                </div>
+                <p>If the button doesn't work, you can also copy and paste this link into your browser:</p>
+                <p style="word-break: break-all; color: #666; font-size: 14px;">${linkData?.properties?.action_link}</p>
+                <p>This link will expire in 24 hours for security reasons.</p>
+                <p>If you didn't expect this email, please contact your administrator.</p>
+                <p>Thank you,<br/>Audit Tracker Team</p>
+              </div>
+            `
+
+            const emailResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+              },
+              body: JSON.stringify({
+                to: email,
+                subject: 'Welcome to Audit Tracker - Set Your Password',
+                html: emailHtml
+              })
+            })
+
+            if (!emailResponse.ok) {
+              const errorText = await emailResponse.text()
+              console.error('Email sending failed:', errorText)
+              throw new Error(`Email sending failed: ${errorText}`)
             }
-          )
+
+            console.log('Password reset email sent successfully via AWS SES')
+            
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                message: `User ${name} created successfully. Password setup email has been sent to ${email}.`,
+                user: authData.user 
+              }),
+              { 
+                status: 200, 
+                headers: { 'Content-Type': 'application/json', ...corsHeaders }
+              }
+            )
+          } catch (emailError) {
+            console.error('AWS SES email sending failed:', emailError)
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                warning: `User ${name} created successfully, but the password setup email could not be sent via AWS SES. Error: ${emailError.message}. Password reset link: ${linkData?.properties?.action_link}`,
+                recovery_link: linkData?.properties?.action_link,
+                user: authData.user 
+              }),
+              { 
+                status: 200, 
+                headers: { 'Content-Type': 'application/json', ...corsHeaders }
+              }
+            )
+          }
         }
       } catch (emailError) {
         console.error('Unexpected error during recovery link generation:', emailError)
