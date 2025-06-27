@@ -42,17 +42,70 @@ serve(async (req) => {
       )
     }
 
-    const userExists = existingUsers?.users?.some(user => user.email === email)
+    const existingUser = existingUsers?.users?.find(user => user.email === email)
     
-    if (userExists) {
-      console.log('User already exists with this email')
-      return new Response(
-        JSON.stringify({ error: { message: 'A user with this email already exists' } }),
-        { 
-          status: 400, 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    if (existingUser) {
+      // Check if profile exists for this user
+      const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('id', existingUser.id)
+        .single()
+
+      if (profileCheckError && profileCheckError.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error checking existing profile:', profileCheckError)
+        return new Response(
+          JSON.stringify({ error: { message: 'Failed to check existing profile: ' + profileCheckError.message } }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          }
+        )
+      }
+
+      if (!existingProfile) {
+        // User exists but no profile - create the profile
+        console.log('User exists but no profile found, creating profile...')
+        const { error: profileCreateError } = await supabaseAdmin
+          .from('profiles')
+          .insert({
+            id: existingUser.id,
+            name: name,
+            email: email,
+            role: role,
+            roles: roles,
+            password_expiry_date: password_expiry_date,
+            is_first_login: is_first_login
+          })
+
+        if (profileCreateError) {
+          console.error('Profile creation error:', profileCreateError)
+          return new Response(
+            JSON.stringify({ error: { message: 'Failed to create profile for existing user: ' + profileCreateError.message } }),
+            { 
+              status: 400, 
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            }
+          )
         }
-      )
+
+        return new Response(
+          JSON.stringify({ success: true, user: existingUser }),
+          { 
+            status: 200, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          }
+        )
+      } else {
+        console.log('User and profile already exist with this email')
+        return new Response(
+          JSON.stringify({ error: { message: 'A user with this email already exists' } }),
+          { 
+            status: 400, 
+            headers: { 'Content-Type': 'application/json', ...corsHeaders }
+          }
+        )
+      }
     }
 
     // Create the auth user using admin client

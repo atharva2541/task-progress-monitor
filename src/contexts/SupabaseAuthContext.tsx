@@ -180,6 +180,23 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [user, profile]);
 
+  // Real-time subscription for all profiles (for admin users)
+  useEffect(() => {
+    if (!profile || profile.role !== 'admin') return;
+
+    const handleAllProfilesChange = (payload: any) => {
+      console.log('Profiles table updated:', payload);
+      // Refresh profiles list when any profile changes
+      fetchProfiles();
+    };
+
+    const channel = RealtimeManager.subscribeToTable('profiles', handleAllProfilesChange);
+
+    return () => {
+      RealtimeManager.unsubscribeFromTable('profiles');
+    };
+  }, [profile]);
+
   const signUp = async (email: string, password: string, userData?: any) => {
     return await ConcurrencyManager.retryOperation(async () => {
       const { error } = await supabase.auth.signUp({
@@ -313,6 +330,9 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('User created successfully');
         }
 
+        // Refresh profiles after successful creation
+        await fetchProfiles();
+
         return { error: null };
       } catch (error: any) {
         console.error('Unexpected error during user creation:', error);
@@ -337,12 +357,8 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('User profile updated successfully');
       
-      // Update local profiles state immediately
-      setProfiles(prevProfiles => 
-        prevProfiles.map(p => 
-          p.id === id ? { ...p, ...updates } : p
-        )
-      );
+      // Refresh profiles after successful update
+      await fetchProfiles();
       
       // If we're updating the current user's profile, update that too
       if (profile && profile.id === id) {
@@ -355,20 +371,34 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteProfile = async (id: string) => {
     return await ConcurrencyManager.retryOperation(async () => {
-      // First delete the profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', id);
+      console.log('Deleting user with ID:', id);
+      
+      try {
+        // Call the delete-user edge function
+        const { data, error } = await supabase.functions.invoke('delete-user', {
+          body: { userId: id }
+        });
 
-      if (profileError) {
-        return { error: profileError };
+        if (error) {
+          console.error('Edge function error during deletion:', error);
+          return { error };
+        }
+
+        if (data?.error) {
+          console.error('User deletion error from edge function:', data.error);
+          return { error: data.error };
+        }
+
+        console.log('User deleted successfully');
+        
+        // Refresh profiles after successful deletion
+        await fetchProfiles();
+
+        return { error: null };
+      } catch (error: any) {
+        console.error('Unexpected error during user deletion:', error);
+        return { error: { message: 'Unexpected error: ' + error.message } };
       }
-
-      // Note: We can't delete the auth user from client side with anon key
-      // This would need to be handled server-side with service role key
-      // For now, we'll just delete the profile
-      return { error: null };
     }, 2);
   };
 
