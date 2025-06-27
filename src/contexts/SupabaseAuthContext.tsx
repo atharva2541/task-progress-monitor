@@ -1,8 +1,9 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ConcurrencyManager, RealtimeManager } from '@/utils/concurrency-manager';
+import { ConcurrencyManager } from '@/utils/concurrency-manager';
 
 interface Profile {
   id: string;
@@ -154,48 +155,39 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Real-time subscription for profile updates
+  // Single real-time subscription for profiles updates
   useEffect(() => {
-    if (!user) return;
+    if (!profile) return;
 
-    const handleProfileChange = (payload: any) => {
-      console.log('Profile updated:', payload);
-      if (payload.new && payload.new.id === user.id) {
-        setProfile(payload.new);
-      }
-      // Refresh profiles list if admin
-      if (profile?.role === 'admin') {
-        fetchProfiles();
-      }
-    };
-
-    const channel = RealtimeManager.subscribeToTable(
-      'profiles', 
-      handleProfileChange,
-      { column: 'id', value: user.id }
-    );
+    console.log('Setting up real-time subscription for profiles...');
+    
+    const channel = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'profiles' }, 
+        (payload) => {
+          console.log('Profiles table updated:', payload);
+          
+          // Update current user profile if it's the one that changed
+          if (payload.new && payload.new.id === profile.id) {
+            console.log('Current user profile updated');
+            setProfile(payload.new as Profile);
+          }
+          
+          // If admin, refresh all profiles
+          if (profile.role === 'admin') {
+            console.log('Admin user - refreshing all profiles');
+            fetchProfiles();
+          }
+        }
+      )
+      .subscribe();
 
     return () => {
-      RealtimeManager.unsubscribeFromTable('profiles', { column: 'id', value: user.id });
+      console.log('Cleaning up real-time subscription');
+      supabase.removeChannel(channel);
     };
-  }, [user, profile]);
-
-  // Real-time subscription for all profiles (for admin users)
-  useEffect(() => {
-    if (!profile || profile.role !== 'admin') return;
-
-    const handleAllProfilesChange = (payload: any) => {
-      console.log('Profiles table updated:', payload);
-      // Refresh profiles list when any profile changes
-      fetchProfiles();
-    };
-
-    const channel = RealtimeManager.subscribeToTable('profiles', handleAllProfilesChange);
-
-    return () => {
-      RealtimeManager.unsubscribeFromTable('profiles');
-    };
-  }, [profile]);
+  }, [profile?.id, profile?.role]);
 
   const signUp = async (email: string, password: string, userData?: any) => {
     return await ConcurrencyManager.retryOperation(async () => {
