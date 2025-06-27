@@ -34,7 +34,7 @@ serve(async (req) => {
     if (listError) {
       console.error('Error checking existing users:', listError)
       return new Response(
-        JSON.stringify({ error: listError }),
+        JSON.stringify({ error: { message: 'Failed to check existing users: ' + listError.message } }),
         { 
           status: 400, 
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -70,7 +70,7 @@ serve(async (req) => {
     if (authError) {
       console.error('Auth user creation error:', authError)
       return new Response(
-        JSON.stringify({ error: authError }),
+        JSON.stringify({ error: { message: 'Failed to create user: ' + authError.message } }),
         { 
           status: 400, 
           headers: { 'Content-Type': 'application/json', ...corsHeaders }
@@ -99,7 +99,7 @@ serve(async (req) => {
       if (updateError) {
         console.error('Profile update error:', updateError)
         return new Response(
-          JSON.stringify({ error: updateError }),
+          JSON.stringify({ error: { message: 'User created but profile update failed: ' + updateError.message } }),
           { 
             status: 400, 
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
