@@ -169,7 +169,7 @@ export const SupabaseAuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('Profiles table updated:', payload);
           
           // Update current user profile if it's the one that changed
-          if (payload.new && payload.new.id === profile.id) {
+          if (payload.new && typeof payload.new === 'object' && 'id' in payload.new && payload.new.id === profile.id) {
             console.log('Current user profile updated');
             setProfile(payload.new as Profile);
           }
