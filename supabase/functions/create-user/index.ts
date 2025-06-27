@@ -160,44 +160,30 @@ serve(async (req) => {
         )
       }
 
-      // Send password reset email using the auth admin method
-      console.log('Sending password reset email to:', email)
+      // Send password reset email - simplified approach
+      console.log('Attempting to send password reset email to:', email)
       
       try {
-        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: email,
+        // First, try the standard password reset approach
+        const { error: resetError } = await supabaseAdmin.auth.admin.resetPasswordForEmail(email, {
+          redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('/v1', '')}/auth/reset-password`
         })
         
-        console.log('Password reset link generation result:', { resetData, resetError })
-        
         if (resetError) {
-          console.error('Failed to generate password reset link:', resetError)
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              warning: 'User created but password reset email could not be sent: ' + resetError.message,
-              user: authData.user 
-            }),
-            { 
-              status: 200, 
-              headers: { 'Content-Type': 'application/json', ...corsHeaders }
-            }
-          )
-        } else {
-          console.log('Password reset link generated successfully:', resetData)
+          console.error('Password reset email failed:', resetError)
           
-          // Try to send the reset email
-          const { error: sendResetError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('//', '//').replace('/v1', '')}/auth/reset-password`
+          // Try alternative approach - generate recovery link
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'recovery',
+            email: email,
           })
           
-          if (sendResetError) {
-            console.error('Failed to send invitation email:', sendResetError)
+          if (linkError) {
+            console.error('Recovery link generation failed:', linkError)
             return new Response(
               JSON.stringify({ 
                 success: true, 
-                warning: 'User created but invitation email could not be sent: ' + sendResetError.message,
+                warning: `User ${name} created successfully, but password reset email could not be sent. Please manually send the password reset link or have the user request a password reset.`,
                 user: authData.user 
               }),
               { 
@@ -206,15 +192,28 @@ serve(async (req) => {
               }
             )
           } else {
-            console.log('Invitation email sent successfully')
+            console.log('Recovery link generated:', linkData?.properties?.action_link)
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                warning: `User ${name} created successfully. Recovery link generated but automatic email sending may not be configured. Recovery link: ${linkData?.properties?.action_link}`,
+                user: authData.user 
+              }),
+              { 
+                status: 200, 
+                headers: { 'Content-Type': 'application/json', ...corsHeaders }
+              }
+            )
           }
+        } else {
+          console.log('Password reset email sent successfully')
         }
       } catch (emailError) {
-        console.error('Unexpected error during email sending:', emailError)
+        console.error('Unexpected error during email process:', emailError)
         return new Response(
           JSON.stringify({ 
             success: true, 
-            warning: 'User created but password reset email could not be sent due to unexpected error',
+            warning: `User ${name} created successfully, but there was an issue with the email configuration. Please check your Supabase email settings.`,
             user: authData.user 
           }),
           { 
