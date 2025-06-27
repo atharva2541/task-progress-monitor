@@ -21,25 +21,47 @@ serve(async (req) => {
   try {
     const { to, subject, html, text }: EmailRequest = await req.json();
 
+    console.log(`=== EMAIL SENDING DEBUG ===`);
+    console.log(`Recipient: ${to}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`HTML length: ${html.length}`);
+
     const AWS_REGION = Deno.env.get('AWS_REGION');
     const AWS_ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
     const AWS_SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
     const SES_FROM_EMAIL = Deno.env.get('SES_FROM_EMAIL');
 
+    console.log(`AWS Region: ${AWS_REGION}`);
+    console.log(`SES From Email: ${SES_FROM_EMAIL}`);
+    console.log(`AWS Access Key exists: ${!!AWS_ACCESS_KEY_ID}`);
+    console.log(`AWS Secret Key exists: ${!!AWS_SECRET_ACCESS_KEY}`);
+
     if (!AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !SES_FROM_EMAIL) {
-      console.error('Missing AWS SES configuration');
-      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
+      const missingVars = [];
+      if (!AWS_REGION) missingVars.push('AWS_REGION');
+      if (!AWS_ACCESS_KEY_ID) missingVars.push('AWS_ACCESS_KEY_ID');
+      if (!AWS_SECRET_ACCESS_KEY) missingVars.push('AWS_SECRET_ACCESS_KEY');
+      if (!SES_FROM_EMAIL) missingVars.push('SES_FROM_EMAIL');
+      
+      console.error(`Missing AWS SES configuration: ${missingVars.join(', ')}`);
+      return new Response(JSON.stringify({ 
+        error: 'Email service not configured',
+        missing: missingVars
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Sending email to ${to} with subject: ${subject}`);
+    console.log(`Attempting to send email to ${to} from ${SES_FROM_EMAIL}`);
 
     // Create AWS SES request
     const sesEndpoint = `https://email.${AWS_REGION}.amazonaws.com`;
     const timestamp = new Date().toISOString().replace(/[:\-]|\.\d{3}/g, '');
     const date = timestamp.substr(0, 8);
+
+    console.log(`SES Endpoint: ${sesEndpoint}`);
+    console.log(`Timestamp: ${timestamp}`);
 
     const params = new URLSearchParams({
       'Action': 'SendEmail',
@@ -50,6 +72,8 @@ serve(async (req) => {
       'Message.Body.Text.Data': text || html.replace(/<[^>]*>/g, ''),
       'Version': '2010-12-01'
     });
+
+    console.log(`Request params prepared, body length: ${params.toString().length}`);
 
     // AWS Signature Version 4
     const algorithm = 'AWS4-HMAC-SHA256';
@@ -87,6 +111,8 @@ serve(async (req) => {
 
     const authorizationHeader = `${algorithm} Credential=${AWS_ACCESS_KEY_ID}/${credentialScope}, SignedHeaders=host;x-amz-date, Signature=${signature}`;
 
+    console.log(`Authorization header created, making request to SES...`);
+
     const response = await fetch(sesEndpoint, {
       method: 'POST',
       headers: {
@@ -97,23 +123,44 @@ serve(async (req) => {
       body: params.toString(),
     });
 
+    console.log(`SES Response status: ${response.status}`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`SES Error: ${response.status} ${errorText}`);
+      console.error(`SES Error Response: ${errorText}`);
       throw new Error(`SES Error: ${response.status} ${errorText}`);
     }
 
     const responseText = await response.text();
-    console.log('SES Response:', responseText);
+    console.log('SES Success Response:', responseText);
 
-    return new Response(JSON.stringify({ success: true }), {
+    // Extract Message ID from response
+    const messageIdMatch = responseText.match(/<MessageId>([^<]+)<\/MessageId>/);
+    const messageId = messageIdMatch ? messageIdMatch[1] : null;
+    
+    if (messageId) {
+      console.log(`Email sent successfully with Message ID: ${messageId}`);
+    } else {
+      console.log('Email sent but no Message ID found in response');
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      messageId: messageId,
+      sesResponse: responseText 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Email sending error:', error);
+    console.error('Detailed error in send-email function:', error);
+    console.error('Error stack:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
