@@ -160,20 +160,61 @@ serve(async (req) => {
         )
       }
 
-      // Send password reset email
+      // Send password reset email using the auth admin method
       console.log('Sending password reset email to:', email)
       
-      const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-      })
-      
-      if (resetError) {
-        console.error('Failed to send password reset email:', resetError)
+      try {
+        const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
+          type: 'recovery',
+          email: email,
+        })
+        
+        console.log('Password reset link generation result:', { resetData, resetError })
+        
+        if (resetError) {
+          console.error('Failed to generate password reset link:', resetError)
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              warning: 'User created but password reset email could not be sent: ' + resetError.message,
+              user: authData.user 
+            }),
+            { 
+              status: 200, 
+              headers: { 'Content-Type': 'application/json', ...corsHeaders }
+            }
+          )
+        } else {
+          console.log('Password reset link generated successfully:', resetData)
+          
+          // Try to send the reset email
+          const { error: sendResetError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+            redirectTo: `${Deno.env.get('SUPABASE_URL')?.replace('//', '//').replace('/v1', '')}/auth/reset-password`
+          })
+          
+          if (sendResetError) {
+            console.error('Failed to send invitation email:', sendResetError)
+            return new Response(
+              JSON.stringify({ 
+                success: true, 
+                warning: 'User created but invitation email could not be sent: ' + sendResetError.message,
+                user: authData.user 
+              }),
+              { 
+                status: 200, 
+                headers: { 'Content-Type': 'application/json', ...corsHeaders }
+              }
+            )
+          } else {
+            console.log('Invitation email sent successfully')
+          }
+        }
+      } catch (emailError) {
+        console.error('Unexpected error during email sending:', emailError)
         return new Response(
           JSON.stringify({ 
             success: true, 
-            warning: 'User created but password reset email could not be sent',
+            warning: 'User created but password reset email could not be sent due to unexpected error',
             user: authData.user 
           }),
           { 
@@ -181,8 +222,6 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json', ...corsHeaders }
           }
         )
-      } else {
-        console.log('Password reset email sent successfully')
       }
     }
 
